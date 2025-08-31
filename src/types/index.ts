@@ -50,10 +50,22 @@ export interface OrderItem {
   notes?: string;
 }
 
+export interface InventoryCategory {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  icon?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface InventoryItem {
   id: string;
   name: string;
-  category: string;
+  categoryId?: string;
+  category?: InventoryCategory; // Para joins
   currentStock: number;
   minStock: number;
   unit: 'unidades' | 'kg' | 'litros' | 'garrafas';

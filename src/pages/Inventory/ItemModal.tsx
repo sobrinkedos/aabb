@@ -11,24 +11,32 @@ interface ItemModalProps {
   item: InventoryItem | null;
 }
 
-type FormData = Omit<InventoryItem, 'id' | 'lastUpdated'>;
+type FormData = Omit<InventoryItem, 'id' | 'lastUpdated' | 'category'>;
 
 const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
-  const { addInventoryItem, updateInventoryItem } = useApp();
+  const { addInventoryItem, updateInventoryItem, inventoryCategories } = useApp();
   const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FormData>();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (item) {
-      reset(item);
+      reset({
+        name: item.name,
+        categoryId: item.categoryId,
+        currentStock: item.currentStock,
+        minStock: item.minStock,
+        unit: item.unit,
+        cost: item.cost,
+        supplier: item.supplier
+      });
     } else {
       reset({
         name: '',
-        category: '',
-        currentStock: 0,
-        minStock: 0,
+        categoryId: '',
+        currentStock: undefined,
+        minStock: undefined,
         unit: 'unidades',
-        cost: 0,
+        cost: undefined,
         supplier: ''
       });
     }
@@ -56,56 +64,160 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="bg-white rounded-lg shadow-xl w-full max-w-lg"
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ duration: 0.2 }}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
           >
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-800">{item ? 'Editar Item' : 'Novo Item no Estoque'}</h2>
-              <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">{item ? 'Editar Item' : 'Novo Item no Estoque'}</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {item ? 'Atualize as informações do item' : 'Adicione um novo item ao inventário'}
+                </p>
+              </div>
+              <button 
+                onClick={onClose} 
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-200 p-2 rounded-lg transition-colors duration-200"
+                disabled={isSubmitting}
+              >
+                <X size={24} />
+              </button>
             </div>
-            <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+              {/* Nome do Item - Largura completa */}
               <InputField label="Nome do Item" error={errors.name}>
-                <input {...register('name', { required: 'Nome é obrigatório' })} className="form-input" disabled={isSubmitting} />
+                <input 
+                  {...register('name', { required: 'Nome é obrigatório' })} 
+                  className="form-input" 
+                  placeholder="Digite o nome do item"
+                  disabled={isSubmitting} 
+                />
               </InputField>
-              <InputField label="Categoria" error={errors.category}>
-                <input {...register('category', { required: 'Categoria é obrigatória' })} className="form-input" disabled={isSubmitting} />
+
+              {/* Categoria - Largura completa */}
+              <InputField label="Categoria" error={errors.categoryId}>
+                <Controller
+                  name="categoryId"
+                  control={control}
+                  rules={{ required: 'Categoria é obrigatória' }}
+                  render={({ field }) => (
+                    <select 
+                      {...field} 
+                      className="form-select" 
+                      disabled={isSubmitting}
+                    >
+                      <option value="">Selecione uma categoria</option>
+                      {inventoryCategories.map(category => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                />
               </InputField>
-              <div className="grid grid-cols-2 gap-4">
+
+              {/* Estoques - Grid 2 colunas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <InputField label="Estoque Atual" error={errors.currentStock}>
-                  <input type="number" {...register('currentStock', { required: true, valueAsNumber: true, min: 0 })} className="form-input" disabled={isSubmitting} />
+                  <input 
+                    type="number" 
+                    {...register('currentStock', { 
+                      required: 'Estoque atual é obrigatório', 
+                      valueAsNumber: true, 
+                      min: { value: 0, message: 'Valor deve ser maior ou igual a 0' }
+                    })} 
+                    className="form-input" 
+                    placeholder="0"
+                    disabled={isSubmitting} 
+                  />
                 </InputField>
                 <InputField label="Estoque Mínimo" error={errors.minStock}>
-                  <input type="number" {...register('minStock', { required: true, valueAsNumber: true, min: 0 })} className="form-input" disabled={isSubmitting} />
+                  <input 
+                    type="number" 
+                    {...register('minStock', { 
+                      required: 'Estoque mínimo é obrigatório', 
+                      valueAsNumber: true, 
+                      min: { value: 0, message: 'Valor deve ser maior ou igual a 0' }
+                    })} 
+                    className="form-input" 
+                    placeholder="0"
+                    disabled={isSubmitting} 
+                  />
                 </InputField>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+
+              {/* Unidade e Custo - Grid 2 colunas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <InputField label="Unidade" error={errors.unit}>
                   <Controller
                     name="unit"
                     control={control}
-                    rules={{ required: true }}
+                    rules={{ required: 'Unidade é obrigatória' }}
                     render={({ field }) => (
-                      <select {...field} className="form-input" disabled={isSubmitting}>
+                      <select 
+                        {...field} 
+                        className="form-select" 
+                        disabled={isSubmitting}
+                      >
                         {units.map(u => <option key={u} value={u}>{u}</option>)}
                       </select>
                     )}
                   />
                 </InputField>
-                <InputField label="Custo por Unidade" error={errors.cost}>
-                  <input type="number" step="0.01" {...register('cost', { required: true, valueAsNumber: true, min: 0 })} className="form-input" disabled={isSubmitting} />
+                <InputField label="Custo por Unidade (R$)" error={errors.cost}>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    {...register('cost', { 
+                      required: 'Custo é obrigatório', 
+                      valueAsNumber: true, 
+                      min: { value: 0, message: 'Valor deve ser maior ou igual a 0' }
+                    })} 
+                    className="form-input" 
+                    placeholder="0,00"
+                    disabled={isSubmitting} 
+                  />
                 </InputField>
               </div>
-              <InputField label="Fornecedor" error={errors.supplier}>
-                <input {...register('supplier')} className="form-input" disabled={isSubmitting} />
+
+              {/* Fornecedor - Largura completa */}
+              <InputField label="Fornecedor (Opcional)" error={errors.supplier}>
+                <input 
+                  {...register('supplier')} 
+                  className="form-input" 
+                  placeholder="Nome do fornecedor"
+                  disabled={isSubmitting} 
+                />
               </InputField>
-              <div className="pt-4 flex justify-end space-x-3">
-                <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" disabled={isSubmitting}>Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-wait" disabled={isSubmitting}>
-                  {isSubmitting ? 'Salvando...' : (item ? 'Salvar Alterações' : 'Adicionar Item')}
+
+              {/* Botões de ação */}
+              <div className="pt-6 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3 border-t border-gray-200">
+                <button 
+                  type="button" 
+                  onClick={onClose} 
+                  className="btn-secondary" 
+                  disabled={isSubmitting}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn-primary flex items-center justify-center space-x-2" 
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Salvando...</span>
+                    </>
+                  ) : (
+                    <span>{item ? 'Salvar Alterações' : 'Adicionar Item'}</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -117,10 +229,17 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
 };
 
 const InputField = ({ label, children, error }: { label: string, children: React.ReactNode, error?: any }) => (
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+  <div className="space-y-2">
+    <label className="block text-sm font-semibold text-gray-700">{label}</label>
     {children}
-    {error && <p className="text-red-500 text-xs mt-1">{error.message}</p>}
+    {error && (
+      <p className="text-red-500 text-sm flex items-center space-x-1">
+        <span className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center">
+          <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+        </span>
+        <span>{error.message}</span>
+      </p>
+    )}
   </div>
 );
 

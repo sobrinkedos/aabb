@@ -7,7 +7,7 @@ import InventoryItemCard from './InventoryItemCard';
 import { InventoryItem } from '../../types';
 
 const InventoryModule: React.FC = () => {
-  const { inventory, removeInventoryItem } = useApp();
+  const { inventory, inventoryCategories, removeInventoryItem } = useApp();
   const [showItemModal, setShowItemModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -86,6 +86,7 @@ const InventoryModule: React.FC = () => {
             <InventoryItemCard 
               key={item.id} 
               item={item} 
+              categories={inventoryCategories}
               onEdit={handleEdit}
               onDelete={removeInventoryItem}
             />

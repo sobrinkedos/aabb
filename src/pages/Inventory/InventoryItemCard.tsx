@@ -1,16 +1,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Edit, Trash2, AlertTriangle } from 'lucide-react';
-import { InventoryItem } from '../../types';
+import { InventoryItem, InventoryCategory } from '../../types';
 
 interface InventoryItemCardProps {
   item: InventoryItem;
+  categories: InventoryCategory[];
   onEdit: (item: InventoryItem) => void;
   onDelete: (itemId: string) => void;
 }
 
-const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, onEdit, onDelete }) => {
+const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, categories, onEdit, onDelete }) => {
   const isLowStock = item.currentStock <= item.minStock;
+  const category = categories.find(cat => cat.id === item.categoryId);
 
   return (
     <motion.div
@@ -21,7 +23,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, onEdit, onD
       <div className="flex items-start justify-between mb-3">
         <div>
           <h3 className="font-semibold text-gray-800">{item.name}</h3>
-          <p className="text-sm text-gray-500">{item.category}</p>
+          <p className="text-sm text-gray-500">{category?.name || 'Sem categoria'}</p>
         </div>
         <div className="flex space-x-2">
           <button onClick={() => onEdit(item)} className="text-gray-400 hover:text-blue-600 transition-colors"><Edit size={16} /></button>

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { MenuItem, Order, InventoryItem, Member, Sale, OrderItem } from '../types';
+import { MenuItem, Order, InventoryItem, InventoryCategory, Member, Sale, OrderItem } from '../types';
 import { Tables, TablesInsert, TablesUpdate } from '../types/supabase';
 
 // Helper functions to map between Supabase (snake_case) and App (camelCase)
@@ -8,13 +8,24 @@ import { Tables, TablesInsert, TablesUpdate } from '../types/supabase';
 const fromInventorySupabase = (item: Tables<'inventory_items'>): InventoryItem => ({
   id: item.id,
   name: item.name,
-  category: item.category || '',
+  categoryId: item.category_id || undefined,
   currentStock: item.current_stock,
   minStock: item.min_stock,
   unit: item.unit as InventoryItem['unit'],
   lastUpdated: new Date(item.last_updated || item.created_at),
   supplier: item.supplier || undefined,
   cost: item.cost || 0
+});
+
+const fromInventoryCategorySupabase = (category: Tables<'inventory_categories'>): InventoryCategory => ({
+  id: category.id,
+  name: category.name,
+  description: category.description || undefined,
+  color: category.color || '#6B7280',
+  icon: category.icon || undefined,
+  isActive: category.is_active || true,
+  createdAt: new Date(category.created_at),
+  updatedAt: new Date(category.updated_at || category.created_at)
 });
 
 const fromMemberSupabase = (member: Tables<'members'>): Member => ({
@@ -66,6 +77,7 @@ interface AppContextType {
   kitchenOrders: Order[];
   
   inventory: InventoryItem[];
+  inventoryCategories: InventoryCategory[];
   addInventoryItem: (itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => Promise<void>;
   updateInventoryItem: (item: InventoryItem) => Promise<void>;
   removeInventoryItem: (itemId: string) => Promise<void>;
@@ -100,6 +112,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [inventoryCategories, setInventoryCategories] = useState<InventoryCategory[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [notifications, setNotifications] = useState<string[]>([]);
@@ -107,15 +120,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // Fetch initial data
   useEffect(() => {
     const fetchData = async () => {
-      const [menuData, inventoryData, membersData, salesData] = await Promise.all([
+      const [menuData, inventoryData, categoriesData, membersData, salesData] = await Promise.all([
         supabase.from('menu_items').select('*'),
         supabase.from('inventory_items').select('*').order('name'),
+        supabase.from('inventory_categories').select('*').eq('is_active', true).order('name'),
         supabase.from('members').select('*').order('name'),
         supabase.from('sales').select('*').order('timestamp', { ascending: false }),
       ]);
 
       if (menuData.data) setMenuItems(menuData.data.map(fromMenuItemSupabase));
       if (inventoryData.data) setInventory(inventoryData.data.map(fromInventorySupabase));
+      if (categoriesData.data) setInventoryCategories(categoriesData.data.map(fromInventoryCategorySupabase));
       if (membersData.data) setMembers(membersData.data.map(fromMemberSupabase));
       if (salesData.data) setSales(salesData.data as Sale[]);
     };
@@ -200,7 +215,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const addInventoryItem = async (itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
     const itemToInsert: Omit<TablesInsert<'inventory_items'>, 'id' | 'created_at' | 'last_updated'> = {
         name: itemData.name,
-        category: itemData.category,
+        category_id: itemData.categoryId,
         current_stock: itemData.currentStock,
         min_stock: itemData.minStock,
         unit: itemData.unit,
@@ -215,7 +230,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const updateInventoryItem = async (updatedItem: InventoryItem) => {
     const itemToUpdate: TablesUpdate<'inventory_items'> = {
         name: updatedItem.name,
-        category: updatedItem.category,
+        category_id: updatedItem.categoryId,
         current_stock: updatedItem.currentStock,
         min_stock: updatedItem.minStock,
         unit: updatedItem.unit,
@@ -279,7 +294,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   return (
     <AppContext.Provider value={{
       menuItems, orders, addOrder, updateOrderStatus, kitchenOrders,
-      inventory, addInventoryItem, updateInventoryItem, removeInventoryItem,
+      inventory, inventoryCategories, addInventoryItem, updateInventoryItem, removeInventoryItem,
       members, addMember, updateMember,
       notifications, addNotification, clearNotifications,
       sales, addSale
