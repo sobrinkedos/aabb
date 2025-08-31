@@ -14,9 +14,9 @@ const KitchenModule: React.FC = () => {
   );
 
   const averagePreparationTime = menuItems
-    .filter(item => item.category === 'food' && item.preparationTime)
+    .filter(item => item.preparationTime)
     .reduce((avg, item) => avg + (item.preparationTime || 0), 0) / 
-    menuItems.filter(item => item.category === 'food' && item.preparationTime).length || 0;
+    menuItems.filter(item => item.preparationTime).length || 0;
 
   return (
     <div className="space-y-6">
@@ -83,7 +83,7 @@ const KitchenModule: React.FC = () => {
             <div>
               <h3 className="text-lg font-semibold text-gray-800 mb-1">Pratos Disponíveis</h3>
               <p className="text-3xl font-bold text-green-600">
-                {menuItems.filter(item => item.category === 'food' && item.available).length}
+                {menuItems.filter(item => item.available).length}
               </p>
             </div>
             <div className="p-3 bg-green-100 rounded-full">
@@ -97,7 +97,7 @@ const KitchenModule: React.FC = () => {
         {activeTab === 'orders' ? (
           <KitchenOrders orders={pendingKitchenOrders} menuItems={menuItems} />
         ) : (
-          <MenuManagement menuItems={menuItems.filter(item => item.category === 'food')} />
+          <MenuManagement menuItems={menuItems} />
         )}
       </div>
     </div>

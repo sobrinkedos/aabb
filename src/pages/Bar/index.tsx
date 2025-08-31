@@ -11,6 +11,9 @@ const BarModule: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Exibir todos os pratos sem filtro por categoria
+  const filteredMenuItems = menuItems;
+
   const filteredOrders = orders.filter(order => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     const matchesSearch = order.tableNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -86,6 +89,7 @@ const BarModule: React.FC = () => {
               <option value="ready">Pronto</option>
               <option value="delivered">Entregue</option>
             </select>
+
           </div>
         </div>
 
@@ -106,7 +110,7 @@ const BarModule: React.FC = () => {
         <OrderModal
           isOpen={showOrderModal}
           onClose={() => setShowOrderModal(false)}
-          menuItems={menuItems.filter(item => item.category === 'drinks' || item.category === 'snacks')}
+          menuItems={filteredMenuItems}
         />
       )}
     </div>

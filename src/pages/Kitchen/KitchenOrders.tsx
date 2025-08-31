@@ -52,7 +52,7 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
             const estimatedTime = getEstimatedTime(order);
             const foodItems = order.items.filter(item => {
               const menuItem = menuItems.find(mi => mi.id === item.menuItemId);
-              return menuItem?.category === 'food';
+              return menuItem; // Exibir todos os itens do pedido
             });
 
             return (

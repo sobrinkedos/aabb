@@ -23,7 +23,7 @@ export interface MenuItem {
   name: string;
   description: string;
   price: number;
-  category: 'drinks' | 'food' | 'snacks';
+  category: 'Prato Principal' | 'Petiscos' | 'Bebidas';
   image?: string;
   available: boolean;
   preparationTime?: number;

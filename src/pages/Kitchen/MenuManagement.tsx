@@ -2,20 +2,45 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Edit, Trash2, Clock, DollarSign } from 'lucide-react';
 import { MenuItem } from '../../types';
+import { useApp } from '../../contexts/AppContext';
+import MenuItemModal from './MenuItemModal';
 
 interface MenuManagementProps {
   menuItems: MenuItem[];
 }
 
 const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
+  const { removeMenuItem } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
 
+  // Filtrar apenas por termo de busca, exibir todos os pratos
   const filteredItems = menuItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    return matchesSearch;
   });
+
+  const handleNewItem = () => {
+    setSelectedItem(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditItem = (item: MenuItem) => {
+    setSelectedItem(item);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedItem(null);
+  };
+
+  const handleDeleteItem = async (item: MenuItem) => {
+    if (window.confirm(`Tem certeza que deseja remover "${item.name}" do cardápio?`)) {
+      await removeMenuItem(item.id);
+    }
+  };
 
   return (
     <div className="p-6">
@@ -24,6 +49,7 @@ const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
+          onClick={handleNewItem}
           className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center space-x-2"
         >
           <Plus size={20} />
@@ -39,15 +65,7 @@ const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="all">Todas as Categorias</option>
-          <option value="food">Pratos Principais</option>
-          <option value="snacks">Petiscos</option>
-        </select>
+
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -61,10 +79,16 @@ const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
             <div className="flex items-start justify-between mb-3">
               <h3 className="font-semibold text-gray-800">{item.name}</h3>
               <div className="flex space-x-1">
-                <button className="text-gray-400 hover:text-blue-600 transition-colors">
+                <button 
+                  onClick={() => handleEditItem(item)}
+                  className="text-gray-400 hover:text-blue-600 transition-colors"
+                >
                   <Edit size={16} />
                 </button>
-                <button className="text-gray-400 hover:text-red-600 transition-colors">
+                <button 
+                  onClick={() => handleDeleteItem(item)}
+                  className="text-gray-400 hover:text-red-600 transition-colors"
+                >
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -92,7 +116,7 @@ const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
                 {item.available ? 'Disponível' : 'Indisponível'}
               </span>
               <span className="text-xs text-gray-500 capitalize">
-                {item.category === 'food' ? 'Prato Principal' : 'Petisco'}
+                {item.category === 'Prato Principal' ? 'Prato Principal' : item.category === 'Petiscos' ? 'Petiscos' : 'Bebidas'}
               </span>
             </div>
           </motion.div>
@@ -104,6 +128,12 @@ const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
           <p className="text-gray-500">Nenhum prato encontrado</p>
         </div>
       )}
+
+      <MenuItemModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        item={selectedItem}
+      />
     </div>
   );
 };

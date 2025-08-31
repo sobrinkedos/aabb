@@ -39,16 +39,18 @@ const fromMemberSupabase = (member: Tables<'members'>): Member => ({
   membershipType: member.membership_type as Member['membershipType']
 });
 
-const fromMenuItemSupabase = (item: Tables<'menu_items'>): MenuItem => ({
-    id: item.id,
-    name: item.name,
-    description: item.description || '',
-    price: item.price,
-    category: item.category as MenuItem['category'],
-    image: undefined, // schema doesn't have image
-    available: item.available,
-    preparationTime: item.preparation_time || undefined
-});
+const fromMenuItemSupabase = (item: Tables<'menu_items'>): MenuItem => {
+    return {
+        id: item.id,
+        name: item.name,
+        description: item.description || '',
+        price: item.price,
+        category: item.category as MenuItem['category'],
+        image: undefined, // schema doesn't have image
+        available: item.available,
+        preparationTime: item.preparation_time || undefined
+    };
+};
 
 const fromOrderSupabase = (order: Tables<'orders'> & { order_items: Tables<'order_items'>[] }): Order => ({
     id: order.id,
@@ -70,6 +72,10 @@ const fromOrderSupabase = (order: Tables<'orders'> & { order_items: Tables<'orde
 
 interface AppContextType {
   menuItems: MenuItem[];
+  addMenuItem: (itemData: Omit<MenuItem, 'id'>) => Promise<void>;
+  updateMenuItem: (item: MenuItem) => Promise<void>;
+  removeMenuItem: (itemId: string) => Promise<void>;
+  
   orders: Order[];
   addOrder: (orderData: { items: Omit<OrderItem, 'id'>[]; tableNumber?: string; employeeId: string; notes?: string; status: Order['status']; }) => Promise<void>;
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
@@ -137,6 +143,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     fetchData();
   }, []);
 
+  // Debug removido
+
   // Real-time subscriptions
   useEffect(() => {
     const handleOrderChange = async (payload: any) => {
@@ -175,6 +183,68 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     };
   }, []);
 
+
+  const addMenuItem = async (itemData: Omit<MenuItem, 'id'>) => {
+    console.log('=== addMenuItem INICIADO ===');
+    console.log('Dados recebidos:', itemData);
+    
+    const itemToInsert: TablesInsert<'menu_items'> = {
+      name: itemData.name,
+      description: itemData.description || null,
+      price: itemData.price,
+      category: itemData.category,
+      available: itemData.available,
+      preparation_time: itemData.preparationTime || null
+    };
+    
+    console.log('Dados formatados para Supabase:', itemToInsert);
+    
+    const { data, error } = await supabase.from('menu_items').insert(itemToInsert).select().single();
+    
+    console.log('Resposta do Supabase:');
+    console.log('- Data:', data);
+    console.log('- Error:', error);
+    
+    if (error) { 
+      console.error('=== ERRO NO SUPABASE ===');
+      console.error('Código do erro:', error.code);
+      console.error('Mensagem do erro:', error.message);
+      console.error('Detalhes do erro:', error.details);
+      console.error('Hint do erro:', error.hint);
+      throw error;
+    }
+    if (data) {
+      console.log('Item inserido com sucesso, atualizando estado...');
+      setMenuItems(prev => [fromMenuItemSupabase(data), ...prev].sort((a,b) => a.name.localeCompare(b.name)));
+      addNotification(`Novo prato "${data.name}" adicionado ao cardápio!`);
+      console.log('Estado atualizado com sucesso!');
+    }
+    console.log('=== addMenuItem FINALIZADO ===');
+  };
+
+  const updateMenuItem = async (updatedItem: MenuItem) => {
+    const itemToUpdate: TablesUpdate<'menu_items'> = {
+      name: updatedItem.name,
+      description: updatedItem.description,
+      price: updatedItem.price,
+      category: updatedItem.category,
+      available: updatedItem.available,
+      preparation_time: updatedItem.preparationTime
+    };
+    const { data, error } = await supabase.from('menu_items').update(itemToUpdate).eq('id', updatedItem.id).select().single();
+    if (error) { console.error(error); return; }
+    if (data) {
+      setMenuItems(prev => prev.map(item => item.id === data.id ? fromMenuItemSupabase(data) : item).sort((a,b) => a.name.localeCompare(b.name)));
+      addNotification(`Prato "${data.name}" atualizado!`);
+    }
+  };
+
+  const removeMenuItem = async (itemId: string) => {
+    const { error } = await supabase.from('menu_items').delete().eq('id', itemId);
+    if (error) { console.error(error); return; }
+    setMenuItems(prev => prev.filter(item => item.id !== itemId));
+    addNotification('Prato removido do cardápio!');
+  };
 
   const addOrder = async (orderData: { items: Omit<OrderItem, 'id'>[]; tableNumber?: string; employeeId: string; notes?: string; status: Order['status']; }) => {
     const { items, tableNumber, employeeId, notes, status } = orderData;
@@ -289,11 +359,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const clearNotifications = () => setNotifications([]);
 
-  const kitchenOrders = orders.filter(order => order.items.some(item => menuItems.find(mi => mi.id === item.menuItemId)?.category === 'food'));
+  const kitchenOrders = orders.filter(order => order.items.some(item => menuItems.find(mi => mi.id === item.menuItemId)));
 
   return (
     <AppContext.Provider value={{
-      menuItems, orders, addOrder, updateOrderStatus, kitchenOrders,
+      menuItems, addMenuItem, updateMenuItem, removeMenuItem,
+      orders, addOrder, updateOrderStatus, kitchenOrders,
       inventory, inventoryCategories, addInventoryItem, updateInventoryItem, removeInventoryItem,
       members, addMember, updateMember,
       notifications, addNotification, clearNotifications,
