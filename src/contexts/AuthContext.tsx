@@ -8,7 +8,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; error: string | null }>;
   loginAsDemo: () => Promise<{ success: boolean; error: string | null }>;
   logout: () => void;
-  isLoading: boolean;
+  isLoading: boolean; // Apenas para o carregamento inicial da sessão
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,72 +27,62 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchAndSetUser = async (session: Session) => {
-    try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (error || !profile) {
-        if (error) console.error('Error fetching profile:', error.message);
-        if (!profile) console.warn(`Profile not found for user ${session.user.id}. Logging out of app state.`);
-        setUser(null);
-        return;
-      }
-
-      const appUser: User = {
-        id: profile.id,
-        name: profile.name || session.user.email || 'Usuário',
-        email: session.user.email!,
-        role: profile.role as User['role'],
-        avatar: profile.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${profile.name || session.user.email}`,
-      };
-      setUser(appUser);
-    } catch (e) {
-      console.error("Critical error in fetchAndSetUser:", e);
-      setUser(null);
-    }
-  };
-  
+  // Efeito #1: Lida APENAS com a sessão de autenticação do Supabase.
+  // É rápido e não depende do banco de dados.
   useEffect(() => {
-    let isMounted = true;
-
-    const initializeAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && isMounted) {
-          await fetchAndSetUser(session);
-        }
-      } catch (error) {
-        console.error("Error during initial auth check:", error);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    initializeAuth();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (isMounted) {
-        if (session) {
-          await fetchAndSetUser(session);
-        } else {
-          setUser(null);
-        }
-      }
+    // Pega a sessão inicial para parar o carregamento o mais rápido possível.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setIsLoading(false); // <-- PONTO CRÍTICO: resolve o carregamento infinito.
     });
 
+    // Ouve por futuras mudanças na autenticação (login/logout).
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+      }
+    );
+
     return () => {
-      isMounted = false;
       authListener.subscription.unsubscribe();
     };
   }, []);
+
+  // Efeito #2: Lida com a busca do perfil no banco de dados.
+  // Roda sempre que a sessão mudar.
+  useEffect(() => {
+    if (session) {
+      // Se há uma sessão, buscamos o perfil do usuário.
+      supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single()
+        .then(({ data: profile, error }) => {
+          if (error || !profile) {
+            console.error('Perfil não encontrado ou erro na busca, deslogando.', error);
+            // Se o perfil não existe, algo está errado. Forçamos o logout.
+            supabase.auth.signOut();
+          } else {
+            // Perfil encontrado, montamos o objeto de usuário da aplicação.
+            const appUser: User = {
+              id: profile.id,
+              name: profile.name || session.user.email || 'Usuário',
+              email: session.user.email!,
+              role: profile.role as User['role'],
+              avatar: profile.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${profile.name || session.user.email}`,
+            };
+            setUser(appUser);
+          }
+        });
+    } else {
+      // Se não há sessão, não há usuário.
+      setUser(null);
+    }
+  }, [session]); // Depende apenas da sessão.
 
   const login = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -105,23 +95,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     await supabase.auth.signOut();
-    setUser(null);
   };
-
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-slate-900">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-white font-semibold">Carregando Sessão...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <AuthContext.Provider value={{ user, login, loginAsDemo, logout, isLoading }}>
-      {children}
+      {isLoading ? (
+         <div className="fixed inset-0 flex items-center justify-center bg-slate-900">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="mt-4 text-white font-semibold">Carregando Sessão...</p>
+          </div>
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 };
