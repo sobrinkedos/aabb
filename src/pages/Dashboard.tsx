@@ -17,9 +17,10 @@ import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { orders, inventory, notifications } = useApp();
   const { user } = useAuth();
 
@@ -141,25 +142,33 @@ const Dashboard: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-          <motion.div
-            key={stat.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-            className="bg-white rounded-lg shadow-md p-6"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
-                <p className="text-2xl font-bold text-gray-800">{stat.value}</p>
+        {stats.map((stat, index) => {
+          const isEstoqueBaixo = stat.title === 'Estoque Baixo';
+          return (
+            <motion.div
+              key={stat.title}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              className={`bg-white rounded-lg shadow-md p-6 ${
+                isEstoqueBaixo ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''
+              }`}
+              onClick={isEstoqueBaixo ? () => navigate('/inventory/estoque-baixo') : undefined}
+              whileHover={isEstoqueBaixo ? { scale: 1.02 } : {}}
+              whileTap={isEstoqueBaixo ? { scale: 0.98 } : {}}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
+                  <p className="text-2xl font-bold text-gray-800">{stat.value}</p>
+                </div>
+                <div className={`p-3 rounded-full ${stat.bgColor}`}>
+                  <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                </div>
               </div>
-              <div className={`p-3 rounded-full ${stat.bgColor}`}>
-                <stat.icon className={`w-6 h-6 ${stat.color}`} />
-              </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

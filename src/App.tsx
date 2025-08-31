@@ -8,6 +8,8 @@ import Dashboard from './pages/Dashboard';
 import BarModule from './pages/Bar';
 import KitchenModule from './pages/Kitchen';
 import InventoryModule from './pages/Inventory';
+import ListaEstoqueBaixo from './pages/Inventory/ListaEstoqueBaixo';
+import AtualizacaoMassiva from './pages/Inventory/AtualizacaoMassiva';
 import MembersModule from './pages/Members';
 
 // Componente que envolve as rotas protegidas, fornecendo o layout e o contexto.
@@ -49,6 +51,8 @@ function App() {
             <Route path="bar" element={<BarModule />} />
             <Route path="kitchen" element={<KitchenModule />} />
             <Route path="inventory" element={<InventoryModule />} />
+            <Route path="inventory/estoque-baixo" element={<ListaEstoqueBaixo />} />
+            <Route path="inventory/atualizacao-massiva" element={<AtualizacaoMassiva />} />
             <Route path="members" element={<MembersModule />} />
             <Route path="settings" element={<div className="p-6"><h1 className="text-2xl font-bold">Configurações (Em Desenvolvimento)</h1></div>} />
           </Route>

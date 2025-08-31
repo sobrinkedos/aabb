@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Search, Package, AlertTriangle, DollarSign } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import ItemModal from './ItemModal';
 import InventoryItemCard from './InventoryItemCard';
 import { InventoryItem } from '../../types';
 
 const InventoryModule: React.FC = () => {
+  const navigate = useNavigate();
   const { inventory, inventoryCategories, removeInventoryItem } = useApp();
   const [showItemModal, setShowItemModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -49,21 +51,39 @@ const InventoryModule: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Módulo Estoque</h1>
           <p className="text-gray-600">Controle e gestão de inventário</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={handleAddNew}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2 mt-4 sm:mt-0"
-        >
-          <Plus size={20} />
-          <span>Novo Item</span>
-        </motion.button>
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 mt-4 sm:mt-0">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => navigate('/inventory/atualizacao-massiva')}
+            className="bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center space-x-2"
+          >
+            <Package size={20} />
+            <span>Atualização Massiva</span>
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleAddNew}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2"
+          >
+            <Plus size={20} />
+            <span>Novo Item</span>
+          </motion.button>
+        </div>
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard icon={DollarSign} title="Valor Total do Estoque" value={`R$ ${stats.totalValue.toFixed(2)}`} color="green" />
         <StatCard icon={Package} title="Itens Totais" value={stats.totalItems} color="blue" />
-        <StatCard icon={AlertTriangle} title="Itens com Estoque Baixo" value={stats.lowStockCount} color="orange" />
+        <StatCard 
+          icon={AlertTriangle} 
+          title="Itens com Estoque Baixo" 
+          value={stats.lowStockCount} 
+          color="orange" 
+          onClick={() => navigate('/inventory/estoque-baixo')}
+          clickable={true}
+        />
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -111,14 +131,37 @@ const InventoryModule: React.FC = () => {
   );
 };
 
-const StatCard = ({ icon: Icon, title, value, color }: { icon: React.ElementType, title: string, value: string | number, color: string }) => {
+const StatCard = ({ 
+  icon: Icon, 
+  title, 
+  value, 
+  color, 
+  onClick, 
+  clickable = false 
+}: { 
+  icon: React.ElementType, 
+  title: string, 
+  value: string | number, 
+  color: string,
+  onClick?: () => void,
+  clickable?: boolean
+}) => {
   const colors = {
     green: 'bg-green-100 text-green-600',
     blue: 'bg-blue-100 text-blue-600',
     orange: 'bg-orange-100 text-orange-600',
   };
+  
+  const baseClasses = "bg-white rounded-lg shadow-md p-6";
+  const clickableClasses = clickable ? "cursor-pointer hover:shadow-lg transition-shadow" : "";
+  
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <motion.div 
+      className={`${baseClasses} ${clickableClasses}`}
+      onClick={onClick}
+      whileHover={clickable ? { scale: 1.02 } : {}}
+      whileTap={clickable ? { scale: 0.98 } : {}}
+    >
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-800 mb-1">{title}</h3>
@@ -128,7 +171,7 @@ const StatCard = ({ icon: Icon, title, value, color }: { icon: React.ElementType
           <Icon className="w-6 h-6" />
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
