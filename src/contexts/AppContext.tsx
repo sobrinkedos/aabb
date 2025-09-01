@@ -48,7 +48,9 @@ const fromMenuItemSupabase = (item: Tables<'menu_items'>): MenuItem => {
         category: item.category as MenuItem['category'],
         image: undefined, // schema doesn't have image
         available: item.available,
-        preparationTime: item.preparation_time || undefined
+        preparationTime: item.preparation_time || undefined,
+        itemType: (item.item_type as MenuItem['itemType']) || 'prepared',
+        directInventoryItemId: item.direct_inventory_item_id || undefined
     };
 };
 
@@ -194,7 +196,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       price: itemData.price,
       category: itemData.category,
       available: itemData.available,
-      preparation_time: itemData.preparationTime || null
+      preparation_time: itemData.preparationTime || null,
+      item_type: itemData.itemType || 'prepared',
+      direct_inventory_item_id: itemData.directInventoryItemId || null
     };
     
     console.log('Dados formatados para Supabase:', itemToInsert);
@@ -229,7 +233,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       price: updatedItem.price,
       category: updatedItem.category,
       available: updatedItem.available,
-      preparation_time: updatedItem.preparationTime
+      preparation_time: updatedItem.preparationTime,
+      item_type: updatedItem.itemType || 'prepared',
+      direct_inventory_item_id: updatedItem.directInventoryItemId || null
     };
     const { data, error } = await supabase.from('menu_items').update(itemToUpdate).eq('id', updatedItem.id).select().single();
     if (error) { console.error(error); return; }

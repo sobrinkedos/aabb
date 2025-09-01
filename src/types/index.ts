@@ -27,6 +27,9 @@ export interface MenuItem {
   image?: string;
   available: boolean;
   preparationTime?: number;
+  itemType: 'prepared' | 'direct';
+  directInventoryItemId?: string;
+  inventoryItem?: InventoryItem; // Para joins quando é item direto
 }
 
 export interface Order {

@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Edit, Trash2, Clock, DollarSign } from 'lucide-react';
+import { Plus, Edit, Trash2, Clock, DollarSign, Package } from 'lucide-react';
 import { MenuItem } from '../../types';
 import { useApp } from '../../contexts/AppContext';
 import MenuItemModal from './MenuItemModal';
+import DirectItemModal from '../../components/DirectItemModal';
 
 interface MenuManagementProps {
   menuItems: MenuItem[];
 }
 
 const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
-  const { removeMenuItem } = useApp();
+  const { removeMenuItem, addMenuItem } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDirectItemModalOpen, setIsDirectItemModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
 
   // Filtrar apenas por termo de busca, exibir todos os pratos
@@ -24,6 +26,19 @@ const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
   const handleNewItem = () => {
     setSelectedItem(null);
     setIsModalOpen(true);
+  };
+
+  const handleNewDirectItem = () => {
+    setIsDirectItemModalOpen(true);
+  };
+
+  const handleSaveDirectItem = async (item: Partial<MenuItem>) => {
+    try {
+      await addMenuItem(item as MenuItem);
+      setIsDirectItemModalOpen(false);
+    } catch (error) {
+      console.error('Erro ao adicionar produto pronto:', error);
+    }
   };
 
   const handleEditItem = (item: MenuItem) => {
@@ -46,15 +61,26 @@ const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
     <div className="p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-4 sm:mb-0">Gestão de Cardápio</h2>
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={handleNewItem}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center space-x-2"
-        >
-          <Plus size={20} />
-          <span>Novo Prato</span>
-        </motion.button>
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleNewItem}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center space-x-2"
+          >
+            <Plus size={20} />
+            <span>Novo Prato</span>
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleNewDirectItem}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2"
+          >
+            <Package size={20} />
+            <span>Produto Pronto</span>
+          </motion.button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
@@ -133,6 +159,12 @@ const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         item={selectedItem}
+      />
+      
+      <DirectItemModal
+        isOpen={isDirectItemModalOpen}
+        onClose={() => setIsDirectItemModalOpen(false)}
+        onSave={handleSaveDirectItem}
       />
     </div>
   );
