@@ -1,21 +1,98 @@
 export interface User {
   id: string;
-  name: string;
   email: string;
-  role: 'admin' | 'manager' | 'employee' | 'member';
-  avatar?: string;
-  department?: string;
+  full_name?: string;
+  avatar_url?: string;
+  role?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Member {
   id: string;
   name: string;
   email: string;
-  phone: string;
-  avatar?: string;
-  status: 'active' | 'inactive' | 'pending';
-  joinDate: Date;
-  membershipType: 'individual' | 'family' | 'vip';
+  phone?: string;
+  avatar_url?: string;
+  status?: string;
+  join_date?: string;
+  membership_type?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  cpf?: string;
+  rg?: string;
+  birth_date?: string;
+  gender?: string;
+  avatar_url?: string;
+  customer_type: 'member' | 'non_member';
+  membership_type?: 'monthly' | 'annual' | 'lifetime';
+  membership_status?: 'active' | 'inactive' | 'suspended' | 'pending';
+  membership_number?: string;
+  join_date?: string;
+  status: 'active' | 'inactive' | 'suspended';
+  credit_limit?: number;
+  current_balance?: number;
+  preferred_payment_method?: string;
+  marketing_consent?: boolean;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  notes?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface CustomerAddress {
+  id: string;
+  customer_id: string;
+  address_type: 'home' | 'work' | 'billing' | 'shipping' | 'other';
+  street: string;
+  number?: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  country?: string;
+  is_primary?: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface CustomerDependent {
+  id: string;
+  customer_id: string;
+  name: string;
+  relationship: 'spouse' | 'child' | 'parent' | 'sibling' | 'other';
+  birth_date?: string;
+  gender?: string;
+  cpf?: string;
+  rg?: string;
+  status: 'active' | 'inactive';
+  can_make_purchases?: boolean;
+  credit_limit?: number;
+  notes?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface CustomerMembershipHistory {
+  id: string;
+  customer_id: string;
+  action: 'created' | 'upgraded' | 'downgraded' | 'suspended' | 'reactivated' | 'cancelled';
+  previous_membership_type?: string;
+  new_membership_type?: string;
+  previous_status?: string;
+  new_status?: string;
+  reason?: string;
+  processed_by?: string;
+  created_at: string;
 }
 
 export interface MenuItem {
@@ -104,78 +181,136 @@ export interface Module {
   permissions: string[];
 }
 
-// Employee Management Types
+
+
+// Bar Customer types
+export interface BarCustomer {
+  id: string;
+  phone: string; // Identificação principal
+  name: string;
+  email?: string;
+  cpf?: string;
+  birth_date?: string;
+  gender?: string;
+  preferred_table?: string;
+  dietary_restrictions?: string;
+  favorite_items?: string[]; // IDs dos itens favoritos
+  credit_limit: number;
+  current_balance: number;
+  status: 'active' | 'inactive' | 'blocked';
+  is_vip: boolean;
+  loyalty_points: number;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  last_visit?: string;
+}
+
+export interface BarCustomerVisit {
+  id: string;
+  customer_id: string;
+  visit_date: string;
+  table_number?: string;
+  total_spent: number;
+  items_ordered?: any[]; // Array de itens pedidos
+  payment_method?: string;
+  notes?: string;
+  created_at: string;
+}
+
+export interface BarEmployee {
+  id: string;
+  employee_id: string;
+  bar_role: 'atendente' | 'garcom' | 'cozinheiro' | 'barman' | 'gerente';
+  shift_preference?: 'manha' | 'tarde' | 'noite' | 'qualquer';
+  specialties?: string[];
+  commission_rate: number;
+  status: 'active' | 'inactive';
+  start_date: string;
+  end_date?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  // Relação com a tabela employees
+  employee?: {
+    id: string;
+    name: string;
+    cpf?: string;
+    email?: string;
+    phone?: string;
+    hire_date?: string;
+    status?: string;
+  };
+}
+
+export interface Employee {
+  id: string;
+  profile_id: string;
+  employee_number: string;
+  core_area: 'administrative' | 'sports' | 'food_beverage' | 'maintenance' | 'security' | 'health' | 'events';
+  department_id?: string;
+  position_id?: string;
+  admission_date: string;
+  termination_date?: string;
+  salary?: number;
+  is_active?: boolean;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Department {
   id: string;
   name: string;
   description?: string;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  manager_id?: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Position {
   id: string;
   name: string;
-  departmentId: string;
-  department?: Department;
   description?: string;
-  requiresSystemAccess: boolean;
-  baseSalary?: number;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface Employee {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  employeeCode: string;
-  positionId: string;
-  position?: Position;
-  profileId?: string;
-  profile?: User;
-  hireDate: Date;
-  status: 'active' | 'inactive' | 'on_leave' | 'terminated';
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  department_id?: string;
+  min_salary?: number;
+  max_salary?: number;
+  requirements?: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface EmployeeShift {
   id: string;
   name: string;
-  startTime: string;
-  endTime: string;
   description?: string;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  start_time: string;
+  end_time: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface EmployeeSchedule {
   id: string;
-  employeeId: string;
-  employee?: Employee;
-  shiftId: string;
-  shift?: EmployeeShift;
-  date: Date;
-  status: 'scheduled' | 'completed' | 'absent' | 'cancelled';
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  employee_id: string;
+  shift_id: string;
+  start_date: string;
+  end_date?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface EmployeePositionHistory {
   id: string;
-  employeeId: string;
-  employee?: Employee;
-  positionId: string;
-  position?: Position;
-  startDate: Date;
-  endDate?: Date;
+  employee_id: string;
+  position_id: string;
+  start_date: string;
+  end_date?: string;
   reason?: string;
-  createdAt: Date;
+  created_at?: string;
 }

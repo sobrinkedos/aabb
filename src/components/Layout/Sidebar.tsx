@@ -6,6 +6,7 @@ import {
   ChefHat, 
   Package, 
   Users, 
+  UserCheck,
   Settings,
   LogOut,
   Zap
@@ -19,10 +20,12 @@ const Sidebar: React.FC = () => {
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
     { name: 'Bar', icon: Wine, path: '/bar' },
+    { name: 'Clientes', icon: Users, path: '/bar-customers' },
+    { name: 'Funcionários', icon: UserCheck, path: '/bar-employees' },
     { name: 'Cozinha', icon: ChefHat, path: '/kitchen' },
     { name: 'Estoque', icon: Package, path: '/inventory' },
     { name: 'Membros', icon: Users, path: '/members' },
-    { name: 'Configurações', icon: Settings, path: '/settings' }
+    { name: 'Configurações', icon: Settings, path: '/settings' },
   ];
 
   const isDemoUser = user?.email === 'demo@clubmanager.com';

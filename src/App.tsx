@@ -6,6 +6,8 @@ import LoginForm from './components/Auth/LoginForm';
 import Layout from './components/Layout/Layout';
 import Dashboard from './pages/Dashboard';
 import BarModule from './pages/Bar';
+import BarCustomersModule from './pages/BarCustomers';
+import BarEmployeesModule from './pages/BarEmployees';
 import KitchenModule from './pages/Kitchen';
 import InventoryModule from './pages/Inventory';
 import ListaEstoqueBaixo from './pages/Inventory/ListaEstoqueBaixo';
@@ -49,6 +51,8 @@ function App() {
           <Route element={<ProtectedRoutesWrapper />}>
             <Route index element={<Dashboard />} />
             <Route path="bar" element={<BarModule />} />
+            <Route path="bar-customers" element={<BarCustomersModule />} />
+            <Route path="bar-employees" element={<BarEmployeesModule />} />
             <Route path="kitchen" element={<KitchenModule />} />
             <Route path="inventory" element={<InventoryModule />} />
             <Route path="inventory/estoque-baixo" element={<ListaEstoqueBaixo />} />

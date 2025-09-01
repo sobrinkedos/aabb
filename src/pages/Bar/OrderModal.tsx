@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Minus } from 'lucide-react';
-import { MenuItem, OrderItem } from '../../types';
+import { X, Plus, Minus, User } from 'lucide-react';
+import { MenuItem, OrderItem, BarCustomer } from '../../types';
 import { useApp } from '../../contexts/AppContext';
 import { useAuth } from '../../contexts/AuthContext';
+import CustomerQuickRegister from '../../components/Bar/CustomerQuickRegister';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, menuItems }) =
   const [tableNumber, setTableNumber] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<BarCustomer | null>(null);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
 
   const addItem = (menuItem: MenuItem) => {
     const existingItem = selectedItems.find(item => item.menuItemId === menuItem.id);
@@ -58,9 +61,20 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, menuItems }) =
 
   const total = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+  const handleCustomerSelected = (customer: BarCustomer) => {
+    setSelectedCustomer(customer);
+    setShowCustomerModal(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedItems.length === 0 || isSubmitting) return;
+
+    // Verificar se cliente foi selecionado
+    if (!selectedCustomer) {
+      alert('Por favor, selecione um cliente antes de finalizar o pedido.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -69,12 +83,15 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, menuItems }) =
         items: selectedItems.map(({ id, ...rest }) => rest), // Remove o 'id' do frontend
         status: 'pending',
         employeeId: user!.id,
+        customerId: selectedCustomer.id,
         notes: notes || undefined
       });
 
+      // Reset form
       setSelectedItems([]);
       setTableNumber('');
       setNotes('');
+      setSelectedCustomer(null);
       onClose();
     } catch (error) {
       console.error("Falha ao criar o pedido:", error);
@@ -135,6 +152,46 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, menuItems }) =
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Pedido</h3>
                 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Seção do Cliente */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cliente *
+                    </label>
+                    {selectedCustomer ? (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-green-800">{selectedCustomer.name}</p>
+                            <p className="text-sm text-green-600">{selectedCustomer.phone}</p>
+                            {selectedCustomer.is_vip && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mt-1">
+                                ⭐ VIP
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCustomer(null)}
+                            className="text-green-600 hover:text-green-800"
+                            disabled={isSubmitting}
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowCustomerModal(true)}
+                        className="w-full flex items-center justify-center px-3 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                        disabled={isSubmitting}
+                      >
+                        <User size={20} className="mr-2" />
+                        Selecionar Cliente
+                      </button>
+                    )}
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Número da Mesa
@@ -205,8 +262,8 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, menuItems }) =
                     </div>
                     <button
                       type="submit"
-                      disabled={selectedItems.length === 0 || isSubmitting}
-                      className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 disabled:bg-green-400 disabled:cursor-wait transition-colors"
+                      disabled={selectedItems.length === 0 || isSubmitting || !selectedCustomer}
+                      className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
                     >
                       {isSubmitting ? 'Confirmando...' : 'Confirmar Pedido'}
                     </button>
@@ -215,6 +272,14 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, menuItems }) =
               </div>
             </div>
           </motion.div>
+          
+          {/* Modal de Cadastro de Cliente */}
+          {showCustomerModal && (
+            <CustomerQuickRegister
+              onCustomerSelected={handleCustomerSelected}
+              onClose={() => setShowCustomerModal(false)}
+            />
+          )}
         </div>
       )}
     </AnimatePresence>
