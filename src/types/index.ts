@@ -103,3 +103,79 @@ export interface Module {
   active: boolean;
   permissions: string[];
 }
+
+// Employee Management Types
+export interface Department {
+  id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Position {
+  id: string;
+  name: string;
+  departmentId: string;
+  department?: Department;
+  description?: string;
+  requiresSystemAccess: boolean;
+  baseSalary?: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Employee {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  employeeCode: string;
+  positionId: string;
+  position?: Position;
+  profileId?: string;
+  profile?: User;
+  hireDate: Date;
+  status: 'active' | 'inactive' | 'on_leave' | 'terminated';
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface EmployeeShift {
+  id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface EmployeeSchedule {
+  id: string;
+  employeeId: string;
+  employee?: Employee;
+  shiftId: string;
+  shift?: EmployeeShift;
+  date: Date;
+  status: 'scheduled' | 'completed' | 'absent' | 'cancelled';
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface EmployeePositionHistory {
+  id: string;
+  employeeId: string;
+  employee?: Employee;
+  positionId: string;
+  position?: Position;
+  startDate: Date;
+  endDate?: Date;
+  reason?: string;
+  createdAt: Date;
+}
