@@ -1,7 +1,9 @@
 export interface User {
   id: string;
   email: string;
+  name?: string;
   full_name?: string;
+  avatar?: string;
   avatar_url?: string;
   role?: string;
   created_at?: string;
@@ -98,15 +100,17 @@ export interface CustomerMembershipHistory {
 export interface MenuItem {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   price: number;
-  category: 'Prato Principal' | 'Petiscos' | 'Bebidas';
-  image?: string;
+  category: string;
+  image_url?: string;
   available: boolean;
-  preparationTime?: number;
-  itemType: 'prepared' | 'direct';
-  directInventoryItemId?: string;
-  inventoryItem?: InventoryItem; // Para joins quando é item direto
+  preparation_time?: number;
+  item_type?: 'prepared' | 'direct';
+  direct_inventory_item_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  inventory_items?: InventoryItem; // Para joins quando é item direto
 }
 
 export interface Order {
@@ -313,4 +317,85 @@ export interface EmployeePositionHistory {
   end_date?: string;
   reason?: string;
   created_at?: string;
+}
+
+// Bar Attendance System Types
+export interface BarTable {
+  id: string;
+  number: string;
+  capacity: number;
+  position_x: number;
+  position_y: number;
+  status: 'available' | 'occupied' | 'reserved' | 'cleaning' | 'maintenance';
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Comanda {
+  id: string;
+  table_id?: string;
+  customer_id?: string;
+  customer_name?: string;
+  employee_id: string;
+  status: 'open' | 'pending_payment' | 'closed' | 'cancelled';
+  total: number;
+  people_count: number;
+  opened_at: string;
+  closed_at?: string;
+  payment_method?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  // Relações
+  table?: BarTable;
+  customer?: BarCustomer;
+  employee?: User;
+  items?: ComandaItem[];
+}
+
+export interface ComandaItem {
+  id: string;
+  comanda_id: string;
+  menu_item_id: string;
+  quantity: number;
+  price: number;
+  status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  added_at: string;
+  prepared_at?: string;
+  delivered_at?: string;
+  notes?: string;
+  created_at: string;
+  // Relações
+  menu_item?: MenuItem;
+}
+
+export interface AttendanceMetrics {
+  id: string;
+  employee_id: string;
+  date: string;
+  shift_start?: string;
+  shift_end?: string;
+  orders_count: number;
+  comandas_count: number;
+  avg_service_time?: string;
+  total_sales: number;
+  customer_satisfaction?: number;
+  tips_received: number;
+  tables_served: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BillSplit {
+  id: string;
+  comanda_id: string;
+  split_type: 'equal' | 'by_item' | 'by_person' | 'custom';
+  person_count: number;
+  splits: any; // JSON com detalhes da divisão
+  total_amount: number;
+  service_charge: number;
+  discount_amount: number;
+  created_by: string;
+  created_at: string;
 }

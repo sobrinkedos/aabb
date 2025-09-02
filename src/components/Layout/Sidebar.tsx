@@ -9,7 +9,8 @@ import {
   UserCheck,
   Settings,
   LogOut,
-  Zap
+  Zap,
+  Coffee
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { motion } from 'framer-motion';
@@ -20,6 +21,7 @@ const Sidebar: React.FC = () => {
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
     { name: 'Bar', icon: Wine, path: '/bar' },
+    { name: 'Atendimento Bar', icon: Coffee, path: '/bar/attendance' },
     { name: 'Clientes', icon: Users, path: '/bar-customers' },
     { name: 'Funcionários', icon: UserCheck, path: '/bar-employees' },
     { name: 'Cozinha', icon: ChefHat, path: '/kitchen' },
@@ -99,6 +101,7 @@ const Sidebar: React.FC = () => {
           <h4 className="text-sm font-semibold text-blue-200 mb-2">🎯 Teste Agora:</h4>
           <ul className="text-xs text-blue-300 space-y-1">
             <li>• Criar pedidos no Bar</li>
+            <li>• Sistema de Atendimento</li>
             <li>• Gerenciar cozinha</li>
             <li>• Ver métricas em tempo real</li>
             <li>• Controlar estoque</li>

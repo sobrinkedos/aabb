@@ -13,6 +13,7 @@ import InventoryModule from './pages/Inventory';
 import ListaEstoqueBaixo from './pages/Inventory/ListaEstoqueBaixo';
 import AtualizacaoMassiva from './pages/Inventory/AtualizacaoMassiva';
 import MembersModule from './pages/Members';
+import BarAttendance from './pages/BarAttendance';
 
 // Componente que envolve as rotas protegidas, fornecendo o layout e o contexto.
 const ProtectedRoutesWrapper: React.FC = () => {
@@ -58,6 +59,7 @@ function App() {
             <Route path="inventory/estoque-baixo" element={<ListaEstoqueBaixo />} />
             <Route path="inventory/atualizacao-massiva" element={<AtualizacaoMassiva />} />
             <Route path="members" element={<MembersModule />} />
+            <Route path="bar/attendance" element={<BarAttendance />} />
             <Route path="settings" element={<div className="p-6"><h1 className="text-2xl font-bold">Configurações (Em Desenvolvimento)</h1></div>} />
           </Route>
           
