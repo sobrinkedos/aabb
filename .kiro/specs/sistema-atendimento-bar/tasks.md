@@ -41,7 +41,12 @@ Este plano detalha a implementação do Sistema de Atendimento no Bar em etapas 
   - Configurar políticas RLS para todas as novas tabelas
   - _Requisitos: 2.2, 3.1, 4.1_
 
-- [ ] 3. Desenvolver hook useBarAttendance para gerenciamento de estado
+- [x] 3. Desenvolver hook useBarAttendance para gerenciamento de estado
+
+
+
+
+
   - Implementar estado global para mesas, comandas e métricas
   - Configurar subscriptions em tempo real para mudanças nas tabelas
   - Criar funções para CRUD de comandas (criar, atualizar, fechar)
@@ -49,7 +54,12 @@ Este plano detalha a implementação do Sistema de Atendimento no Bar em etapas 
   - Adicionar tratamento de erros e loading states
   - _Requisitos: 1.2, 2.3, 3.2_
 
-- [ ] 4. Criar componente de gestão de mesas (MesasView)
+- [x] 4. Criar componente de gestão de mesas (MesasView)
+
+
+
+
+
   - Implementar layout visual do salão com grid de mesas
   - Criar componente MesaCard com status visual (cores por estado)
   - Adicionar funcionalidade de drag-and-drop para reorganizar mesas

@@ -149,6 +149,50 @@ export const useComandas = () => {
     }
   };
 
+  const getComandaByTable = async (tableId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('comandas')
+        .select(`
+          *,
+          table:bar_tables(*),
+          customer:bar_customers(*),
+          employee:profiles(*),
+          items:comanda_items(
+            *,
+            menu_item:menu_items(*)
+          )
+        `)
+        .eq('table_id', tableId)
+        .eq('status', 'open')
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Erro ao buscar comanda da mesa');
+    }
+  };
+
+  const removeItemFromComanda = async (itemId: string) => {
+    try {
+      const { error } = await supabase
+        .from('comanda_items')
+        .delete()
+        .eq('id', itemId);
+
+      if (error) throw error;
+      
+      // Atualizar o estado local removendo o item
+      setComandas(prev => prev.map(comanda => ({
+        ...comanda,
+        items: comanda.items?.filter(item => item.id !== itemId)
+      })));
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Erro ao remover item da comanda');
+    }
+  };
+
   useEffect(() => {
     fetchComandas();
   }, []);
@@ -161,6 +205,8 @@ export const useComandas = () => {
     createComanda,
     updateComandaStatus,
     addItemToComanda,
-    updateItemStatus
+    updateItemStatus,
+    getComandaByTable,
+    removeItemFromComanda
   };
 };
