@@ -281,6 +281,7 @@ export const useBarAttendance = (): UseBarAttendanceReturn => {
     }
   }, [user, atualizarEstado, tratarErro, carregarDadosIniciais]);
 
+  // Função base para atualizar comanda (definida antes das que a utilizam)
   const atualizarComanda = useCallback(async (
     comandaId: string, 
     dados: Partial<Comanda>
@@ -305,6 +306,95 @@ export const useBarAttendance = (): UseBarAttendanceReturn => {
       throw error;
     }
   }, [atualizarEstado, tratarErro, carregarDadosIniciais]);
+
+  // Função base para atualizar status da mesa (definida primeiro)
+  const atualizarStatusMesa = useCallback(async (
+    mesaId: string, 
+    status: TableStatus
+  ): Promise<void> => {
+    try {
+      const { error } = await supabase
+        .from('bar_tables')
+        .update({
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', mesaId);
+
+      if (error) throw error;
+
+      await carregarDadosIniciais();
+
+    } catch (error) {
+      tratarErro(error, 'atualização de status da mesa');
+      throw error;
+    }
+  }, [tratarErro, carregarDadosIniciais]);
+
+  // Função para liberar mesa (definida depois de atualizarStatusMesa)
+  const liberarMesa = useCallback(async (mesaId: string): Promise<void> => {
+    try {
+      await atualizarStatusMesa(mesaId, 'cleaning');
+      
+      // Após 5 minutos, marcar como disponível automaticamente
+      setTimeout(async () => {
+        await atualizarStatusMesa(mesaId, 'available');
+      }, 5 * 60 * 1000);
+
+    } catch (error) {
+      tratarErro(error, 'liberação de mesa');
+      throw error;
+    }
+  }, [atualizarStatusMesa, tratarErro]);
+
+  // Função para atualizar métricas de venda (definida antes das que a usam)
+  const atualizarMetricasVenda = useCallback(async (valorVenda: number): Promise<void> => {
+    if (!user) return;
+
+    try {
+      const hoje = new Date().toISOString().split('T')[0];
+      
+      const { data: metricas, error: buscaError } = await supabase
+        .from('attendance_metrics')
+        .select('*')
+        .eq('employee_id', user.id)
+        .eq('date', hoje)
+        .single();
+
+      if (buscaError && buscaError.code !== 'PGRST116') throw buscaError;
+
+      if (metricas) {
+        // Atualizar métricas existentes
+        const { error } = await supabase
+          .from('attendance_metrics')
+          .update({
+            total_sales: (metricas.total_sales || 0) + valorVenda,
+            orders_count: (metricas.orders_count || 0) + 1,
+            comandas_count: (metricas.comandas_count || 0) + 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', metricas.id);
+
+        if (error) throw error;
+      } else {
+        // Criar novas métricas
+        const { error } = await supabase
+          .from('attendance_metrics')
+          .insert({
+            employee_id: user.id,
+            date: hoje,
+            total_sales: valorVenda,
+            orders_count: 1,
+            comandas_count: 1
+          });
+
+        if (error) throw error;
+      }
+
+    } catch (error) {
+      console.error('Erro ao atualizar métricas de venda:', error);
+    }
+  }, [user]);
 
   const fecharComanda = useCallback(async (
     comandaId: string, 
@@ -351,7 +441,7 @@ export const useBarAttendance = (): UseBarAttendanceReturn => {
       tratarErro(error, 'fechamento de comanda');
       throw error;
     }
-  }, [atualizarEstado, tratarErro, carregarDadosIniciais]);
+  }, [atualizarEstado, tratarErro, carregarDadosIniciais, liberarMesa, atualizarMetricasVenda]);
 
   const adicionarItemComanda = useCallback(async (
     comandaId: string, 
@@ -497,20 +587,7 @@ export const useBarAttendance = (): UseBarAttendanceReturn => {
     }
   }, [atualizarStatusMesa, atualizarComanda, tratarErro]);
 
-  const liberarMesa = useCallback(async (mesaId: string): Promise<void> => {
-    try {
-      await atualizarStatusMesa(mesaId, 'cleaning');
-      
-      // Após 5 minutos, marcar como disponível automaticamente
-      setTimeout(async () => {
-        await atualizarStatusMesa(mesaId, 'available');
-      }, 5 * 60 * 1000);
 
-    } catch (error) {
-      tratarErro(error, 'liberação de mesa');
-      throw error;
-    }
-  }, [atualizarStatusMesa, tratarErro]);
 
   const reservarMesa = useCallback(async (
     mesaId: string, 
@@ -545,29 +622,6 @@ export const useBarAttendance = (): UseBarAttendanceReturn => {
       throw error;
     }
   }, [atualizarStatusMesa, tratarErro]);
-
-  const atualizarStatusMesa = useCallback(async (
-    mesaId: string, 
-    status: TableStatus
-  ): Promise<void> => {
-    try {
-      const { error } = await supabase
-        .from('bar_tables')
-        .update({
-          status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', mesaId);
-
-      if (error) throw error;
-
-      await carregarDadosIniciais();
-
-    } catch (error) {
-      tratarErro(error, 'atualização de status da mesa');
-      throw error;
-    }
-  }, [tratarErro, carregarDadosIniciais]);
 
   // Pedidos no Balcão
   const processarPedidoBalcao = useCallback(async (
@@ -721,53 +775,7 @@ export const useBarAttendance = (): UseBarAttendanceReturn => {
     }
   }, [user, tratarErro, carregarDadosIniciais]);
 
-  const atualizarMetricasVenda = useCallback(async (valorVenda: number): Promise<void> => {
-    if (!user) return;
 
-    try {
-      const hoje = new Date().toISOString().split('T')[0];
-      
-      const { data: metricas, error: buscaError } = await supabase
-        .from('attendance_metrics')
-        .select('*')
-        .eq('employee_id', user.id)
-        .eq('date', hoje)
-        .single();
-
-      if (buscaError && buscaError.code !== 'PGRST116') throw buscaError;
-
-      if (metricas) {
-        // Atualizar métricas existentes
-        const { error } = await supabase
-          .from('attendance_metrics')
-          .update({
-            total_sales: (metricas.total_sales || 0) + valorVenda,
-            orders_count: (metricas.orders_count || 0) + 1,
-            comandas_count: (metricas.comandas_count || 0) + 1,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', metricas.id);
-
-        if (error) throw error;
-      } else {
-        // Criar novas métricas
-        const { error } = await supabase
-          .from('attendance_metrics')
-          .insert({
-            employee_id: user.id,
-            date: hoje,
-            total_sales: valorVenda,
-            orders_count: 1,
-            comandas_count: 1
-          });
-
-        if (error) throw error;
-      }
-
-    } catch (error) {
-      console.error('Erro ao atualizar métricas de venda:', error);
-    }
-  }, [user]);
 
   // Notificações
   const marcarNotificacaoLida = useCallback(async (notificacaoId: string): Promise<void> => {

@@ -98,8 +98,8 @@ interface AppContextType {
   addNotification: (message: string) => void;
   clearNotifications: () => void;
 
-  sales: Sale[];
-  addSale: (saleData: Omit<TablesInsert<'sales'>, 'id' | 'timestamp'>) => Promise<void>;
+  // sales: Sale[];
+  // addSale: (saleData: Omit<TablesInsert<'sales'>, 'id' | 'timestamp'>) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -122,25 +122,23 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [inventoryCategories, setInventoryCategories] = useState<InventoryCategory[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [sales, setSales] = useState<Sale[]>([]);
+  // const [sales, setSales] = useState<Sale[]>([]);
   const [notifications, setNotifications] = useState<string[]>([]);
 
   // Fetch initial data
   useEffect(() => {
     const fetchData = async () => {
-      const [menuData, inventoryData, categoriesData, membersData, salesData] = await Promise.all([
+      const [menuData, inventoryData, categoriesData, membersData] = await Promise.all([
         supabase.from('menu_items').select('*'),
         supabase.from('inventory_items').select('*').order('name'),
         supabase.from('inventory_categories').select('*').eq('is_active', true).order('name'),
         supabase.from('members').select('*').order('name'),
-        supabase.from('sales').select('*').order('timestamp', { ascending: false }),
       ]);
 
       if (menuData.data) setMenuItems(menuData.data.map(fromMenuItemSupabase));
       if (inventoryData.data) setInventory(inventoryData.data.map(fromInventorySupabase));
       if (categoriesData.data) setInventoryCategories(categoriesData.data.map(fromInventoryCategorySupabase));
       if (membersData.data) setMembers(membersData.data.map(fromMemberSupabase));
-      if (salesData.data) setSales(salesData.data as Sale[]);
     };
     fetchData();
   }, []);
@@ -353,11 +351,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     if (data) setMembers(prev => prev.map(m => m.id === data.id ? fromMemberSupabase(data) : m).sort((a,b) => a.name.localeCompare(b.name)));
   };
 
-  const addSale = async (saleData: Omit<TablesInsert<'sales'>, 'id' | 'timestamp'>) => {
-    const { data, error } = await supabase.from('sales').insert(saleData).select().single();
-    if (error) { console.error(error); return; }
-    if (data) setSales(prev => [data as Sale, ...prev]);
-  };
+  // const addSale = async (saleData: Omit<TablesInsert<'sales'>, 'id' | 'timestamp'>) => {
+  //   const { data, error } = await supabase.from('sales').insert(saleData).select().single();
+  //   if (error) { console.error(error); return; }
+  //   if (data) setSales(prev => [data as Sale, ...prev]);
+  // };
 
   const addNotification = (message: string) => {
     setNotifications(prev => [message, ...prev].slice(0, 10));
@@ -374,7 +372,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       inventory, inventoryCategories, addInventoryItem, updateInventoryItem, removeInventoryItem,
       members, addMember, updateMember,
       notifications, addNotification, clearNotifications,
-      sales, addSale
+      // sales, addSale
     }}>
       {children}
     </AppContext.Provider>

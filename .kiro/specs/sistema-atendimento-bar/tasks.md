@@ -80,6 +80,10 @@ Este plano detalha a implementação do Sistema de Atendimento no Bar em etapas 
   - _Requisitos: 3.1, 3.2, 3.3, 3.4_
 
 - [ ] 6. Desenvolver interface de pedidos no balcão (BalcaoView)
+
+
+
+
   - Criar grid de itens do cardápio otimizado para seleção rápida
   - Implementar carrinho de pedido com cálculo automático de total
   - Adicionar identificação rápida de membros com aplicação de descontos
