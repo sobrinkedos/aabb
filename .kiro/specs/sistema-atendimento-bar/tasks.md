@@ -67,7 +67,11 @@ Este plano detalha a implementação do Sistema de Atendimento no Bar em etapas 
   - Adicionar ações rápidas (ocupar, liberar, limpar, reservar)
   - _Requisitos: 2.1, 2.2, 8.1, 8.2_
 
-- [ ] 5. Implementar sistema de comandas (ComandasView)
+- [x] 5. Implementar sistema de comandas (ComandasView)
+
+
+
+
   - Criar grid de comandas abertas com informações resumidas
   - Implementar modal de detalhes da comanda com lista de itens
   - Adicionar funcionalidade para adicionar itens à comanda existente

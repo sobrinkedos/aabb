@@ -1,25 +1,114 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { Eye } from 'lucide-react';
 import NovaComandaModal from './NovaComandaModal';
+import ComandaDetailsModal from './ComandaDetailsModal';
+import ComandaAlerts from './ComandaAlerts';
+import ComandaFilters from './ComandaFilters';
 import { useComandas } from '../../../hooks/useComandas';
+import { useBarTables } from '../../../hooks/useBarTables';
+import { Comanda, ComandaStatus } from '../../../types/bar-attendance';
 
 const ComandasView: React.FC = () => {
   const { comandas, loading } = useComandas();
+  const { tables } = useBarTables();
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<ComandaStatus | 'all'>('all');
+  const [employeeFilter, setEmployeeFilter] = useState('');
+  const [tableFilter, setTableFilter] = useState('');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'recent' | 'overdue' | 'critical'>('all');
   const [showNovaComandaModal, setShowNovaComandaModal] = useState(false);
+  const [selectedComanda, setSelectedComanda] = useState<Comanda | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
 
   const handleNewComanda = () => {
     setShowNovaComandaModal(true);
   };
 
-  const filteredComandas = comandas.filter(comanda => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      comanda.customer_name?.toLowerCase().includes(searchLower) ||
-      comanda.table?.number?.toLowerCase().includes(searchLower) ||
-      comanda.employee?.name?.toLowerCase().includes(searchLower)
-    );
-  });
+  const handleComandaClick = (comanda: Comanda) => {
+    setSelectedComanda(comanda);
+    setShowDetailsModal(true);
+  };
+
+  const handleDismissAlert = (comandaId: string) => {
+    setDismissedAlerts(prev => new Set([...prev, comandaId]));
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setEmployeeFilter('');
+    setTableFilter('');
+    setTimeFilter('all');
+  };
+
+  // Extrair funcionários únicos das comandas
+  const employees = useMemo(() => {
+    const uniqueEmployees = new Map();
+    comandas.forEach(comanda => {
+      if (comanda.employee?.id && comanda.employee?.name) {
+        uniqueEmployees.set(comanda.employee.id, {
+          id: comanda.employee.id,
+          name: comanda.employee.name
+        });
+      }
+    });
+    return Array.from(uniqueEmployees.values());
+  }, [comandas]);
+
+  const filteredComandas = useMemo(() => {
+    return comandas.filter(comanda => {
+      // Filtro por texto
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = 
+          comanda.customer_name?.toLowerCase().includes(searchLower) ||
+          comanda.table?.number?.toLowerCase().includes(searchLower) ||
+          comanda.employee?.name?.toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+
+      // Filtro por status
+      if (statusFilter !== 'all' && comanda.status !== statusFilter) {
+        return false;
+      }
+
+      // Filtro por funcionário
+      if (employeeFilter && comanda.employee_id !== employeeFilter) {
+        return false;
+      }
+
+      // Filtro por mesa
+      if (tableFilter) {
+        if (tableFilter === 'balcao' && comanda.table_id) {
+          return false;
+        } else if (tableFilter !== 'balcao' && comanda.table_id !== tableFilter) {
+          return false;
+        }
+      }
+
+      // Filtro por tempo
+      if (timeFilter !== 'all') {
+        const now = new Date();
+        const openedAt = new Date(comanda.opened_at);
+        const hoursDiff = (now.getTime() - openedAt.getTime()) / (1000 * 60 * 60);
+
+        switch (timeFilter) {
+          case 'recent':
+            if (hoursDiff >= 1) return false;
+            break;
+          case 'overdue':
+            if (hoursDiff <= 2) return false;
+            break;
+          case 'critical':
+            if (hoursDiff <= 4) return false;
+            break;
+        }
+      }
+
+      return true;
+    });
+  }, [comandas, searchTerm, statusFilter, employeeFilter, tableFilter, timeFilter]);
 
   const openComandas = filteredComandas.filter(c => c.status === 'open');
   const pendingPaymentComandas = filteredComandas.filter(c => c.status === 'pending_payment');
@@ -30,6 +119,9 @@ const ComandasView: React.FC = () => {
     const hoursDiff = (now.getTime() - openedAt.getTime()) / (1000 * 60 * 60);
     return hoursDiff > 2; // Considera atrasado após 2 horas
   });
+
+  // Filtrar alertas não dispensados
+  const alertComandas = overdueComandas.filter(c => !dismissedAlerts.has(c.id));
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('pt-BR');
@@ -57,24 +149,41 @@ const ComandasView: React.FC = () => {
 
   return (
     <div className="comandas-container">
+      {/* Alertas de Comandas com Tempo Excessivo */}
+      <ComandaAlerts 
+        comandas={alertComandas}
+        onComandaClick={handleComandaClick}
+        onDismissAlert={handleDismissAlert}
+      />
+
+      {/* Filtros */}
+      <ComandaFilters
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        employeeFilter={employeeFilter}
+        onEmployeeFilterChange={setEmployeeFilter}
+        tableFilter={tableFilter}
+        onTableFilterChange={setTableFilter}
+        timeFilter={timeFilter}
+        onTimeFilterChange={setTimeFilter}
+        employees={employees}
+        tables={tables.map(t => ({ id: t.id, number: t.number }))}
+        onClearFilters={clearFilters}
+      />
+
       <div className="bg-white rounded-lg shadow-sm p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Comandas Abertas</h2>
-          <div className="flex space-x-2">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por mesa, cliente ou funcionário..."
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <button 
-              onClick={handleNewComanda}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              + Nova Comanda
-            </button>
-          </div>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Comandas {statusFilter !== 'all' ? `(${getStatusLabel(statusFilter)})` : ''}
+          </h2>
+          <button 
+            onClick={handleNewComanda}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            + Nova Comanda
+          </button>
         </div>
         
         {/* Indicadores */}
@@ -132,36 +241,65 @@ const ComandasView: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Pessoas
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ações
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredComandas.map(comanda => (
-                    <tr key={comanda.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {comanda.table?.number || 'Balcão'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {comanda.customer?.name || comanda.customer_name || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {comanda.employee?.name || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(comanda.status)}`}>
-                          {getStatusLabel(comanda.status)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                        R$ {comanda.total.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(comanda.opened_at)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {comanda.people_count}
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredComandas.map(comanda => {
+                    const timeElapsed = getTimeElapsed(comanda.opened_at);
+                    const isOverdue = new Date().getTime() - new Date(comanda.opened_at).getTime() > (2 * 60 * 60 * 1000);
+                    
+                    return (
+                      <tr key={comanda.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {comanda.table?.number || 'Balcão'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {comanda.customer?.name || comanda.customer_name || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {comanda.employee?.name || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-2">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(comanda.status)}`}>
+                              {getStatusLabel(comanda.status)}
+                            </span>
+                            {isOverdue && comanda.status === 'open' && (
+                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                ⚠️ Atrasada
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                          R$ {comanda.total.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div>
+                            {formatDate(comanda.opened_at)}
+                            <div className={`text-xs ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+                              {timeElapsed} decorrido
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {comanda.people_count}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <button
+                            onClick={() => handleComandaClick(comanda)}
+                            className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                          >
+                            <Eye className="w-3 h-3 mr-1" />
+                            Ver Detalhes
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -173,8 +311,30 @@ const ComandasView: React.FC = () => {
         isOpen={showNovaComandaModal}
         onClose={() => setShowNovaComandaModal(false)}
       />
+
+      <ComandaDetailsModal
+        isOpen={showDetailsModal}
+        onClose={() => {
+          setShowDetailsModal(false);
+          setSelectedComanda(null);
+        }}
+        comanda={selectedComanda}
+      />
     </div>
   );
+
+  function getTimeElapsed(openedAt: string) {
+    const opened = new Date(openedAt);
+    const now = new Date();
+    const diffMs = now.getTime() - opened.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (diffHours > 0) {
+      return `${diffHours}h ${diffMinutes}m`;
+    }
+    return `${diffMinutes}m`;
+  }
 };
 
 export default ComandasView;
