@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { Edit, Trash2, AlertTriangle, ShoppingCart, XCircle } from 'lucide-react';
 import { InventoryItem, InventoryCategory } from '../../types';
 
 interface InventoryItemCardProps {
@@ -12,23 +12,59 @@ interface InventoryItemCardProps {
 
 const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, categories, onEdit, onDelete }) => {
   const isLowStock = item.currentStock <= item.minStock;
+  const isAvailableForSale = item.availableForSale || false;
   const category = categories.find(cat => cat.id === item.categoryId);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`bg-white border rounded-lg p-4 hover:shadow-lg transition-shadow ${isLowStock ? 'border-red-300' : 'border-gray-200'}`}
+      className={`bg-white border rounded-lg p-4 hover:shadow-lg transition-shadow relative ${
+        isLowStock 
+          ? 'border-red-300' 
+          : isAvailableForSale 
+          ? 'border-green-300' 
+          : 'border-gray-200'
+      }`}
     >
       <div className="flex items-start justify-between mb-3">
-        <div>
+        <div className="pr-4 flex-1">
           <h3 className="font-semibold text-gray-800">{item.name}</h3>
           <p className="text-sm text-gray-500">{category?.name || 'Sem categoria'}</p>
         </div>
-        <div className="flex space-x-2">
-          <button onClick={() => onEdit(item)} className="text-gray-400 hover:text-blue-600 transition-colors"><Edit size={16} /></button>
-          <button onClick={() => onDelete(item.id)} className="text-gray-400 hover:text-red-600 transition-colors"><Trash2 size={16} /></button>
+        <div className="flex space-x-2 ml-2">
+          <button 
+            onClick={() => onEdit(item)} 
+            className="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded hover:bg-gray-100"
+            title="Editar item"
+            aria-label={`Editar ${item.name}`}
+          >
+            <Edit size={16} />
+          </button>
+          <button 
+            onClick={() => onDelete(item.id)} 
+            className="text-gray-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-gray-100"
+            title="Excluir item"
+            aria-label={`Excluir ${item.name}`}
+          >
+            <Trash2 size={16} />
+          </button>
         </div>
+      </div>
+
+      {/* Indicador de Status de Venda */}
+      <div className="mb-3">
+        {isAvailableForSale ? (
+          <div className="flex items-center space-x-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium w-fit">
+            <ShoppingCart size={12} />
+            <span>Disponível para venda</span>
+          </div>
+        ) : (
+          <div className="flex items-center space-x-1 bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-medium w-fit">
+            <XCircle size={12} />
+            <span>Não disponível para venda</span>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-between items-baseline mb-3">
@@ -43,10 +79,20 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, categories,
         ></div>
       </div>
 
-      {isLowStock && (
-        <div className="flex items-center space-x-1 text-red-600 mt-2 text-xs">
-          <AlertTriangle size={14} />
-          <span>Estoque baixo</span>
+      {(isLowStock || !isAvailableForSale) && (
+        <div className="flex flex-col space-y-1 mt-2">
+          {isLowStock && (
+            <div className="flex items-center space-x-1 text-red-600 text-xs">
+              <AlertTriangle size={14} />
+              <span>Estoque baixo</span>
+            </div>
+          )}
+          {!isAvailableForSale && (
+            <div className="flex items-center space-x-1 text-orange-600 text-xs">
+              <XCircle size={14} />
+              <span>Produto não liberado para venda no balcão</span>
+            </div>
+          )}
         </div>
       )}
 

@@ -658,43 +658,43 @@ export type Database = {
       }
       inventory_items: {
         Row: {
+          available_for_sale: boolean | null
           category_id: string | null
+          cost: number | null
           created_at: string | null
-          description: string | null
+          current_stock: number
           id: string
-          minimum_stock: number | null
+          last_updated: string | null
+          min_stock: number
           name: string
-          price: number
-          quantity: number
-          sku: string | null
-          unit: string | null
-          updated_at: string | null
+          supplier: string | null
+          unit: string
         }
         Insert: {
+          available_for_sale?: boolean | null
           category_id?: string | null
+          cost?: number | null
           created_at?: string | null
-          description?: string | null
+          current_stock?: number
           id?: string
-          minimum_stock?: number | null
+          last_updated?: string | null
+          min_stock?: number
           name: string
-          price: number
-          quantity: number
-          sku?: string | null
-          unit?: string | null
-          updated_at?: string | null
+          supplier?: string | null
+          unit: string
         }
         Update: {
+          available_for_sale?: boolean | null
           category_id?: string | null
+          cost?: number | null
           created_at?: string | null
-          description?: string | null
+          current_stock?: number
           id?: string
-          minimum_stock?: number | null
+          last_updated?: string | null
+          min_stock?: number
           name?: string
-          price?: number
-          quantity?: number
-          sku?: string | null
-          unit?: string | null
-          updated_at?: string | null
+          supplier?: string | null
+          unit?: string
         }
         Relationships: [
           {

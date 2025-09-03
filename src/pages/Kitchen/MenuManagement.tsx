@@ -1,44 +1,30 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Edit, Trash2, Clock, DollarSign, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, Clock, DollarSign } from 'lucide-react';
 import { MenuItem } from '../../types';
 import { useApp } from '../../contexts/AppContext';
 import MenuItemModal from './MenuItemModal';
-import DirectItemModal from '../../components/DirectItemModal';
 
 interface MenuManagementProps {
   menuItems: MenuItem[];
 }
 
 const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
-  const { removeMenuItem, addMenuItem } = useApp();
+  const { removeMenuItem } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDirectItemModalOpen, setIsDirectItemModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
 
-  // Filtrar apenas por termo de busca, exibir todos os pratos
+  // Filtrar apenas pratos que precisam de preparo (não produtos prontos do estoque)
   const filteredItems = menuItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
+    const isPreparedItem = item.item_type !== 'direct'; // Excluir itens diretos do estoque
+    return matchesSearch && isPreparedItem;
   });
 
   const handleNewItem = () => {
     setSelectedItem(null);
     setIsModalOpen(true);
-  };
-
-  const handleNewDirectItem = () => {
-    setIsDirectItemModalOpen(true);
-  };
-
-  const handleSaveDirectItem = async (item: Partial<MenuItem>) => {
-    try {
-      await addMenuItem(item as MenuItem);
-      setIsDirectItemModalOpen(false);
-    } catch (error) {
-      console.error('Erro ao adicionar produto pronto:', error);
-    }
   };
 
   const handleEditItem = (item: MenuItem) => {
@@ -60,7 +46,16 @@ const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
   return (
     <div className="p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4 sm:mb-0">Gestão de Cardápio</h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Gestão de Cardápio</h2>
+          <p className="text-sm text-gray-600">
+            Gerencie apenas pratos que precisam de preparo na cozinha. 
+            <br />
+            <span className="text-blue-600 font-medium">
+              Produtos prontos do estoque aparecem automaticamente no balcão quando marcados como "Disponível para venda" no módulo Estoque.
+            </span>
+          </p>
+        </div>
         <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -70,15 +65,6 @@ const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
           >
             <Plus size={20} />
             <span>Novo Prato</span>
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleNewDirectItem}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2"
-          >
-            <Package size={20} />
-            <span>Produto Pronto</span>
           </motion.button>
         </div>
       </div>
@@ -125,7 +111,7 @@ const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
             <div className="flex items-center justify-between text-sm mb-3">
               <div className="flex items-center space-x-1 text-gray-600">
                 <Clock size={14} />
-                <span>{item.preparationTime || 0}min</span>
+                <span>{item.preparation_time || 0}min</span>
               </div>
               <div className="flex items-center space-x-1 text-green-600">
                 <DollarSign size={14} />
@@ -159,12 +145,6 @@ const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         item={selectedItem}
-      />
-      
-      <DirectItemModal
-        isOpen={isDirectItemModalOpen}
-        onClose={() => setIsDirectItemModalOpen(false)}
-        onSave={handleSaveDirectItem}
       />
     </div>
   );

@@ -14,7 +14,8 @@ const fromInventorySupabase = (item: Tables<'inventory_items'>): InventoryItem =
   unit: item.unit as InventoryItem['unit'],
   lastUpdated: new Date(item.last_updated || item.created_at),
   supplier: item.supplier || undefined,
-  cost: item.cost || 0
+  cost: item.cost || 0,
+  availableForSale: item.available_for_sale || false
 });
 
 const fromInventoryCategorySupabase = (category: Tables<'inventory_categories'>): InventoryCategory => ({
@@ -294,7 +295,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         min_stock: itemData.minStock,
         unit: itemData.unit,
         cost: itemData.cost,
-        supplier: itemData.supplier
+        supplier: itemData.supplier,
+        available_for_sale: itemData.availableForSale || false
     };
     const { data, error } = await supabase.from('inventory_items').insert(itemToInsert).select().single();
     if (error) { console.error(error); return; }
@@ -310,6 +312,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         unit: updatedItem.unit,
         cost: updatedItem.cost,
         supplier: updatedItem.supplier,
+        available_for_sale: updatedItem.availableForSale || false,
         last_updated: new Date().toISOString()
     };
     const { data, error } = await supabase.from('inventory_items').update(itemToUpdate).eq('id', updatedItem.id).select().single();

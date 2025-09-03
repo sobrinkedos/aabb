@@ -156,6 +156,7 @@ export interface InventoryItem {
   lastUpdated: Date;
   supplier?: string;
   cost: number;
+  availableForSale?: boolean; // Disponível para venda direta
 }
 
 export interface Supplier {

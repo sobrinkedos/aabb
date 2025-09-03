@@ -27,7 +27,8 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
         minStock: item.minStock,
         unit: item.unit,
         cost: item.cost,
-        supplier: item.supplier
+        supplier: item.supplier,
+        availableForSale: item.availableForSale
       });
     } else {
       reset({
@@ -37,7 +38,8 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
         minStock: undefined,
         unit: 'unidades',
         cost: undefined,
-        supplier: ''
+        supplier: '',
+        availableForSale: false
       });
     }
   }, [item, reset]);
@@ -194,6 +196,34 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                   disabled={isSubmitting} 
                 />
               </InputField>
+
+              {/* Disponível para Venda */}
+              <div className="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <Controller
+                  name="availableForSale"
+                  control={control}
+                  render={({ field }) => (
+                    <input
+                      type="checkbox"
+                      checked={field.value || false}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      ref={field.ref}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      disabled={isSubmitting}
+                    />
+                  )}
+                />
+                <div className="flex-1">
+                  <label className="text-sm font-medium text-gray-900">
+                    Disponível para Venda
+                  </label>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Marque esta opção para que o produto apareça automaticamente no balcão e comandas quando houver estoque
+                  </p>
+                </div>
+              </div>
 
               {/* Botões de ação */}
               <div className="pt-6 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3 border-t border-gray-200">

@@ -36,10 +36,18 @@ interface PaymentMethod {
   color: string;
 }
 
-const BalcaoView: React.FC = () => {
+  const BalcaoView: React.FC = () => {
   const { user } = useAuth();
-  const { menuItems, loading: menuLoading } = useMenuItems();
+  const { menuItems, loading: menuLoading, error: menuError } = useMenuItems();
   const { processarPedidoBalcao } = useBarAttendance();
+  
+  // Debug: Log dos dados carregados
+  console.log('BalcaoView Debug:', {
+    menuItems,
+    menuLoading,
+    menuError,
+    itemsCount: menuItems.length
+  });
   
   // Estados do carrinho e pedido
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -262,9 +270,45 @@ const BalcaoView: React.FC = () => {
 
             {/* Grid de Itens */}
             <div className="flex-1 overflow-y-auto">
+              {/* Debug Info */}
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-semibold text-blue-800 mb-2">Status do Sistema:</h4>
+                <div className="text-sm text-blue-700 space-y-1">
+                  <p>📊 Carregando: {menuLoading ? 'Sim' : 'Não'}</p>
+                  <p>📝 Itens carregados: {menuItems.length}</p>
+                  <p>🔍 Itens filtrados: {filteredMenuItems.length}</p>
+                  <p>📂 Categorias: {categories.length > 0 ? categories.join(', ') : 'Nenhuma'}</p>
+                  {menuError && (
+                    <p className="text-yellow-700 bg-yellow-100 p-2 rounded mt-2">
+                      ⚠️ {menuError}
+                    </p>
+                  )}
+                </div>
+                {menuItems.length === 0 && !menuLoading && (
+                  <div className="mt-3 p-3 bg-yellow-100 border border-yellow-300 rounded">
+                    <p className="text-yellow-800 font-medium">Como adicionar produtos:</p>
+                    <ul className="text-sm text-yellow-700 mt-1 space-y-1">
+                      <li>1. Configure o Supabase (veja SETUP_DATABASE.md)</li>
+                      <li>2. Vá para <strong>Cozinha → Cardápio</strong> e adicione pratos</li>
+                      <li>3. Ou vá para <strong>Estoque</strong> e marque produtos como "Disponível para venda"</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+
               {menuLoading ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : filteredMenuItems.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-2">Nenhum item encontrado</p>
+                  {menuItems.length === 0 && (
+                    <p className="text-sm text-gray-400">
+                      Parece que não há itens cadastrados no menu. 
+                      <br />Vá para Cozinha → Cardápio para adicionar itens.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
