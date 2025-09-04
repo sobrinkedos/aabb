@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS bill_splits (
   person_count INTEGER NOT NULL CHECK (person_count > 0),
   splits JSONB NOT NULL, -- Detalhes da divisão por pessoa
   total_amount DECIMAL(10,2) NOT NULL,
-  service_charge DECIMAL(10,2) DEFAULT 0.00,
+  service_charge_percentage DECIMAL(5,2) DEFAULT 10.00,
   discount_amount DECIMAL(10,2) DEFAULT 0.00,
   created_by UUID NOT NULL REFERENCES profiles(id),
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -117,7 +117,8 @@ CREATE TABLE IF NOT EXISTS bill_splits (
 COMMENT ON TABLE bill_splits IS 'Divisões de conta das comandas com detalhes por pessoa';
 COMMENT ON COLUMN bill_splits.split_type IS 'Tipo de divisão: equal, by_item, by_person, custom';
 COMMENT ON COLUMN bill_splits.splits IS 'JSON com detalhes da divisão por pessoa';
-COMMENT ON COLUMN bill_splits.service_charge IS 'Taxa de serviço aplicada';
+COMMENT ON COLUMN bill_splits.service_charge_percentage IS 'Percentual da taxa de serviço aplicada';
+COMMENT ON COLUMN bill_splits.discount_amount IS 'Valor total do desconto aplicado';
 
 -- 6. ÍNDICES PARA PERFORMANCE
 CREATE INDEX IF NOT EXISTS idx_bar_tables_status ON bar_tables(status);

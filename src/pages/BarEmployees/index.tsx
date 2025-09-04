@@ -23,7 +23,7 @@ const BarEmployeesModule: React.FC = () => {
       const { data: barEmployeesData, error: barError } = await supabase
         .from('bar_employees')
         .select('*')
-        .eq('status', 'active')
+        .eq('is_active', true)
         .order('created_at', { ascending: false });
       
       if (barError) throw barError;
@@ -31,6 +31,7 @@ const BarEmployeesModule: React.FC = () => {
       // Criar dados mock para funcionários enquanto o RLS não é corrigido
       const employeesWithMockData = (barEmployeesData || []).map((barEmp, index) => ({
         ...barEmp,
+        status: barEmp.is_active ? 'active' : 'inactive', // Mapear is_active para status
         employee: {
           id: barEmp.employee_id,
           name: `Funcionário ${index + 1}`,
@@ -330,7 +331,7 @@ const BarEmployeesModule: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{formatPhone(employee.phone)}</div>
+                        <div className="text-sm text-gray-900">{formatPhone(employee.employee?.phone || null)}</div>
                         <div className="text-sm text-gray-500">{employee.email || 'Email não informado'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -400,7 +401,7 @@ const BarEmployeesModule: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Telefone</label>
-                  <p className="mt-1 text-sm text-gray-900">{formatPhone(selectedEmployee.employee.phone)}</p>
+                  <p className="mt-1 text-sm text-gray-900">{formatPhone(selectedEmployee.employee?.phone || null)}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Email</label>

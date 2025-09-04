@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Clock, User, MapPin, DollarSign } from 'lucide-react';
-import { Comanda, ComandaItem } from '../../../types/bar-attendance';
+import { X, Plus, Trash2, Clock, User, MapPin, DollarSign, Calculator } from 'lucide-react';
+import { Comanda, ComandaItem, ComandaWithItems, BillSplitConfig } from '../../../types/bar-attendance';
 import { useComandas } from '../../../hooks/useComandas';
 import { useMenuItems } from '../../../hooks/useMenuItems';
 import { MenuItem } from '../../../types';
+import DivisaoContaModal from './DivisaoContaModal';
+import ComprovantesMultiplos from './ComprovantesMultiplos';
 
 interface ComandaDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  comanda: Comanda | null;
+  comanda: ComandaWithItems | null;
 }
 
 const ComandaDetailsModal: React.FC<ComandaDetailsModalProps> = ({
@@ -16,13 +18,16 @@ const ComandaDetailsModal: React.FC<ComandaDetailsModalProps> = ({
   onClose,
   comanda
 }) => {
-  const { addItemToComanda, updateItemStatus, removeItemFromComanda, updateComandaStatus } = useComandas();
+  const { addItemToComanda, updateItemStatus, removeItemFromComanda, updateComandaStatus, createBillSplit, processMultiplePayments } = useComandas();
   const { menuItems } = useMenuItems(true); // true para incluir itens diretos do estoque
   const [showAddItemForm, setShowAddItemForm] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showDivisaoModal, setShowDivisaoModal] = useState(false);
+  const [showComprovantesModal, setShowComprovantesModal] = useState(false);
+  const [currentSplitConfig, setCurrentSplitConfig] = useState<BillSplitConfig | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -30,6 +35,9 @@ const ComandaDetailsModal: React.FC<ComandaDetailsModalProps> = ({
       setSelectedMenuItem('');
       setQuantity(1);
       setNotes('');
+      setShowDivisaoModal(false);
+      setShowComprovantesModal(false);
+      setCurrentSplitConfig(null);
     }
   }, [isOpen]);
 
@@ -132,6 +140,34 @@ const ComandaDetailsModal: React.FC<ComandaDetailsModalProps> = ({
     }
   };
 
+  const handleDividirConta = () => {
+    setShowDivisaoModal(true);
+  };
+
+  const handleConfirmSplit = async (splitConfig: BillSplitConfig) => {
+    try {
+      await createBillSplit(comanda.id, splitConfig);
+      setCurrentSplitConfig(splitConfig);
+      setShowDivisaoModal(false);
+      setShowComprovantesModal(true);
+    } catch (error) {
+      console.error('Erro ao criar divisão de conta:', error);
+      alert('Erro ao processar divisão de conta');
+    }
+  };
+
+  const handleProcessPayments = async (payments: any[]) => {
+    try {
+      await processMultiplePayments(comanda.id, payments);
+      setShowComprovantesModal(false);
+      onClose();
+      alert('Pagamentos processados com sucesso!');
+    } catch (error) {
+      console.error('Erro ao processar pagamentos:', error);
+      alert('Erro ao processar pagamentos');
+    }
+  };
+
   const totalItems = comanda.items?.length || 0;
   const totalValue = comanda.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
   const timeElapsed = getTimeElapsed(comanda.opened_at);
@@ -206,6 +242,15 @@ const ComandaDetailsModal: React.FC<ComandaDetailsModalProps> = ({
                 <Plus className="w-4 h-4" />
                 <span>Adicionar Item</span>
               </button>
+              {comanda.status === 'open' && totalValue > 0 && (
+                <button
+                  onClick={handleDividirConta}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                >
+                  <Calculator className="w-4 h-4" />
+                  <span>Dividir Conta</span>
+                </button>
+              )}
               {comanda.status === 'open' && (
                 <button
                   onClick={handleCloseComanda}
@@ -369,6 +414,24 @@ const ComandaDetailsModal: React.FC<ComandaDetailsModalProps> = ({
             )}
           </div>
         </div>
+
+        {/* Modais de Divisão de Conta */}
+        <DivisaoContaModal
+          isOpen={showDivisaoModal}
+          onClose={() => setShowDivisaoModal(false)}
+          comanda={comanda}
+          onConfirmSplit={handleConfirmSplit}
+        />
+
+        {currentSplitConfig && (
+          <ComprovantesMultiplos
+            isOpen={showComprovantesModal}
+            onClose={() => setShowComprovantesModal(false)}
+            comanda={comanda}
+            splitConfig={currentSplitConfig}
+            onProcessPayments={handleProcessPayments}
+          />
+        )}
       </div>
     </div>
   );

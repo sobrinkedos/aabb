@@ -41,14 +41,6 @@ interface PaymentMethod {
   const { menuItems, loading: menuLoading, error: menuError } = useMenuItems(true); // true para incluir itens diretos do estoque
   const { processarPedidoBalcao } = useBarAttendance();
   
-  // Debug: Log dos dados carregados
-  console.log('BalcaoView Debug:', {
-    menuItems,
-    menuLoading,
-    menuError,
-    itemsCount: menuItems.length
-  });
-  
   // Estados do carrinho e pedido
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<BarCustomer | null>(null);

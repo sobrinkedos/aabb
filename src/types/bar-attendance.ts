@@ -32,8 +32,16 @@ export type ComandaItemStatus = 'pending' | 'preparing' | 'ready' | 'delivered' 
 export type BillSplitType = 'equal' | 'by_item' | 'by_person' | 'custom';
 
 // Interfaces para dados compostos
+export interface ComandaItemWithMenu extends ComandaItem {
+  menu_items?: {
+    name: string;
+    price: number;
+    category: string;
+  };
+}
+
 export interface ComandaWithItems extends Comanda {
-  items: ComandaItem[];
+  items: ComandaItemWithMenu[];
   table?: BarTable;
   customer?: BarCustomer;
 }

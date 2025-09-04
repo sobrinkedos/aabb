@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Comanda, ComandaItem } from '../types';
+import { BillSplitConfig, BillSplit } from '../types/bar-attendance';
 
 export const useComandas = () => {
   const [comandas, setComandas] = useState<Comanda[]>([]);
@@ -193,6 +194,65 @@ export const useComandas = () => {
     }
   };
 
+  const createBillSplit = async (comandaId: string, splitConfig: BillSplitConfig) => {
+    try {
+      const { data, error } = await supabase
+        .from('bill_splits')
+        .insert([{
+          comanda_id: comandaId,
+          split_type: splitConfig.type,
+          person_count: splitConfig.person_count,
+          splits: splitConfig.splits,
+          service_charge_percentage: splitConfig.service_charge_percentage,
+          discount_amount: splitConfig.discount_amount
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Erro ao criar divisão de conta');
+    }
+  };
+
+  const getBillSplit = async (comandaId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('bill_splits')
+        .select('*')
+        .eq('comanda_id', comandaId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Erro ao buscar divisão de conta');
+    }
+  };
+
+  const processMultiplePayments = async (comandaId: string, payments: Array<{
+    person_name: string;
+    amount: number;
+    payment_method: string;
+    status: string;
+  }>) => {
+    try {
+      // Atualizar status da comanda para fechada
+      await updateComandaStatus(comandaId, 'closed');
+
+      // Em uma implementação real, aqui você registraria cada pagamento individual
+      // Por exemplo, criando registros na tabela de pagamentos
+      
+      // Simular processamento dos pagamentos
+      console.log('Processando pagamentos múltiplos:', payments);
+      
+      return { success: true, payments };
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Erro ao processar pagamentos');
+    }
+  };
+
   useEffect(() => {
     fetchComandas();
   }, []);
@@ -207,6 +267,9 @@ export const useComandas = () => {
     addItemToComanda,
     updateItemStatus,
     getComandaByTable,
-    removeItemFromComanda
+    removeItemFromComanda,
+    createBillSplit,
+    getBillSplit,
+    processMultiplePayments
   };
 };
