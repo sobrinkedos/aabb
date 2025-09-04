@@ -86,25 +86,44 @@ const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
             key={item.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+            className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
           >
-            <div className="flex items-start justify-between mb-3">
-              <h3 className="font-semibold text-gray-800">{item.name}</h3>
-              <div className="flex space-x-1">
-                <button 
-                  onClick={() => handleEditItem(item)}
-                  className="text-gray-400 hover:text-blue-600 transition-colors"
-                >
-                  <Edit size={16} />
-                </button>
-                <button 
-                  onClick={() => handleDeleteItem(item)}
-                  className="text-gray-400 hover:text-red-600 transition-colors"
-                >
-                  <Trash2 size={16} />
-                </button>
+            {/* Imagem do Prato */}
+            {item.image_url && (
+              <div className="aspect-video w-full bg-gray-100 overflow-hidden">
+                <img
+                  src={item.image_url}
+                  alt={item.name}
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
               </div>
-            </div>
+            )}
+            
+            <div className="p-4">
+              <div className="flex items-start justify-between mb-3">
+                <h3 className="font-semibold text-gray-800">{item.name}</h3>
+                <div className="flex space-x-1">
+                  <button 
+                    onClick={() => handleEditItem(item)}
+                    className="text-gray-400 hover:text-blue-600 transition-colors"
+                    title="Editar prato"
+                    aria-label="Editar prato"
+                  >
+                    <Edit size={16} />
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteItem(item)}
+                    className="text-gray-400 hover:text-red-600 transition-colors"
+                    title="Excluir prato"
+                    aria-label="Excluir prato"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
 
             <p className="text-sm text-gray-600 mb-4">{item.description}</p>
 
@@ -119,19 +138,21 @@ const MenuManagement: React.FC<MenuManagementProps> = ({ menuItems }) => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <span className={`text-xs px-2 py-1 rounded-full ${
-                item.available 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
-              }`}>
-                {item.available ? 'Disponível' : 'Indisponível'}
-              </span>
-              <span className="text-xs text-gray-500 capitalize">
-                {item.category === 'Prato Principal' ? 'Prato Principal' : item.category === 'Petiscos' ? 'Petiscos' : 'Bebidas'}
-              </span>
+              <div className="flex items-center justify-between">
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  item.available 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {item.available ? 'Disponível' : 'Indisponível'}
+                </span>
+                <span className="text-xs text-gray-500 capitalize">
+                  {item.category === 'Prato Principal' ? 'Prato Principal' : item.category === 'Petiscos' ? 'Petiscos' : 'Bebidas'}
+                </span>
+              </div>
             </div>
           </motion.div>
+
         ))}
       </div>
 

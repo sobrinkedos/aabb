@@ -15,7 +15,8 @@ const fromInventorySupabase = (item: Tables<'inventory_items'>): InventoryItem =
   lastUpdated: new Date(item.last_updated || item.created_at),
   supplier: item.supplier || undefined,
   cost: item.cost || 0,
-  availableForSale: item.available_for_sale || false
+  availableForSale: item.available_for_sale || false,
+  image_url: item.image_url || undefined
 });
 
 const fromInventoryCategorySupabase = (category: Tables<'inventory_categories'>): InventoryCategory => ({
@@ -40,18 +41,18 @@ const fromMemberSupabase = (member: Tables<'members'>): Member => ({
   membershipType: member.membership_type as Member['membershipType']
 });
 
-const fromMenuItemSupabase = (item: Tables<'menu_items'>): MenuItem => {
+const fromMenuItemSupabase = (item: any): MenuItem => {
     return {
         id: item.id,
         name: item.name,
         description: item.description || '',
         price: item.price,
         category: item.category as MenuItem['category'],
-        image: undefined, // schema doesn't have image
+        image_url: item.image_url || undefined,
         available: item.available,
-        preparationTime: item.preparation_time || undefined,
-        itemType: (item.item_type as MenuItem['itemType']) || 'prepared',
-        directInventoryItemId: item.direct_inventory_item_id || undefined
+        preparation_time: item.preparation_time || undefined,
+        item_type: (item.item_type as MenuItem['item_type']) || 'prepared',
+        direct_inventory_item_id: item.direct_inventory_item_id || undefined
     };
 };
 
@@ -130,7 +131,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   useEffect(() => {
     const fetchData = async () => {
       const [menuData, inventoryData, categoriesData, membersData] = await Promise.all([
-        supabase.from('menu_items').select('*'),
+        // Buscar apenas itens preparados (não diretos do estoque) para o módulo cozinha
+        supabase.from('menu_items').select('*').neq('item_type', 'direct'),
         supabase.from('inventory_items').select('*').order('name'),
         supabase.from('inventory_categories').select('*').eq('is_active', true).order('name'),
         supabase.from('members').select('*').order('name'),
@@ -189,15 +191,16 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     console.log('=== addMenuItem INICIADO ===');
     console.log('Dados recebidos:', itemData);
     
-    const itemToInsert: TablesInsert<'menu_items'> = {
+    const itemToInsert: any = {
       name: itemData.name,
       description: itemData.description || null,
       price: itemData.price,
       category: itemData.category,
       available: itemData.available,
-      preparation_time: itemData.preparationTime || null,
-      item_type: itemData.itemType || 'prepared',
-      direct_inventory_item_id: itemData.directInventoryItemId || null
+      preparation_time: itemData.preparation_time || null,
+      item_type: itemData.item_type || 'prepared',
+      direct_inventory_item_id: itemData.direct_inventory_item_id || null,
+      image_url: itemData.image_url || null
     };
     
     console.log('Dados formatados para Supabase:', itemToInsert);
@@ -226,15 +229,16 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   };
 
   const updateMenuItem = async (updatedItem: MenuItem) => {
-    const itemToUpdate: TablesUpdate<'menu_items'> = {
+    const itemToUpdate: any = {
       name: updatedItem.name,
       description: updatedItem.description,
       price: updatedItem.price,
       category: updatedItem.category,
       available: updatedItem.available,
-      preparation_time: updatedItem.preparationTime,
-      item_type: updatedItem.itemType || 'prepared',
-      direct_inventory_item_id: updatedItem.directInventoryItemId || null
+      preparation_time: updatedItem.preparation_time,
+      item_type: updatedItem.item_type || 'prepared',
+      direct_inventory_item_id: updatedItem.direct_inventory_item_id || null,
+      image_url: updatedItem.image_url || null
     };
     const { data, error } = await supabase.from('menu_items').update(itemToUpdate).eq('id', updatedItem.id).select().single();
     if (error) { console.error(error); return; }
@@ -296,7 +300,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         unit: itemData.unit,
         cost: itemData.cost,
         supplier: itemData.supplier,
-        available_for_sale: itemData.availableForSale || false
+        available_for_sale: itemData.availableForSale || false,
+        image_url: itemData.image_url || null
     };
     const { data, error } = await supabase.from('inventory_items').insert(itemToInsert).select().single();
     if (error) { console.error(error); return; }
@@ -313,6 +318,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         cost: updatedItem.cost,
         supplier: updatedItem.supplier,
         available_for_sale: updatedItem.availableForSale || false,
+        image_url: updatedItem.image_url || null,
         last_updated: new Date().toISOString()
     };
     const { data, error } = await supabase.from('inventory_items').update(itemToUpdate).eq('id', updatedItem.id).select().single();

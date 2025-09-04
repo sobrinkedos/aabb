@@ -74,6 +74,34 @@ Gerenciamento centralizado de todos os sócios do clube.
 
 ---
 
+## 🚀 Deployment
+
+### Deploy to Vercel
+
+1. **Prepare Environment Variables:**
+   - Copy `.env.example` to `.env.local`
+   - Add your Supabase project credentials:
+     ```bash
+     VITE_SUPABASE_URL=https://your-project.supabase.co
+     VITE_SUPABASE_ANON_KEY=your-anon-key-here
+     ```
+
+2. **Deploy with Vercel CLI:**
+   ```bash
+   npm i -g vercel
+   vercel
+   ```
+
+3. **Or connect your GitHub repository to Vercel dashboard:**
+   - Go to [vercel.com](https://vercel.com)
+   - Import your GitHub repository
+   - Add environment variables in project settings
+   - Deploy automatically
+
+The project includes a `vercel.json` configuration file optimized for React SPA deployment.
+
+---
+
 ## 🏆 Sugestões para Evolução (Próximos Passos)
 
 Para tornar o **ClubManager Pro** uma solução de nível enterprise, sugerimos as seguintes implementações:

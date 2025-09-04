@@ -18,7 +18,7 @@ interface CartItem {
 
 const NovoPedidoModal: React.FC<NovoPedidoModalProps> = ({ isOpen, onClose }) => {
   const { user } = useAuth();
-  const { menuItems, loading: loadingMenu } = useMenuItems();
+  const { menuItems, loading: loadingMenu } = useMenuItems(true); // true para incluir itens diretos do estoque
   
   const [selectedCategory, setSelectedCategory] = useState<string>('Bebidas');
   const [cart, setCart] = useState<CartItem[]>([]);

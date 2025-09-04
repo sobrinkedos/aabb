@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { MenuItem } from '../types';
+import { MenuItem, InventoryItem } from '../types';
 
-export const useMenuItems = () => {
+export const useMenuItems = (includeDirectItems: boolean = false) => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,13 +86,29 @@ export const useMenuItems = () => {
       
       console.log('All menu items:', allData, 'Error:', allError);
       
-      // Buscar todos os itens do menu disponíveis
-      const { data, error } = await supabase
+      // Buscar itens do menu baseado no filtro
+      let query = supabase
         .from('menu_items')
-        .select('*')
+        .select(`
+          *,
+          inventory_items!left(
+            image_url,
+            current_stock,
+            min_stock,
+            unit,
+            available_for_sale
+          )
+        `)
         .eq('available', true)
         .order('category', { ascending: true })
         .order('name', { ascending: true });
+        
+      // Se não incluir itens diretos, filtrar apenas preparados
+      if (!includeDirectItems) {
+        query = query.neq('item_type', 'direct');
+      }
+      
+      const { data, error } = await query;
 
       console.log('Available menu items:', data, 'Error:', error);
 
@@ -133,12 +149,12 @@ export const useMenuItems = () => {
             price: item.price,
             category: item.category || '',
             image_url: item.image_url || undefined,
-            available: item.available || false,
-            preparation_time: item.preparation_time || 0,
-            item_type: item.item_type || 'prepared',
-            direct_inventory_item_id: item.direct_inventory_item_id || undefined,
+            available: (item as any).available || false,
+            preparation_time: (item as any).preparation_time || 0,
+            item_type: (item as any).item_type || 'prepared',
+            direct_inventory_item_id: (item as any).direct_inventory_item_id || undefined,
             created_at: item.created_at || undefined,
-            updated_at: item.updated_at || undefined
+            updated_at: (item as any).updated_at || undefined
           }));
           setMenuItems(mappedItems);
           return;
@@ -146,20 +162,38 @@ export const useMenuItems = () => {
       }
       
       // Mapear para a estrutura esperada
-      const mappedItems: MenuItem[] = (data || []).map(item => ({
-        id: item.id,
-        name: item.name,
-        description: item.description || '',
-        price: parseFloat(item.price) || 0,
-        category: item.category || '',
-        image_url: item.image_url || undefined,
-        available: item.available || false,
-        preparation_time: item.preparation_time || 0,
-        item_type: item.item_type || 'prepared',
-        direct_inventory_item_id: item.direct_inventory_item_id || undefined,
-        created_at: item.created_at || undefined,
-        updated_at: item.updated_at || undefined
-      }));
+      const mappedItems: MenuItem[] = (data || []).map(item => {
+        const inventoryItem = (item as any).inventory_items;
+        
+        return {
+          id: item.id,
+          name: item.name,
+          description: item.description || '',
+          price: typeof item.price === 'string' ? parseFloat(item.price) : item.price || 0,
+          category: item.category || '',
+          // Para itens diretos, usar image_url do inventory_items se disponível
+          image_url: (item as any).item_type === 'direct' && inventoryItem?.image_url 
+            ? inventoryItem.image_url 
+            : item.image_url || undefined,
+          available: (item as any).available || false,
+          preparation_time: (item as any).preparation_time || 0,
+          item_type: (item as any).item_type || 'prepared',
+          direct_inventory_item_id: (item as any).direct_inventory_item_id || undefined,
+          created_at: item.created_at || undefined,
+          updated_at: (item as any).updated_at || undefined,
+          inventory_items: inventoryItem ? {
+            id: '',
+            name: '',
+            currentStock: inventoryItem.current_stock || 0,
+            minStock: inventoryItem.min_stock || 0,
+            unit: inventoryItem.unit || 'unidades',
+            lastUpdated: new Date(),
+            cost: 0,
+            availableForSale: inventoryItem.available_for_sale || false,
+            image_url: inventoryItem.image_url || undefined
+          } : undefined
+        };
+      });
       
       console.log('Mapped items:', mappedItems);
       setMenuItems(mappedItems);
@@ -181,7 +215,7 @@ export const useMenuItems = () => {
 
   useEffect(() => {
     fetchMenuItems();
-  }, []);
+  }, [includeDirectItems]);
 
   return {
     menuItems,

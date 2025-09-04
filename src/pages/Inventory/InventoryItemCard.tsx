@@ -27,6 +27,21 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, categories,
           : 'border-gray-200'
       }`}
     >
+      {/* Imagem do produto */}
+      {item.image_url && (
+        <div className="w-full h-32 mb-3 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+          <img
+            src={item.image_url}
+            alt={item.name}
+            className="max-w-full max-h-full object-contain hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        </div>
+      )}
+
+
       <div className="flex items-start justify-between mb-3">
         <div className="pr-4 flex-1">
           <h3 className="font-semibold text-gray-800">{item.name}</h3>

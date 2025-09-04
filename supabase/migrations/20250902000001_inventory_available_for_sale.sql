@@ -22,11 +22,16 @@ RETURNS void AS $$
 DECLARE
     inventory_record RECORD;
     existing_menu_item_id UUID;
+    category_name TEXT;
 BEGIN
     -- Iterar sobre itens do estoque marcados como disponíveis para venda
     FOR inventory_record IN 
-        SELECT * FROM public.inventory_items 
-        WHERE available_for_sale = TRUE AND current_stock > 0
+        SELECT 
+            i.*,
+            COALESCE(c.name, 'Produtos Prontos') as category_name
+        FROM public.inventory_items i
+        LEFT JOIN public.inventory_categories c ON i.category_id = c.id
+        WHERE i.available_for_sale = TRUE AND i.current_stock > 0
     LOOP
         -- Verificar se já existe um item do menu para este produto
         SELECT id INTO existing_menu_item_id
@@ -47,22 +52,32 @@ BEGIN
                 created_at
             ) VALUES (
                 inventory_record.name,
-                'Produto pronto disponível no estoque',
+                CASE 
+                    WHEN inventory_record.category_name != 'Produtos Prontos' 
+                    THEN 'Produto pronto da categoria ' || inventory_record.category_name
+                    ELSE 'Produto pronto disponível no estoque'
+                END,
                 CASE 
                     WHEN inventory_record.cost IS NOT NULL AND inventory_record.cost > 0 
                     THEN inventory_record.cost * 2.0  -- Margem de 100%
                     ELSE 10.00  -- Preço padrão se não houver custo
                 END,
-                'Produtos Prontos',
+                inventory_record.category_name,
                 TRUE,
                 'direct',
                 inventory_record.id,
                 NOW()
             );
         ELSE
-            -- Atualizar disponibilidade do item existente
+            -- Atualizar disponibilidade e categoria do item existente
             UPDATE public.menu_items
             SET available = TRUE,
+                category = inventory_record.category_name,
+                description = CASE 
+                    WHEN inventory_record.category_name != 'Produtos Prontos' 
+                    THEN 'Produto pronto da categoria ' || inventory_record.category_name
+                    ELSE 'Produto pronto disponível no estoque'
+                END,
                 updated_at = NOW()
             WHERE id = existing_menu_item_id;
         END IF;

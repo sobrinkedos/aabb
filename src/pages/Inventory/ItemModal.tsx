@@ -28,7 +28,8 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
         unit: item.unit,
         cost: item.cost,
         supplier: item.supplier,
-        availableForSale: item.availableForSale
+        availableForSale: item.availableForSale,
+        image_url: item.image_url
       });
     } else {
       reset({
@@ -39,7 +40,8 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
         unit: 'unidades',
         cost: undefined,
         supplier: '',
-        availableForSale: false
+        availableForSale: false,
+        image_url: ''
       });
     }
   }, [item, reset]);
@@ -195,6 +197,19 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                   placeholder="Nome do fornecedor"
                   disabled={isSubmitting} 
                 />
+              </InputField>
+
+              {/* URL da Imagem - Largura completa */}
+              <InputField label="URL da Imagem (Opcional)" error={errors.image_url}>
+                <input 
+                  {...register('image_url')} 
+                  className="form-input" 
+                  placeholder="https://exemplo.com/imagem.jpg"
+                  disabled={isSubmitting} 
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Cole aqui o link de uma imagem para representar este item do estoque
+                </p>
               </InputField>
 
               {/* Disponível para Venda */}

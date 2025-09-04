@@ -157,6 +157,7 @@ export interface InventoryItem {
   supplier?: string;
   cost: number;
   availableForSale?: boolean; // Disponível para venda direta
+  image_url?: string; // URL da imagem do item
 }
 
 export interface Supplier {

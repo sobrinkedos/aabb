@@ -18,6 +18,7 @@ type FormData = {
   category: 'drinks' | 'food' | 'snacks';
   preparationTime?: number;
   available: boolean;
+  image_url?: string;
 };
 
 const MenuItemModal: React.FC<MenuItemModalProps> = ({ isOpen, onClose, item }) => {
@@ -31,9 +32,10 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ isOpen, onClose, item }) 
         name: item.name,
         description: item.description || '',
         price: item.price,
-        category: item.category,
-        preparationTime: item.preparationTime || 0,
-        available: item.available
+        category: item.category as FormData['category'],
+        preparationTime: item.preparation_time || 0,
+        available: item.available,
+        image_url: item.image_url || ''
       });
     } else {
       reset({
@@ -42,7 +44,8 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ isOpen, onClose, item }) 
         price: '' as any, // Deixar vazio para não mostrar 0
         category: 'food',
         preparationTime: '' as any, // Deixar vazio para não mostrar 0
-        available: true
+        available: true,
+        image_url: ''
       });
     }
   }, [item, reset]);
@@ -79,7 +82,8 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ isOpen, onClose, item }) 
           price: '' as any,
           category: 'food',
           preparationTime: '' as any,
-          available: true
+          available: true,
+          image_url: ''
         });
       }
       onClose();
@@ -132,6 +136,8 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ isOpen, onClose, item }) 
                 onClick={onClose} 
                 className="text-gray-400 hover:text-gray-600 hover:bg-gray-200 p-2 rounded-lg transition-colors duration-200"
                 disabled={isSubmitting}
+                title="Fechar modal"
+                aria-label="Fechar modal"
               >
                 <X size={24} />
               </button>
@@ -197,6 +203,19 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ isOpen, onClose, item }) 
                 </InputField>
               </div>
 
+              {/* URL da Imagem */}
+              <InputField label="URL da Imagem (opcional)" error={errors.image_url}>
+                <input 
+                  {...register('image_url')} 
+                  className="form-input" 
+                  placeholder="https://exemplo.com/imagem.jpg"
+                  disabled={isSubmitting} 
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Cole aqui o link da imagem do prato. Recomendamos imagens com proporção 1:1 (quadrada).
+                </p>
+              </InputField>
+
               {/* Tempo de Preparo */}
               <InputField label="Tempo de Preparo (min)" error={errors.preparationTime}>
                 <input 
@@ -226,6 +245,8 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ isOpen, onClose, item }) 
                       checked={field.value}
                       className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
                       disabled={isSubmitting}
+                      title="Marcar como disponível"
+                      aria-label="Marcar prato como disponível para pedidos"
                     />
                   )}
                 />

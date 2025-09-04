@@ -38,7 +38,7 @@ interface PaymentMethod {
 
   const BalcaoView: React.FC = () => {
   const { user } = useAuth();
-  const { menuItems, loading: menuLoading, error: menuError } = useMenuItems();
+  const { menuItems, loading: menuLoading, error: menuError } = useMenuItems(true); // true para incluir itens diretos do estoque
   const { processarPedidoBalcao } = useBarAttendance();
   
   // Debug: Log dos dados carregados
@@ -203,10 +203,10 @@ interface PaymentMethod {
   };
 
   return (
-    <div className="balcao-container h-full">
-      <div className="bg-white rounded-lg shadow-sm h-full flex flex-col">
+    <div className="balcao-container h-screen flex flex-col">
+      <div className="bg-white rounded-lg shadow-sm flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
+        <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
           <h2 className="text-2xl font-bold text-gray-900">Atendimento no Balcão</h2>
           <div className="flex items-center space-x-4">
             {selectedCustomer && (
@@ -224,6 +224,8 @@ interface PaymentMethod {
                 <button
                   onClick={() => setSelectedCustomer(null)}
                   className="text-green-600 hover:text-green-800"
+                  title="Remover cliente selecionado"
+                  aria-label="Remover cliente selecionado"
                 >
                   <XMarkIcon className="h-4 w-4" />
                 </button>
@@ -239,7 +241,7 @@ interface PaymentMethod {
           </div>
         </div>
 
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden min-h-0">
           {/* Menu de Itens */}
           <div className="flex-1 flex flex-col p-6">
             {/* Filtros e Busca */}
@@ -258,6 +260,8 @@ interface PaymentMethod {
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                title="Filtrar por categoria"
+                aria-label="Filtrar por categoria"
               >
                 <option value="all">Todas as Categorias</option>
                 {categories.map(category => (
@@ -270,31 +274,6 @@ interface PaymentMethod {
 
             {/* Grid de Itens */}
             <div className="flex-1 overflow-y-auto">
-              {/* Debug Info */}
-              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-semibold text-blue-800 mb-2">Status do Sistema:</h4>
-                <div className="text-sm text-blue-700 space-y-1">
-                  <p>📊 Carregando: {menuLoading ? 'Sim' : 'Não'}</p>
-                  <p>📝 Itens carregados: {menuItems.length}</p>
-                  <p>🔍 Itens filtrados: {filteredMenuItems.length}</p>
-                  <p>📂 Categorias: {categories.length > 0 ? categories.join(', ') : 'Nenhuma'}</p>
-                  {menuError && (
-                    <p className="text-yellow-700 bg-yellow-100 p-2 rounded mt-2">
-                      ⚠️ {menuError}
-                    </p>
-                  )}
-                </div>
-                {menuItems.length === 0 && !menuLoading && (
-                  <div className="mt-3 p-3 bg-yellow-100 border border-yellow-300 rounded">
-                    <p className="text-yellow-800 font-medium">Como adicionar produtos:</p>
-                    <ul className="text-sm text-yellow-700 mt-1 space-y-1">
-                      <li>1. Configure o Supabase (veja SETUP_DATABASE.md)</li>
-                      <li>2. Vá para <strong>Cozinha → Cardápio</strong> e adicione pratos</li>
-                      <li>3. Ou vá para <strong>Estoque</strong> e marque produtos como "Disponível para venda"</li>
-                    </ul>
-                  </div>
-                )}
-              </div>
 
               {menuLoading ? (
                 <div className="flex items-center justify-center h-64">
@@ -323,7 +302,7 @@ interface PaymentMethod {
                           <img
                             src={item.image_url}
                             alt={item.name}
-                            className="w-full h-full object-cover rounded-lg"
+                            className="max-w-full max-h-full object-contain rounded-lg"
                           />
                         ) : (
                           <div className="text-gray-400 text-2xl">🍺</div>
@@ -352,28 +331,34 @@ interface PaymentMethod {
 
           {/* Carrinho de Pedido */}
           <div className="w-96 bg-gray-50 border-l border-gray-200 flex flex-col">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between mb-4">
+            {/* Header do Carrinho */}
+            <div className="p-6 border-b border-gray-200 flex-shrink-0">
+              <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">Pedido Atual</h3>
                 {cart.length > 0 && (
                   <button
                     onClick={clearCart}
                     className="text-sm text-red-600 hover:text-red-800"
+                    title="Limpar carrinho"
+                    aria-label="Limpar carrinho"
                   >
                     Limpar
                   </button>
                 )}
               </div>
-              
+            </div>
+            
+            {/* Lista de Itens - Expansível */}
+            <div className="flex-1 overflow-y-auto p-6 min-h-0 pb-32">
               {cart.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
+                <div className="text-center text-gray-500 py-8 h-full flex flex-col items-center justify-center">
                   <ShoppingCartIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
                   <p>Nenhum item selecionado</p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-64 overflow-y-auto">
+                <div className="space-y-3">
                   {cart.map(item => (
-                    <div key={item.menu_item_id} className="flex items-center justify-between bg-white p-3 rounded-lg">
+                    <div key={item.menu_item_id} className="flex items-center justify-between bg-white p-3 rounded-lg shadow-sm">
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900 text-sm">{item.name}</h4>
                         <p className="text-sm text-gray-500">R$ {item.price.toFixed(2)}</p>
@@ -381,20 +366,26 @@ interface PaymentMethod {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => updateQuantity(item.menu_item_id, item.quantity - 1)}
-                          className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300"
+                          className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
+                          title="Diminuir quantidade"
+                          aria-label="Diminuir quantidade"
                         >
                           <MinusIcon className="h-3 w-3" />
                         </button>
                         <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
                         <button
                           onClick={() => updateQuantity(item.menu_item_id, item.quantity + 1)}
-                          className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300"
+                          className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
+                          title="Aumentar quantidade"
+                          aria-label="Aumentar quantidade"
                         >
                           <PlusIcon className="h-3 w-3" />
                         </button>
                         <button
                           onClick={() => removeFromCart(item.menu_item_id)}
-                          className="ml-2 text-red-500 hover:text-red-700"
+                          className="ml-2 text-red-500 hover:text-red-700 transition-colors"
+                          title="Remover item"
+                          aria-label="Remover item"
                         >
                           <XMarkIcon className="h-4 w-4" />
                         </button>
@@ -404,39 +395,53 @@ interface PaymentMethod {
                 </div>
               )}
             </div>
-
-            {/* Resumo e Pagamento */}
-            {cart.length > 0 && (
-              <div className="flex-1 flex flex-col justify-end p-6">
-                <div className="space-y-3 mb-6">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal:</span>
-                    <span>R$ {cartTotal.toFixed(2)}</span>
-                  </div>
-                  {discountAmount > 0 && (
-                    <div className="flex justify-between text-sm text-green-600">
-                      <span>Desconto Membro (10%):</span>
-                      <span>-R$ {discountAmount.toFixed(2)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-lg font-bold border-t pt-3">
-                    <span>Total:</span>
-                    <span>R$ {finalTotal.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setShowPaymentModal(true)}
-                  disabled={processing}
-                  className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
-                >
-                  {processing ? 'Processando...' : 'Finalizar Pedido'}
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>
+
+      {/* Botão Fixo na Base da Página - Sempre Visível */}
+      {cart.length > 0 && (
+        <div className="fixed bottom-0 right-0 w-96 bg-white border-t border-l border-gray-200 shadow-lg z-50">
+          <div className="p-6">
+            <div className="space-y-3 mb-4">
+              <div className="flex justify-between text-sm">
+                <span>Subtotal:</span>
+                <span>R$ {cartTotal.toFixed(2)}</span>
+              </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Desconto Membro (10%):</span>
+                  <span>-R$ {discountAmount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-lg font-bold border-t pt-3">
+                <span>Total:</span>
+                <span>R$ {finalTotal.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              disabled={processing}
+              className="w-full bg-green-600 text-white py-4 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center space-x-2 shadow-lg text-lg"
+              title="Finalizar pedido"
+              aria-label="Finalizar pedido"
+            >
+              {processing ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Processando...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircleIcon className="h-6 w-6" />
+                  <span>Finalizar Pedido</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Busca de Cliente */}
       <CustomerSearchModal
@@ -454,6 +459,8 @@ interface PaymentMethod {
               <button
                 onClick={() => setShowPaymentModal(false)}
                 className="text-gray-400 hover:text-gray-600"
+                title="Fechar modal de pagamento"
+                aria-label="Fechar modal de pagamento"
               >
                 <XMarkIcon className="h-5 w-5" />
               </button>
@@ -557,6 +564,8 @@ interface PaymentMethod {
               <button
                 onClick={handleReceiptPrinted}
                 className="text-gray-400 hover:text-gray-600"
+                title="Fechar modal de comprovante"
+                aria-label="Fechar modal de comprovante"
               >
                 <XMarkIcon className="h-5 w-5" />
               </button>

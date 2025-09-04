@@ -17,7 +17,7 @@ const ComandaDetailsModal: React.FC<ComandaDetailsModalProps> = ({
   comanda
 }) => {
   const { addItemToComanda, updateItemStatus, removeItemFromComanda, updateComandaStatus } = useComandas();
-  const { menuItems } = useMenuItems();
+  const { menuItems } = useMenuItems(true); // true para incluir itens diretos do estoque
   const [showAddItemForm, setShowAddItemForm] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
