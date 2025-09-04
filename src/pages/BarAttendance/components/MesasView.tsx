@@ -18,7 +18,7 @@ interface TableWithComanda extends BarTable {
 
 const MesasView: React.FC = () => {
   const { tables, loading, updateTableStatus, updateTablePosition, refetch } = useBarTables();
-  const { comandas } = useComandas();
+  const { comandas, refetch: refetchComandas } = useComandas();
   const [showNovaComandaModal, setShowNovaComandaModal] = useState(false);
   const [showConfigurarLayoutModal, setShowConfigurarLayoutModal] = useState(false);
   const [showMesaDetailsModal, setShowMesaDetailsModal] = useState(false);
@@ -203,6 +203,9 @@ const MesasView: React.FC = () => {
           setSelectedTable(null);
         }}
         selectedTable={selectedTable}
+        onComandaCreated={() => {
+          refetchComandas();
+        }}
       />
 
       <ConfigurarLayoutModal 

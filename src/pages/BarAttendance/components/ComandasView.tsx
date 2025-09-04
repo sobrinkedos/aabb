@@ -9,7 +9,7 @@ import { useBarTables } from '../../../hooks/useBarTables';
 import { Comanda, ComandaStatus } from '../../../types/bar-attendance';
 
 const ComandasView: React.FC = () => {
-  const { comandas, loading } = useComandas();
+  const { comandas, loading, refetch } = useComandas();
   const { tables } = useBarTables();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ComandaStatus | 'all'>('all');
@@ -310,6 +310,9 @@ const ComandasView: React.FC = () => {
       <NovaComandaModal 
         isOpen={showNovaComandaModal}
         onClose={() => setShowNovaComandaModal(false)}
+        onComandaCreated={() => {
+          refetch();
+        }}
       />
 
       <ComandaDetailsModal
@@ -319,6 +322,9 @@ const ComandasView: React.FC = () => {
           setSelectedComanda(null);
         }}
         comanda={selectedComanda}
+        onComandaUpdated={() => {
+          refetch();
+        }}
       />
     </div>
   );

@@ -10,12 +10,14 @@ interface NovaComandaModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedTable?: BarTable;
+  onComandaCreated?: () => void;
 }
 
 const NovaComandaModal: React.FC<NovaComandaModalProps> = ({ 
   isOpen, 
   onClose, 
-  selectedTable 
+  selectedTable,
+  onComandaCreated
 }) => {
   const { user } = useAuth();
   const { tables } = useBarTables();
@@ -86,6 +88,12 @@ const NovaComandaModal: React.FC<NovaComandaModalProps> = ({
       };
 
       await createComanda(comandaData);
+      
+      // Chamar callback para notificar que comanda foi criada
+      if (onComandaCreated) {
+        onComandaCreated();
+      }
+      
       onClose();
       
       // Reset form

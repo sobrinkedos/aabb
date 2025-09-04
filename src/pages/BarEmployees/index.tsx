@@ -1,84 +1,149 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, User, Phone, Mail, Calendar, Badge, Eye, Edit, Trash2 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { Search, Plus, User, Phone, Mail, Calendar, Badge, Eye, Edit, Trash2, Save, X } from 'lucide-react';
+import { useBarEmployees, NewBarEmployeeData, UpdateBarEmployeeData } from '../../hooks/useBarEmployees';
 import { BarEmployee } from '../../types';
 
 const BarEmployeesModule: React.FC = () => {
-  const [employees, setEmployees] = useState<BarEmployee[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    employees,
+    loading,
+    error,
+    createEmployee,
+    updateEmployee,
+    deactivateEmployee,
+    reactivateEmployee,
+    filterEmployees,
+    getStats
+  } = useBarEmployees();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'atendente' | 'garcom' | 'cozinheiro' | 'barman' | 'gerente'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [selectedEmployee, setSelectedEmployee] = useState<BarEmployee | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showNewEmployeeModal, setShowNewEmployeeModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  
+  // Estados do formulário
+  const [formData, setFormData] = useState<NewBarEmployeeData>({
+    name: '',
+    cpf: '',
+    email: '',
+    phone: '',
+    bar_role: 'atendente',
+    shift_preference: 'qualquer',
+    specialties: [],
+    commission_rate: 0,
+    notes: ''
+  });
+  
+  const [editFormData, setEditFormData] = useState<UpdateBarEmployeeData>({});
 
-  // Carregar funcionários do bar
-  const loadBarEmployees = async () => {
-    setLoading(true);
-    
+  // Filtrar funcionários usando o hook
+  const filteredEmployees = filterEmployees(searchTerm, roleFilter, statusFilter);
+  
+  // Estatísticas usando o hook
+  const stats = getStats();
+
+  // Funções do formulário de novo funcionário
+  const handleCreateEmployee = async () => {
+    if (!formData.name.trim()) {
+      alert('Por favor, informe o nome do funcionário');
+      return;
+    }
+
+    setProcessing(true);
     try {
-      // Buscar funcionários do bar sem join para evitar problemas de RLS
-      const { data: barEmployeesData, error: barError } = await supabase
-        .from('bar_employees')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-      
-      if (barError) throw barError;
-      
-      // Criar dados mock para funcionários enquanto o RLS não é corrigido
-      const employeesWithMockData = (barEmployeesData || []).map((barEmp, index) => ({
-        ...barEmp,
-        status: barEmp.is_active ? 'active' : 'inactive', // Mapear is_active para status
-        employee: {
-          id: barEmp.employee_id,
-          name: `Funcionário ${index + 1}`,
-          cpf: '000.000.000-00',
-          email: `funcionario${index + 1}@aabb.com`,
-          phone: `(11) 9999-${String(index + 1).padStart(4, '0')}`,
-          hire_date: '2024-01-01',
-          status: 'active'
-        }
-      }));
-      
-      setEmployees(employeesWithMockData);
+      await createEmployee(formData);
+      setShowNewEmployeeModal(false);
+      resetForm();
+      alert('Funcionário cadastrado com sucesso!');
     } catch (error) {
-      console.error('Erro ao carregar funcionários do bar:', error);
+      console.error('Erro ao criar funcionário:', error);
+      alert('Erro ao cadastrar funcionário. Tente novamente.');
     } finally {
-      setLoading(false);
+      setProcessing(false);
     }
   };
 
-  useEffect(() => {
-    loadBarEmployees();
-  }, []);
+  // Funções do formulário de edição
+  const handleEditEmployee = (employee: BarEmployee) => {
+    setSelectedEmployee(employee);
+    setEditFormData({
+      name: employee.employee?.name || '',
+      cpf: employee.employee?.cpf || '',
+      email: employee.employee?.email || '',
+      phone: employee.employee?.phone || '',
+      bar_role: employee.bar_role,
+      shift_preference: employee.shift_preference,
+      specialties: employee.specialties || [],
+      commission_rate: employee.commission_rate,
+      notes: employee.notes || ''
+    });
+    setShowEditModal(true);
+  };
 
-  // Filtrar funcionários
-  const filteredEmployees = employees.filter(emp => {
-    const employee = emp.employee;
-    if (!employee) return false;
-    
-    const matchesSearch = employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         employee.phone?.includes(searchTerm) ||
-                         (employee.email && employee.email.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesRole = roleFilter === 'all' || emp.bar_role === roleFilter;
-    const matchesStatus = statusFilter === 'all' || emp.status === statusFilter;
-    
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  const handleUpdateEmployee = async () => {
+    if (!selectedEmployee) return;
 
-  // Estatísticas
-  const stats = {
-    total: employees.length,
-    active: employees.filter(e => e.status === 'active').length,
-    atendentes: employees.filter(e => e.bar_role === 'atendente').length,
-    garcons: employees.filter(e => e.bar_role === 'garcom').length,
-    cozinheiros: employees.filter(e => e.bar_role === 'cozinheiro').length,
-    barmans: employees.filter(e => e.bar_role === 'barman').length,
-    gerentes: employees.filter(e => e.bar_role === 'gerente').length
+    setProcessing(true);
+    try {
+      await updateEmployee(selectedEmployee.id, editFormData);
+      setShowEditModal(false);
+      setSelectedEmployee(null);
+      setEditFormData({});
+      alert('Funcionário atualizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar funcionário:', error);
+      alert('Erro ao atualizar funcionário. Tente novamente.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Função para desativar funcionário
+  const handleDeactivateEmployee = async (employee: BarEmployee) => {
+    const confirmed = confirm(`Tem certeza que deseja desativar o funcionário ${employee.employee?.name}?`);
+    if (!confirmed) return;
+
+    try {
+      await deactivateEmployee(employee.id);
+      alert('Funcionário desativado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao desativar funcionário:', error);
+      alert('Erro ao desativar funcionário. Tente novamente.');
+    }
+  };
+
+  // Função para reativar funcionário
+  const handleReactivateEmployee = async (employee: BarEmployee) => {
+    const confirmed = confirm(`Tem certeza que deseja reativar o funcionário ${employee.employee?.name}?`);
+    if (!confirmed) return;
+
+    try {
+      await reactivateEmployee(employee.id);
+      alert('Funcionário reativado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao reativar funcionário:', error);
+      alert('Erro ao reativar funcionário. Tente novamente.');
+    }
+  };
+
+  // Resetar formulário
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      cpf: '',
+      email: '',
+      phone: '',
+      bar_role: 'atendente',
+      shift_preference: 'qualquer',
+      specialties: [],
+      commission_rate: 0,
+      notes: ''
+    });
   };
 
   const handleViewDetails = (employee: BarEmployee) => {
@@ -130,6 +195,20 @@ const BarEmployeesModule: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Exibir erro se houver */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center space-x-2">
+            <div className="text-red-600">
+              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <p className="text-red-800">{error}</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -177,7 +256,7 @@ const BarEmployeesModule: React.FC = () => {
           className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
         >
           <div className="text-center">
-            <div className="text-xl font-bold text-blue-600">👥 {stats.atendentes}</div>
+            <div className="text-xl font-bold text-blue-600">👥 {stats.byRole.atendente}</div>
             <div className="text-sm text-gray-600">Atendentes</div>
           </div>
         </motion.div>
@@ -189,7 +268,7 @@ const BarEmployeesModule: React.FC = () => {
           className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
         >
           <div className="text-center">
-            <div className="text-xl font-bold text-green-600">🍽️ {stats.garcons}</div>
+            <div className="text-xl font-bold text-green-600">🍽️ {stats.byRole.garcom}</div>
             <div className="text-sm text-gray-600">Garçons</div>
           </div>
         </motion.div>
@@ -201,7 +280,7 @@ const BarEmployeesModule: React.FC = () => {
           className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
         >
           <div className="text-center">
-            <div className="text-xl font-bold text-orange-600">👨‍🍳 {stats.cozinheiros}</div>
+            <div className="text-xl font-bold text-orange-600">👨‍🍳 {stats.byRole.cozinheiro}</div>
             <div className="text-sm text-gray-600">Cozinheiros</div>
           </div>
         </motion.div>
@@ -213,7 +292,7 @@ const BarEmployeesModule: React.FC = () => {
           className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
         >
           <div className="text-center">
-            <div className="text-xl font-bold text-purple-600">🍹 {stats.barmans}</div>
+            <div className="text-xl font-bold text-purple-600">🍹 {stats.byRole.barman}</div>
             <div className="text-sm text-gray-600">Barmans</div>
           </div>
         </motion.div>
@@ -331,7 +410,7 @@ const BarEmployeesModule: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{formatPhone(employee.employee?.phone || null)}</div>
+                        <div className="text-sm text-gray-900">{formatPhone(employee.phone || null)}</div>
                         <div className="text-sm text-gray-500">{employee.email || 'Email não informado'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -356,9 +435,30 @@ const BarEmployeesModule: React.FC = () => {
                           >
                             <Eye size={16} />
                           </button>
-                          <button className="text-gray-600 hover:text-gray-900">
+                          <button
+                            onClick={() => handleEditEmployee(barEmployee)}
+                            className="text-gray-600 hover:text-gray-900"
+                            title="Editar funcionário"
+                          >
                             <Edit size={16} />
                           </button>
+                          {barEmployee.status === 'active' ? (
+                            <button
+                              onClick={() => handleDeactivateEmployee(barEmployee)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Desativar funcionário"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleReactivateEmployee(barEmployee)}
+                              className="text-green-600 hover:text-green-900"
+                              title="Reativar funcionário"
+                            >
+                              <User size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </motion.tr>
@@ -475,11 +575,14 @@ const BarEmployeesModule: React.FC = () => {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
                 <input
                   type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Nome completo"
+                  required
                 />
               </div>
               
@@ -487,6 +590,8 @@ const BarEmployeesModule: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
                 <input
                   type="text"
+                  value={formData.cpf}
+                  onChange={(e) => setFormData(prev => ({ ...prev, cpf: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="000.000.000-00"
                 />
@@ -496,6 +601,8 @@ const BarEmployeesModule: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
                   type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="email@exemplo.com"
                 />
@@ -505,15 +612,21 @@ const BarEmployeesModule: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
                 <input
                   type="text"
+                  value={formData.phone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="(11) 99999-9999"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Função</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">Selecione uma função</option>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Função *</label>
+                <select 
+                  value={formData.bar_role}
+                  onChange={(e) => setFormData(prev => ({ ...prev, bar_role: e.target.value as any }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
                   <option value="atendente">Atendente</option>
                   <option value="garcom">Garçom</option>
                   <option value="cozinheiro">Cozinheiro</option>
@@ -523,8 +636,38 @@ const BarEmployeesModule: React.FC = () => {
               </div>
               
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Turno Preferido</label>
+                <select 
+                  value={formData.shift_preference}
+                  onChange={(e) => setFormData(prev => ({ ...prev, shift_preference: e.target.value as any }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="qualquer">Qualquer</option>
+                  <option value="manha">Manhã</option>
+                  <option value="tarde">Tarde</option>
+                  <option value="noite">Noite</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Comissão (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={formData.commission_rate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, commission_rate: parseFloat(e.target.value) || 0 }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0"
+                />
+              </div>
+              
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
                 <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={3}
                   placeholder="Observações adicionais (opcional)"
@@ -534,20 +677,197 @@ const BarEmployeesModule: React.FC = () => {
             
             <div className="mt-6 flex justify-end space-x-3">
               <button
-                onClick={() => setShowNewEmployeeModal(false)}
-                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                onClick={() => {
+                  setShowNewEmployeeModal(false);
+                  resetForm();
+                }}
+                disabled={processing}
+                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
-                onClick={() => {
-                  // TODO: Implementar lógica de cadastro
-                  alert('Funcionalidade em desenvolvimento');
-                  setShowNewEmployeeModal(false);
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                onClick={handleCreateEmployee}
+                disabled={processing || !formData.name.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
               >
-                Cadastrar
+                {processing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Cadastrando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} />
+                    <span>Cadastrar</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Funcionário */}
+      {showEditModal && selectedEmployee && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Editar Funcionário</h3>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setSelectedEmployee(null);
+                  setEditFormData({});
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                <input
+                  type="text"
+                  value={editFormData.name || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Nome completo"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
+                <input
+                  type="text"
+                  value={editFormData.cpf || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, cpf: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="000.000.000-00"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={editFormData.email || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                <input
+                  type="text"
+                  value={editFormData.phone || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Função *</label>
+                <select 
+                  value={editFormData.bar_role || 'atendente'}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, bar_role: e.target.value as any }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="atendente">Atendente</option>
+                  <option value="garcom">Garçom</option>
+                  <option value="cozinheiro">Cozinheiro</option>
+                  <option value="barman">Barman</option>
+                  <option value="gerente">Gerente</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Turno Preferido</label>
+                <select 
+                  value={editFormData.shift_preference || 'qualquer'}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, shift_preference: e.target.value as any }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="qualquer">Qualquer</option>
+                  <option value="manha">Manhã</option>
+                  <option value="tarde">Tarde</option>
+                  <option value="noite">Noite</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Comissão (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={editFormData.commission_rate || 0}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, commission_rate: parseFloat(e.target.value) || 0 }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select 
+                  value={editFormData.is_active !== undefined ? (editFormData.is_active ? 'active' : 'inactive') : 'active'}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, is_active: e.target.value === 'active' }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="active">Ativo</option>
+                  <option value="inactive">Inativo</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                <textarea
+                  value={editFormData.notes || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Observações adicionais (opcional)"
+                />
+              </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setSelectedEmployee(null);
+                  setEditFormData({});
+                }}
+                disabled={processing}
+                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleUpdateEmployee}
+                disabled={processing || !editFormData.name?.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
+              >
+                {processing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Salvando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} />
+                    <span>Salvar</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
