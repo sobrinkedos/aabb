@@ -31,13 +31,48 @@ export type ComandaStatus = 'open' | 'pending_payment' | 'closed' | 'cancelled';
 export type ComandaItemStatus = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
 export type BillSplitType = 'equal' | 'by_item' | 'by_person' | 'custom';
 
+// Enums para priorização de pedidos
+export type PriorityLevel = 'low' | 'medium' | 'high' | 'urgent';
+export type OrderComplexity = 'simple' | 'medium' | 'complex';
+export type TimerStatus = 'normal' | 'warning' | 'overdue';
+
+// Interfaces para sistema de priorização
+export interface OrderPriority {
+  level: PriorityLevel;
+  complexity: OrderComplexity;
+  estimatedTime: number; // em minutos
+  isManuallyPrioritized: boolean;
+  createdAt: Date;
+  timerStatus: TimerStatus;
+  alertsEnabled: boolean;
+}
+
+export interface PriorityCalculation {
+  baseTime: number;
+  complexityMultiplier: number;
+  categoryBonus: number;
+  finalEstimate: number;
+  priorityLevel: PriorityLevel;
+}
+
+export interface OrderAlert {
+  id: string;
+  orderId: string;
+  type: 'warning' | 'overdue' | 'ready';
+  message: string;
+  timestamp: Date;
+  acknowledged: boolean;
+}
+
 // Interfaces para dados compostos
 export interface ComandaItemWithMenu extends ComandaItem {
   menu_items?: {
     name: string;
     price: number;
     category: string;
+    preparation_time?: number;
   };
+  priority?: OrderPriority;
 }
 
 export interface ComandaWithItems extends Comanda {

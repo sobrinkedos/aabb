@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Comanda, ComandaItem } from '../types';
 import { BillSplitConfig, BillSplit } from '../types/bar-attendance';
+import { useNotificationSound } from './useNotificationSound';
 
 export const useComandas = () => {
   const [comandas, setComandas] = useState<Comanda[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const notificationSound = useNotificationSound();
 
   const fetchComandas = async () => {
     try {
@@ -137,6 +139,11 @@ export const useComandas = () => {
         .eq('id', itemId);
 
       if (error) throw error;
+      
+      // Notificação sonora quando pedido fica pronto
+      if (status === 'ready') {
+        notificationSound.play();
+      }
       
       // Atualizar o estado local
       setComandas(prev => prev.map(comanda => ({
