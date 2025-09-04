@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { User } from '../types';
 import { Session } from '@supabase/supabase-js';
 
@@ -33,10 +33,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Efeito #1: Lida APENAS com a sessão de autenticação do Supabase.
   // É rápido e não depende do banco de dados.
   useEffect(() => {
+    // Se Supabase não está configurado, pular verificação de sessão
+    if (!isSupabaseConfigured) {
+      setIsLoading(false);
+      return;
+    }
+    
     // Pega a sessão inicial para parar o carregamento o mais rápido possível.
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setIsLoading(false); // <-- PONTO CRÍTICO: resolve o carregamento infinito.
+    }).catch((error) => {
+      console.warn('Erro ao verificar sessão, usando modo mock:', error);
+      setIsLoading(false);
     });
 
     // Ouve por futuras mudanças na autenticação (login/logout).
@@ -54,6 +63,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Efeito #2: Lida com a busca do perfil no banco de dados.
   // Roda sempre que a sessão mudar.
   useEffect(() => {
+    // Se Supabase não está configurado, não tentar buscar perfil
+    if (!isSupabaseConfigured) {
+      return;
+    }
+    
     if (session) {
       // Se há uma sessão, buscamos o perfil do usuário.
       supabase
@@ -85,8 +99,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [session]); // Depende apenas da sessão.
 
   const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { success: !error, error: error?.message || null };
+    // Se o Supabase não está configurado, simular login local para desenvolvimento
+    if (!isSupabaseConfigured) {
+      console.info('🔑 Usando autenticação mock para desenvolvimento');
+      
+      // Simular usuário demo
+      if (email === 'demo@clubmanager.com' && password === 'demo123456') {
+        const mockUser: User = {
+          id: 'demo-user-id',
+          name: 'Usuário Demonstração',
+          email: 'demo@clubmanager.com',
+          role: 'admin',
+          avatar: 'https://api.dicebear.com/8.x/initials/svg?seed=Demo'
+        };
+        setUser(mockUser);
+        return { success: true, error: null };
+      } else {
+        return { success: false, error: 'Credenciais inválidas. Use: demo@clubmanager.com / demo123456' };
+      }
+    }
+    
+    // Login normal com Supabase configurado
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      return { success: !error, error: error?.message || null };
+    } catch (err) {
+      console.error('Erro de conexão com Supabase:', err);
+      return { success: false, error: 'Erro de conexão. Verifique a configuração do Supabase.' };
+    }
   };
 
   const loginAsDemo = async () => {
@@ -94,11 +134,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = async () => {
+    if (!isSupabaseConfigured) {
+      // Logout local no modo mock
+      setUser(null);
+      return;
+    }
+    
     await supabase.auth.signOut();
   };
 
   return (
     <AuthContext.Provider value={{ user, login, loginAsDemo, logout, isLoading }}>
+      {!isSupabaseConfigured && (
+        <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-black px-4 py-2 text-sm z-50">
+          ⚠️ <strong>Modo Desenvolvimento:</strong> Supabase não configurado. 
+          Use: demo@clubmanager.com / demo123456
+        </div>
+      )}
+      
       {isLoading ? (
          <div className="fixed inset-0 flex items-center justify-center bg-slate-900">
           <div className="text-center">
