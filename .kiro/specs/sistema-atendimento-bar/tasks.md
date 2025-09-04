@@ -91,7 +91,12 @@ Este plano detalha a implementação do Sistema de Atendimento no Bar em etapas 
   - Implementar impressão automática de comprovante após pagamento
   - _Requisitos: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 7. Implementar sistema de divisão de contas
+- [x] 7. Implementar sistema de divisão de contas
+
+
+
+
+
   - Criar modal de divisão com opções (igual, por item, por pessoa)
   - Implementar lógica de divisão por item com seleção individual
   - Adicionar cálculo automático para divisão igual incluindo taxas
