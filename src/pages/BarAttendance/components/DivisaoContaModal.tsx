@@ -15,6 +15,9 @@ const DivisaoContaModal: React.FC<DivisaoContaModalProps> = ({
   comanda,
   onConfirmSplit
 }) => {
+  // Early return ANTES de todos os hooks
+  if (!isOpen || !comanda) return null;
+
   const [splitType, setSplitType] = useState<BillSplitType>('equal');
   const [personCount, setPersonCount] = useState(2);
   const [serviceChargePercentage, setServiceChargePercentage] = useState(10);
@@ -90,8 +93,6 @@ const DivisaoContaModal: React.FC<DivisaoContaModalProps> = ({
       calculateSplit(splitType, personCount, personNames);
     }
   }, [splitType, personCount, serviceChargePercentage, discountAmount, personNames, comanda]);
-
-  if (!isOpen || !comanda) return null;
 
   const handlePersonCountChange = (newCount: number) => {
     setPersonCount(newCount);

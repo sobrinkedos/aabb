@@ -159,9 +159,9 @@ export const useBarAttendance = (): UseBarAttendanceReturn => {
         .select('*')
         .eq('employee_id', user.id)
         .eq('date', new Date().toISOString().split('T')[0])
-        .single();
+        .maybeSingle();
 
-      if (metricasError && metricasError.code !== 'PGRST116') {
+      if (metricasError) {
         console.warn('Erro ao carregar métricas:', metricasError);
       }
 

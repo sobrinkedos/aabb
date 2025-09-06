@@ -25,6 +25,9 @@ const ComprovantesMultiplos: React.FC<ComprovantesMultiplosProps> = ({
   splitConfig,
   onProcessPayments
 }) => {
+  // Early return ANTES de todos os hooks
+  if (!isOpen || !comanda) return null;
+
   const [payments, setPayments] = useState<PaymentDetails[]>(() => 
     splitConfig.splits.map(split => ({
       person_name: split.person_name,
@@ -36,8 +39,6 @@ const ComprovantesMultiplos: React.FC<ComprovantesMultiplosProps> = ({
   );
 
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
-
-  if (!isOpen || !comanda) return null;
 
   const updatePaymentMethod = (personName: string, method: PaymentDetails['payment_method']) => {
     setPayments(prev => prev.map(payment => 

@@ -27,6 +27,9 @@ const MesaDetailsModal: React.FC<MesaDetailsModalProps> = ({
   mesa,
   onStatusChange
 }) => {
+  // Early return ANTES de todos os hooks
+  if (!isOpen || !mesa) return null;
+
   const { getComandaByTable, addItemToComanda, removeItemFromComanda } = useComandas();
   const [comanda, setComanda] = useState<ComandaWithItems | null>(null);
   const [loading, setLoading] = useState(false);
@@ -111,8 +114,6 @@ const MesaDetailsModal: React.FC<MesaDetailsModalProps> = ({
     }
     return `${diffMinutes}min`;
   };
-
-  if (!isOpen || !mesa) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
