@@ -6,7 +6,7 @@ import OrderModal from './OrderModal';
 import OrderCard from './OrderCard';
 
 const BarModule: React.FC = () => {
-  const { orders, menuItems } = useApp();
+  const { orders, barOrders, menuItems } = useApp();
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,14 +14,15 @@ const BarModule: React.FC = () => {
   // Exibir todos os pratos sem filtro por categoria
   const filteredMenuItems = menuItems;
 
-  const filteredOrders = orders.filter(order => {
+  const filteredOrders = barOrders.filter(order => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     const matchesSearch = order.tableNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.id.toLowerCase().includes(searchTerm.toLowerCase());
+                         order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         order.notes?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
-  const barRevenue = orders
+  const barRevenue = barOrders
     .filter(order => order.status === 'delivered')
     .reduce((sum, order) => sum + order.total, 0);
 
@@ -54,12 +55,12 @@ const BarModule: React.FC = () => {
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Pedidos Hoje</h3>
-          <p className="text-3xl font-bold text-blue-600">{orders.length}</p>
+          <p className="text-3xl font-bold text-blue-600">{barOrders.length}</p>
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Pedidos Pendentes</h3>
           <p className="text-3xl font-bold text-orange-600">
-            {orders.filter(o => o.status === 'pending').length}
+            {barOrders.filter(o => o.status === 'pending').length}
           </p>
         </div>
       </div>

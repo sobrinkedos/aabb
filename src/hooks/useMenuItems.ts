@@ -92,6 +92,7 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
         .select(`
           *,
           inventory_items!left(
+            name,
             image_url,
             current_stock,
             min_stock,
@@ -164,15 +165,19 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
       // Mapear para a estrutura esperada
       const mappedItems: MenuItem[] = (data || []).map(item => {
         const inventoryItem = (item as any).inventory_items;
+        const isDirectItem = (item as any).item_type === 'direct';
         
         return {
           id: item.id,
-          name: item.name,
+          // Para itens diretos, usar o nome do produto do estoque se disponível
+          name: isDirectItem && inventoryItem?.name 
+            ? inventoryItem.name 
+            : item.name,
           description: item.description || '',
           price: typeof item.price === 'string' ? parseFloat(item.price) : item.price || 0,
           category: item.category || '',
           // Para itens diretos, usar image_url do inventory_items se disponível
-          image_url: (item as any).item_type === 'direct' && inventoryItem?.image_url 
+          image_url: isDirectItem && inventoryItem?.image_url 
             ? inventoryItem.image_url 
             : item.image_url || undefined,
           available: (item as any).available || false,
@@ -183,7 +188,7 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
           updated_at: (item as any).updated_at || undefined,
           inventory_items: inventoryItem ? {
             id: '',
-            name: '',
+            name: inventoryItem.name || '',
             currentStock: inventoryItem.current_stock || 0,
             minStock: inventoryItem.min_stock || 0,
             unit: inventoryItem.unit || 'unidades',

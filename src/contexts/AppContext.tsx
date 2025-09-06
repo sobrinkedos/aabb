@@ -434,7 +434,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             opened_at,
             table:bar_tables(number)
           ),
-          menu_item:menu_items(*)
+          menu_item:menu_items(
+            *,
+            inventory_items!left(name, image_url)
+          )
         `)
         .in('status', ['pending', 'preparing', 'ready'])
         .order('added_at', { ascending: true });
@@ -477,7 +480,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
            // Incluir dados do menu item diretamente
            menuItem: item.menu_item ? {
              id: item.menu_item.id,
-             name: item.menu_item.name,
+             // Para itens diretos, usar o nome do produto do estoque se disponível
+             name: item.menu_item.item_type === 'direct' && item.menu_item.inventory_items?.name
+               ? item.menu_item.inventory_items.name
+               : item.menu_item.name,
              category: item.menu_item.category,
              preparationTime: item.menu_item.preparation_time,
              item_type: item.menu_item.item_type
