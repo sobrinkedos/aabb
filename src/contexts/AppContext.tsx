@@ -470,7 +470,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
            menuItemId: item.menu_item_id,
            quantity: item.quantity,
            price: item.price,
-           notes: item.notes
+           notes: item.notes,
+           // Incluir dados do menu item diretamente
+           menuItem: item.menu_item ? {
+             id: item.menu_item.id,
+             name: item.menu_item.name,
+             category: item.menu_item.category,
+             preparationTime: item.menu_item.preparation_time
+           } : undefined
          });
          order.total += item.price * item.quantity;
        });

@@ -16,8 +16,8 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
 
   const getEstimatedTime = (order: Order): number => {
     return order.items.reduce((total, item) => {
-      const menuItem = menuItems.find(mi => mi.id === item.menuItemId);
-      return total + (menuItem?.preparationTime || 0);
+      const menuItem = menuItems.find(mi => mi.id === item.menuItemId) || item.menuItem;
+      return total + (menuItem?.preparationTime || menuItem?.preparation_time || 0);
     }, 0);
   };
 
@@ -75,14 +75,15 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
 
                 <div className="space-y-2 mb-4">
                   {foodItems.map((item) => {
-                    const menuItem = menuItems.find(mi => mi.id === item.menuItemId);
+                    // Tentar encontrar no menuItems do contexto primeiro, depois usar dados diretos do item
+                    const menuItem = menuItems.find(mi => mi.id === item.menuItemId) || item.menuItem;
                     return (
                       <div key={item.id} className="flex justify-between">
                         <span className="font-medium">
-                          {item.quantity}x {menuItem?.name}
+                          {item.quantity}x {menuItem?.name || 'Item não encontrado'}
                         </span>
                         <span className="text-sm text-gray-600">
-                          {menuItem?.preparationTime}min
+                          {menuItem?.preparationTime || menuItem?.preparation_time || 0}min
                         </span>
                       </div>
                     );

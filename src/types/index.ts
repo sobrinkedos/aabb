@@ -132,6 +132,12 @@ export interface OrderItem {
   quantity: number;
   price: number;
   notes?: string;
+  menuItem?: {
+    id: string;
+    name: string;
+    category: string;
+    preparationTime?: number;
+  };
 }
 
 export interface InventoryCategory {
