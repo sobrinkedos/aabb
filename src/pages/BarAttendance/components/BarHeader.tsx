@@ -13,14 +13,16 @@ const BarHeader: React.FC<BarHeaderProps> = ({ mode, onModeChange, user }) => {
     balcao: 'Balcão',
     mesas: 'Mesas',
     comandas: 'Comandas',
-    fila: 'Fila de Pedidos'
+    fila: 'Fila de Pedidos',
+    pedidos: 'Pedidos Bar'
   };
 
   const modeIcons = {
     balcao: '🍺',
     mesas: '🪑',
     comandas: '📋',
-    fila: '⏱️'
+    fila: '⏱️',
+    pedidos: '🥃'
   };
 
   return (

@@ -1,20 +1,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Clock, MapPin, User } from 'lucide-react';
-import { Order, MenuItem } from '../../types';
-import { useApp } from '../../contexts/AppContext';
+import { Clock, MapPin, Package, ChefHat } from 'lucide-react';
+import { Order, MenuItem } from '../../../types';
+import { useApp } from '../../../contexts/AppContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-interface KitchenOrdersProps {
+interface BarOrdersProps {
   orders: Order[];
   menuItems: MenuItem[];
 }
 
-const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
+const BarOrders: React.FC<BarOrdersProps> = ({ orders, menuItems }) => {
   const { updateOrderStatus } = useApp();
-
-
 
   const getEstimatedTime = (order: Order): number => {
     return order.items.reduce((total, item) => {
@@ -39,24 +37,40 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
     }
   };
 
+  const getItemTypeIcon = (itemType?: string) => {
+    if (itemType === 'direct') {
+      return <Package className="w-4 h-4 text-blue-600" title="Item do estoque" />;
+    }
+    return <ChefHat className="w-4 h-4 text-orange-600" title="Item preparado" />;
+  };
+
+  const getItemTypeLabel = (itemType?: string) => {
+    return itemType === 'direct' ? 'Estoque' : 'Preparo';
+  };
+
   return (
     <div className="p-6">
-      <h2 className="text-xl font-semibold text-gray-800 mb-6">Pedidos da Cozinha</h2>
+      <h2 className="text-xl font-semibold text-gray-800 mb-6">Pedidos do Bar</h2>
       
       {orders.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-gray-500">Nenhum pedido pendente na cozinha</p>
+          <p className="text-gray-500">Nenhum pedido pendente no bar</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {orders.map((order) => {
             const priority = getOrderPriority(order);
             const estimatedTime = getEstimatedTime(order);
-            // Filtrar apenas itens que precisam ser preparados na cozinha (não diretos do estoque)
-            const foodItems = order.items.filter(item => {
+            
+            // Separar itens por tipo
+            const preparedItems = order.items.filter(item => {
               const menuItem = menuItems.find(mi => mi.id === item.menuItemId) || item.menuItem;
-              // Só mostrar itens que são preparados (não diretos do estoque)
-              return menuItem && (menuItem.item_type !== 'direct');
+              return menuItem?.item_type !== 'direct';
+            });
+            
+            const stockItems = order.items.filter(item => {
+              const menuItem = menuItems.find(mi => mi.id === item.menuItemId) || item.menuItem;
+              return menuItem?.item_type === 'direct';
             });
 
             return (
@@ -77,22 +91,55 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
                   </div>
                 </div>
 
-                <div className="space-y-2 mb-4">
-                  {foodItems.map((item) => {
-                    // Tentar encontrar no menuItems do contexto primeiro, depois usar dados diretos do item
-                    const menuItem = menuItems.find(mi => mi.id === item.menuItemId) || item.menuItem;
-                    return (
-                      <div key={item.id} className="flex justify-between">
-                        <span className="font-medium">
-                          {item.quantity}x {menuItem?.name || 'Item não encontrado'}
-                        </span>
-                        <span className="text-sm text-gray-600">
-                          {menuItem?.preparationTime || menuItem?.preparation_time || 0}min
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                {/* Itens para preparo */}
+                {preparedItems.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <ChefHat className="w-4 h-4 text-orange-600" />
+                      <span className="text-sm font-medium text-orange-800">Para Preparo</span>
+                    </div>
+                    <div className="space-y-1 pl-6">
+                      {preparedItems.map((item) => {
+                        const menuItem = menuItems.find(mi => mi.id === item.menuItemId) || item.menuItem;
+                        return (
+                          <div key={item.id} className="flex justify-between text-sm">
+                            <span className="font-medium">
+                              {item.quantity}x {menuItem?.name || 'Item não encontrado'}
+                            </span>
+                            <span className="text-gray-600">
+                              {menuItem?.preparationTime || menuItem?.preparation_time || 0}min
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Itens do estoque */}
+                {stockItems.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Package className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">Do Estoque</span>
+                    </div>
+                    <div className="space-y-1 pl-6">
+                      {stockItems.map((item) => {
+                        const menuItem = menuItems.find(mi => mi.id === item.menuItemId) || item.menuItem;
+                        return (
+                          <div key={item.id} className="flex justify-between text-sm">
+                            <span className="font-medium">
+                              {item.quantity}x {menuItem?.name || 'Item não encontrado'}
+                            </span>
+                            <span className="text-blue-600 text-xs">
+                              Pronto
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {order.notes && (
                   <div className="mb-4 p-2 bg-yellow-100 rounded border">
@@ -120,7 +167,7 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
                       onClick={() => updateOrderStatus(order.id, 'preparing')}
                       className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                     >
-                      Iniciar Preparo
+                      Iniciar Separação
                     </button>
                   )}
                   {order.status === 'preparing' && (
@@ -130,6 +177,11 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
                     >
                       Marcar como Pronto
                     </button>
+                  )}
+                  {order.status === 'ready' && (
+                    <div className="w-full bg-green-100 text-green-800 py-2 rounded-lg font-medium text-center">
+                      Pronto para Entrega
+                    </div>
                   )}
                 </div>
               </motion.div>
@@ -141,4 +193,4 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
   );
 };
 
-export default KitchenOrders;
+export default BarOrders;

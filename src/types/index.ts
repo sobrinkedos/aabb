@@ -137,6 +137,7 @@ export interface OrderItem {
     name: string;
     category: string;
     preparationTime?: number;
+    item_type?: string;
   };
 }
 

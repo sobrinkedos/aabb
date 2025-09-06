@@ -6,13 +6,16 @@ import BalcaoView from './components/BalcaoView';
 import MesasView from './components/MesasView';
 import ComandasView from './components/ComandasView';
 import OrderQueue from './components/OrderQueue';
+import BarOrders from './components/BarOrders';
 import BarNotifications from './components/BarNotifications';
+import { useApp } from '../../contexts/AppContext';
 
-export type BarAttendanceMode = 'balcao' | 'mesas' | 'comandas' | 'fila';
+export type BarAttendanceMode = 'balcao' | 'mesas' | 'comandas' | 'fila' | 'pedidos';
 
 const BarAttendance: React.FC = () => {
   const { user } = useAuth();
   const { updateItemStatus } = useComandas();
+  const { barOrders, menuItems } = useApp();
   const [activeMode, setActiveMode] = useState<BarAttendanceMode>('balcao');
 
   const handleModeChange = (mode: BarAttendanceMode) => {
@@ -38,6 +41,8 @@ const BarAttendance: React.FC = () => {
         return <ComandasView />;
       case 'fila':
         return <OrderQueue onUpdateItemStatus={handleUpdateItemStatus} />;
+      case 'pedidos':
+        return <BarOrders orders={barOrders} menuItems={menuItems} />;
       default:
         return <BalcaoView />;
     }

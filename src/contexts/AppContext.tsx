@@ -85,7 +85,9 @@ interface AppContextType {
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
   
   kitchenOrders: Order[];
+  barOrders: Order[];
   refreshKitchenOrders: () => Promise<void>;
+  refreshBarOrders: () => Promise<void>;
   
   inventory: InventoryItem[];
   inventoryCategories: InventoryCategory[];
@@ -416,9 +418,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // Buscar pedidos da cozinha a partir dos comanda_items
   const [kitchenOrders, setKitchenOrders] = useState<Order[]>([]);
+  const [barOrders, setBarOrders] = useState<Order[]>([]);
 
-  // Função para buscar pedidos da cozinha
-  const fetchKitchenOrders = async () => {
+  // Função para buscar pedidos do bar (todos os itens)
+  const fetchBarOrders = async () => {
     try {
       const { data, error } = await supabase
         .from('comanda_items')
@@ -433,7 +436,80 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           ),
           menu_item:menu_items(*)
         `)
+        .in('status', ['pending', 'preparing', 'ready'])
+        .order('added_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Agrupar itens por comanda E por timestamp de adição para criar pedidos separados
+       const orderMap = new Map<string, Order>();
+       
+       data?.forEach(item => {
+         const comandaId = item.comanda?.id;
+         if (!comandaId) return;
+
+         // Criar chave única baseada na comanda + timestamp (agrupando por minuto)
+         const addedAt = new Date(item.added_at);
+         const timeKey = `${addedAt.getFullYear()}-${addedAt.getMonth()}-${addedAt.getDate()}-${addedAt.getHours()}-${addedAt.getMinutes()}`;
+         const orderKey = `${comandaId}-${timeKey}`;
+
+         if (!orderMap.has(orderKey)) {
+           orderMap.set(orderKey, {
+             id: orderKey,
+             tableNumber: item.comanda?.table?.number,
+             items: [],
+             status: item.status as Order['status'],
+             total: 0,
+             createdAt: new Date(item.added_at),
+             updatedAt: new Date(item.created_at),
+             employeeId: '',
+             notes: `Mesa ${item.comanda?.table?.number} - ${item.comanda?.customer_name || 'Cliente'}`
+           });
+         }
+
+         const order = orderMap.get(orderKey)!;
+         order.items.push({
+           id: item.id,
+           menuItemId: item.menu_item_id,
+           quantity: item.quantity,
+           price: item.price,
+           notes: item.notes,
+           // Incluir dados do menu item diretamente
+           menuItem: item.menu_item ? {
+             id: item.menu_item.id,
+             name: item.menu_item.name,
+             category: item.menu_item.category,
+             preparationTime: item.menu_item.preparation_time,
+             item_type: item.menu_item.item_type
+           } : undefined
+         });
+         order.total += item.price * item.quantity;
+       });
+
+      setBarOrders(Array.from(orderMap.values()));
+    } catch (error) {
+      console.error('Erro ao buscar pedidos do bar:', error);
+    }
+  };
+
+  // Função para buscar pedidos da cozinha (apenas itens preparados)
+  const fetchKitchenOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('comanda_items')
+        .select(`
+          *,
+          comanda:comandas(
+            id,
+            table_id,
+            customer_name,
+            opened_at,
+            table:bar_tables(number)
+          ),
+          menu_item:menu_items!inner(*)
+        `)
         .in('status', ['pending', 'preparing'])
+        .neq('menu_item.item_type', 'direct') // Excluir itens diretos do estoque
         .order('added_at', { ascending: true });
 
       if (error) throw error;
@@ -490,9 +566,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   };
 
-  // Buscar pedidos da cozinha quando o componente monta
+  // Buscar pedidos da cozinha e do bar quando o componente monta
   useEffect(() => {
     fetchKitchenOrders();
+    fetchBarOrders();
     
     // Configurar subscription para atualizações em tempo real
     const subscription = supabase
@@ -512,8 +589,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           
           // Aguardar um pouco para garantir que a transação foi commitada
           setTimeout(() => {
-            console.log('🔄 Recarregando pedidos da cozinha...');
+            console.log('🔄 Recarregando pedidos da cozinha e bar...');
             fetchKitchenOrders();
+            fetchBarOrders();
           }, 100);
           
           // Log adicional para debug
@@ -537,8 +615,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           console.log('🔥 SUBSCRIPTION ATIVADA - comandas:', payload);
           // Recarregar pedidos quando comandas mudarem também
           setTimeout(() => {
-            console.log('🔄 Recarregando pedidos da cozinha (comandas)...');
+            console.log('🔄 Recarregando pedidos da cozinha e bar (comandas)...');
             fetchKitchenOrders();
+            fetchBarOrders();
           }, 100);
         }
       )
@@ -560,11 +639,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // Filtrar apenas pedidos que realmente existem
   const activeKitchenOrders = kitchenOrders.filter(order => order.items.length > 0);
 
+  // Filtrar apenas pedidos que realmente existem
+  const activeBarOrders = barOrders.filter(order => order.items.length > 0);
+
   return (
     <AppContext.Provider value={{
       menuItems, addMenuItem, updateMenuItem, removeMenuItem,
-      orders, addOrder, updateOrderStatus, kitchenOrders: activeKitchenOrders,
+      orders, addOrder, updateOrderStatus, 
+      kitchenOrders: activeKitchenOrders,
+      barOrders: activeBarOrders,
       refreshKitchenOrders: fetchKitchenOrders,
+      refreshBarOrders: fetchBarOrders,
       inventory, inventoryCategories, addInventoryItem, updateInventoryItem, removeInventoryItem,
       members, addMember, updateMember,
       notifications, addNotification, clearNotifications,

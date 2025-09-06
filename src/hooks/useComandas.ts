@@ -9,7 +9,7 @@ export const useComandas = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const notificationSound = useNotificationSound();
-  const { refreshKitchenOrders } = useApp();
+  const { refreshKitchenOrders, refreshBarOrders } = useApp();
 
   const fetchComandas = async () => {
     try {
@@ -119,9 +119,9 @@ export const useComandas = () => {
         return comanda;
       }));
       
-      // Atualizar pedidos da cozinha imediatamente
-      console.log('🍳 Atualizando pedidos da cozinha após adicionar item...');
-      await refreshKitchenOrders();
+      // Atualizar pedidos da cozinha e bar imediatamente
+      console.log('🍳 Atualizando pedidos da cozinha e bar após adicionar item...');
+      await Promise.all([refreshKitchenOrders(), refreshBarOrders()]);
       
       return data;
     } catch (err) {
