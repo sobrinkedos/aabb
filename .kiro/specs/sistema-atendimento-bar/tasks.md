@@ -104,7 +104,11 @@ Este plano detalha a implementação do Sistema de Atendimento no Bar em etapas 
   - Implementar geração de múltiplos comprovantes de pagamento
   - _Requisitos: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 8. Desenvolver sistema de priorização de pedidos
+- [x] 8. Desenvolver sistema de priorização de pedidos
+
+
+
+
   - Implementar classificação automática por complexidade e tempo
   - Criar fila de pedidos com ordenação inteligente
   - Adicionar funcionalidade de marcar pedidos como prioritários

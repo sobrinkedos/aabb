@@ -288,7 +288,48 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   };
 
   const updateOrderStatus = async (orderId: string, status: Order['status']) => {
-    await supabase.from('orders').update({ status, updated_at: new Date().toISOString() }).eq('id', orderId);
+    try {
+      // Extrair comandaId do orderId (UUID completo antes do timestamp)
+      // UUID tem formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      // Então precisamos pegar as primeiras 5 partes separadas por hífen
+      const parts = orderId.split('-');
+      const realComandaId = parts.slice(0, 5).join('-');
+      
+      // Extrair timeKey do orderId (timestamp após o UUID)
+      const timeKey = parts.slice(5).join('-');
+      
+      // Buscar itens específicos deste pedido baseado no timestamp
+      const { data: currentItems, error: fetchError } = await supabase
+        .from('comanda_items')
+        .select('*')
+        .eq('comanda_id', realComandaId)
+        .in('status', ['pending', 'preparing', 'ready']);
+
+      if (fetchError) throw fetchError;
+
+      // Filtrar itens que pertencem a este pedido específico (mesmo minuto)
+      const itemsToUpdate = currentItems?.filter(item => {
+        const addedAt = new Date(item.added_at);
+        const itemTimeKey = `${addedAt.getFullYear()}-${addedAt.getMonth()}-${addedAt.getDate()}-${addedAt.getHours()}-${addedAt.getMinutes()}`;
+        return timeKey === itemTimeKey;
+      }) || [];
+
+      // Atualizar apenas os itens deste pedido específico
+      if (itemsToUpdate.length > 0) {
+        const itemIds = itemsToUpdate.map(item => item.id);
+        const { error } = await supabase
+          .from('comanda_items')
+          .update({ status })
+          .in('id', itemIds);
+
+        if (error) throw error;
+      }
+      
+      // Recarregar pedidos da cozinha
+      await fetchKitchenOrders();
+    } catch (error) {
+      console.error('Erro ao atualizar status do pedido:', error);
+    }
   };
 
   const addInventoryItem = async (itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
@@ -396,37 +437,42 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       if (error) throw error;
 
-      // Agrupar itens por comanda para criar orders
-      const orderMap = new Map<string, Order>();
-      
-      data?.forEach(item => {
-        const comandaId = item.comanda?.id;
-        if (!comandaId) return;
+      // Agrupar itens por comanda E por timestamp de adição para criar pedidos separados
+       const orderMap = new Map<string, Order>();
+       
+       data?.forEach(item => {
+         const comandaId = item.comanda?.id;
+         if (!comandaId) return;
 
-        if (!orderMap.has(comandaId)) {
-          orderMap.set(comandaId, {
-            id: comandaId,
-            tableNumber: item.comanda?.table?.number,
-            items: [],
-            status: item.status as Order['status'],
-            total: 0,
-            createdAt: new Date(item.comanda?.opened_at || item.added_at),
-            updatedAt: new Date(item.created_at),
-            employeeId: '',
-            notes: item.notes
-          });
-        }
+         // Criar chave única baseada na comanda + timestamp (agrupando por minuto)
+         const addedAt = new Date(item.added_at);
+         const timeKey = `${addedAt.getFullYear()}-${addedAt.getMonth()}-${addedAt.getDate()}-${addedAt.getHours()}-${addedAt.getMinutes()}`;
+         const orderKey = `${comandaId}-${timeKey}`;
 
-        const order = orderMap.get(comandaId)!;
-        order.items.push({
-          id: item.id,
-          menuItemId: item.menu_item_id,
-          quantity: item.quantity,
-          price: item.price,
-          notes: item.notes
-        });
-        order.total += item.price * item.quantity;
-      });
+         if (!orderMap.has(orderKey)) {
+           orderMap.set(orderKey, {
+             id: orderKey,
+             tableNumber: item.comanda?.table?.number,
+             items: [],
+             status: item.status as Order['status'],
+             total: 0,
+             createdAt: new Date(item.added_at),
+             updatedAt: new Date(item.created_at),
+             employeeId: '',
+             notes: `Mesa ${item.comanda?.table?.number} - ${item.comanda?.customer_name || 'Cliente'}`
+           });
+         }
+
+         const order = orderMap.get(orderKey)!;
+         order.items.push({
+           id: item.id,
+           menuItemId: item.menu_item_id,
+           quantity: item.quantity,
+           price: item.price,
+           notes: item.notes
+         });
+         order.total += item.price * item.quantity;
+       });
 
       setKitchenOrders(Array.from(orderMap.values()));
     } catch (error) {
@@ -440,15 +486,42 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     
     // Configurar subscription para atualizações em tempo real
     const subscription = supabase
-      .channel('kitchen-orders')
+      .channel('kitchen-orders-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'comanda_items' },
-        () => {
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'comanda_items'
+        },
+        (payload) => {
+          console.log('🔥 SUBSCRIPTION ATIVADA - comanda_items:', payload);
+          console.log('Event Type:', payload.eventType);
+          console.log('New data:', payload.new);
+          console.log('Old data:', payload.old);
+          
+          // Sempre recarregar para garantir sincronização
+          console.log('🔄 Recarregando pedidos da cozinha...');
           fetchKitchenOrders();
+          
+          // Log adicional para debug
+          if (payload.eventType === 'INSERT') {
+            console.log('✅ Novo item inserido na comanda');
+          } else if (payload.eventType === 'UPDATE') {
+            console.log('🔄 Item da comanda atualizado');
+          } else if (payload.eventType === 'DELETE') {
+            console.log('🗑️ Item da comanda removido');
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Status da subscription kitchen-orders:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Subscription ativa e funcionando!');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Erro na subscription!');
+        }
+      });
 
     return () => {
       subscription.unsubscribe();
@@ -461,7 +534,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   return (
     <AppContext.Provider value={{
       menuItems, addMenuItem, updateMenuItem, removeMenuItem,
-      orders, addOrder, updateOrderStatus, kitchenOrders,
+      orders, addOrder, updateOrderStatus, kitchenOrders: activeKitchenOrders,
       inventory, inventoryCategories, addInventoryItem, updateInventoryItem, removeInventoryItem,
       members, addMember, updateMember,
       notifications, addNotification, clearNotifications,

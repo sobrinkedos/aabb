@@ -322,8 +322,16 @@ const ComandasView: React.FC = () => {
           setSelectedComanda(null);
         }}
         comanda={selectedComanda}
-        onComandaUpdated={() => {
-          refetch();
+        onComandaUpdated={async () => {
+          await refetch();
+          // Atualizar a comanda selecionada com os dados mais recentes
+          if (selectedComanda) {
+            // Buscar a comanda atualizada após o refetch
+            const updatedComanda = comandas.find(c => c.id === selectedComanda.id);
+            if (updatedComanda) {
+              setSelectedComanda(updatedComanda);
+            }
+          }
         }}
       />
     </div>
