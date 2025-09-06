@@ -22,106 +22,43 @@ interface OrderQueueProps {
 }
 
 const OrderQueue: React.FC<OrderQueueProps> = ({ onUpdateItemStatus }) => {
-  const { comandas, loading } = useComandas();
   const {
-    calculateOrderPriority,
-    startOrderTimer,
-    stopOrderTimer,
-    markOrderAsPriority,
-    sortOrdersByPriority,
-    getPriorityLabel,
-    getPriorityColor,
-    orderTimers,
+    orderQueue,
+    loading,
+    error,
+    markItemAsPriority,
+    updateItemStatus,
+    getItemPriority,
+    getTimerStatus,
+    formatRemainingTime,
+    getPriorityStats,
+    refreshQueue,
+    dismissAlert,
+    clearAllAlerts,
     alerts,
-    acknowledgeAlert
+    getPriorityLabel,
+    getPriorityColor
   } = useOrderPriority();
 
-  const [prioritizedOrders, setPrioritizedOrders] = useState<any[]>([]);
   const [showAlerts, setShowAlerts] = useState(true);
   const [selectedOrderForPriority, setSelectedOrderForPriority] = useState<string | null>(null);
 
-  // Filtrar pedidos em preparo (pending e preparing)
-  const activeOrders = comandas.filter((comanda: any) => 
-    comanda.status === 'open' && 
-    comanda.items?.some((item: any) => ['pending', 'preparing'].includes(item.status || ''))
-  );
+  // Usar os dados diretamente do hook useOrderPriority
+  const activeOrders = orderQueue;
 
-  // Processar pedidos com cálculo de prioridade
-  useEffect(() => {
-    const processedOrders = activeOrders.map((comanda: any) => {
-      const itemsInProgress = comanda.items?.filter((item: any) => 
-        ['pending', 'preparing'].includes(item.status || '')
-      ) || [];
 
-      if (itemsInProgress.length === 0) return null;
 
-      // Calcular prioridade para cada item
-      const itemsWithPriority = itemsInProgress.map((item: any) => {
-        const priority = calculateOrderPriority([item as ComandaItemWithMenu]);
-        
-        // Iniciar timer se o status for 'preparing' e não existir timer
-        if (item.status === 'preparing') {
-          const existingTimer = orderTimers.find((t: any) => t.id === item.id);
-          if (!existingTimer) {
-            startOrderTimer(item.id, priority.estimatedTime);
-          }
-        }
 
-        return {
-          ...item,
-          priority,
-          comanda_id: comanda.id,
-          table_number: comanda.table?.number,
-          customer_name: comanda.customer_name
-        };
-      });
 
-      return {
-        ...comanda,
-        prioritizedItems: itemsWithPriority
-      };
-    }).filter(Boolean);
 
-    // Ordenar por prioridade
-    const allItems = processedOrders.flatMap((order: any) => 
-      order?.prioritizedItems || []
-    );
-    
-    const sortedItems = sortOrdersByPriority(allItems);
-    setPrioritizedOrders(sortedItems);
-  }, [comandas, orderTimers, calculateOrderPriority, startOrderTimer, sortOrdersByPriority]);
-
-  // Obter timer para um item
-  const getItemTimer = (itemId: string) => {
-    return orderTimers.find((timer: any) => timer.id === itemId);
-  };
-
-  // Calcular tempo decorrido
-  const getElapsedTime = (startTime: Date): string => {
-    const now = new Date();
-    const elapsed = Math.floor((now.getTime() - startTime.getTime()) / (1000 * 60));
-    
-    if (elapsed < 60) {
-      return `${elapsed}min`;
-    } else {
-      const hours = Math.floor(elapsed / 60);
-      const minutes = elapsed % 60;
-      return `${hours}h ${minutes}min`;
-    }
-  };
 
   // Atualizar status do item
   const handleUpdateStatus = async (itemId: string, newStatus: string) => {
     try {
-      await onUpdateItemStatus(itemId, newStatus);
-      
-      if (newStatus === 'ready') {
-        stopOrderTimer(itemId);
-      } else if (newStatus === 'preparing') {
-        const item = prioritizedOrders.find((item: any) => item.id === itemId);
-        if (item?.priority?.estimatedTime) {
-          startOrderTimer(itemId, item.priority.estimatedTime);
-        }
+      if (onUpdateItemStatus) {
+        await onUpdateItemStatus(itemId, newStatus);
+      } else {
+        await updateItemStatus(itemId, newStatus);
       }
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
@@ -129,9 +66,13 @@ const OrderQueue: React.FC<OrderQueueProps> = ({ onUpdateItemStatus }) => {
   };
 
   // Marcar como prioritário
-  const handleMarkAsPriority = (itemId: string, priority: PriorityLevel) => {
-    markOrderAsPriority(itemId, priority, 'Marcado manualmente pelo usuário');
-    setSelectedOrderForPriority(null);
+  const handleMarkAsPriority = async (itemId: string, isPriority: boolean) => {
+    try {
+      await markItemAsPriority(itemId, isPriority);
+      setSelectedOrderForPriority(null);
+    } catch (error) {
+      console.error('Erro ao marcar prioridade:', error);
+    }
   };
 
   // Obter ícone do status
@@ -243,7 +184,7 @@ const OrderQueue: React.FC<OrderQueueProps> = ({ onUpdateItemStatus }) => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Fila de Pedidos</h2>
           <p className="text-gray-600">
-            {prioritizedOrders.length} itens na fila, ordenados por prioridade
+            {activeOrders.length} itens na fila, ordenados por prioridade
           </p>
         </div>
         {alerts.length > 0 && !showAlerts && (
@@ -261,15 +202,16 @@ const OrderQueue: React.FC<OrderQueueProps> = ({ onUpdateItemStatus }) => {
 
       {/* Lista de Pedidos */}
       <div className="space-y-4">
-        {prioritizedOrders.length === 0 ? (
+        {activeOrders.length === 0 ? (
           <div className="text-center py-8">
             <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500">Nenhum pedido na fila</p>
           </div>
         ) : (
-          prioritizedOrders.map((item: any, index: number) => {
-            const timer = getItemTimer(item.id);
-            const priority = item.priority;
+          activeOrders.map((item: any, index: number) => {
+
+            const timerStatus = getTimerStatus(item);
+            const priority = getItemPriority(item);
             
             return (
               <motion.div
@@ -333,21 +275,19 @@ const OrderQueue: React.FC<OrderQueueProps> = ({ onUpdateItemStatus }) => {
                         Tempo estimado: {priority?.estimatedTime || 0}min
                       </span>
                       
-                      {timer && (
-                        <div className={`flex items-center space-x-1 px-2 py-1 rounded text-sm ${
-                          timer.status === 'overdue' 
-                            ? 'bg-red-100 text-red-800'
-                            : timer.status === 'warning'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          <Timer className="h-3 w-3" />
-                          <span>{getElapsedTime(timer.startTime)}</span>
-                          {timer.status === 'overdue' && (
-                            <AlertTriangle className="h-3 w-3" />
-                          )}
-                        </div>
-                      )}
+                      <div className={`flex items-center space-x-1 px-2 py-1 rounded text-sm ${
+                        timerStatus === 'overdue' 
+                          ? 'bg-red-100 text-red-800'
+                          : timerStatus === 'warning'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        <Timer className="h-3 w-3" />
+                        <span>{formatRemainingTime(item)}</span>
+                        {timerStatus === 'overdue' && (
+                          <AlertTriangle className="h-3 w-3" />
+                        )}
+                      </div>
                     </div>
 
                     {/* Status Atual */}
@@ -409,7 +349,7 @@ const OrderQueue: React.FC<OrderQueueProps> = ({ onUpdateItemStatus }) => {
               {(['urgent', 'high', 'medium', 'low'] as PriorityLevel[]).map(level => (
                 <button
                   key={level}
-                  onClick={() => handleMarkAsPriority(selectedOrderForPriority, level)}
+                  onClick={() => handleMarkAsPriority(selectedOrderForPriority || '', true)}
                   className={`w-full p-3 rounded border-2 text-left transition-colors ${
                     getPriorityColor(level)
                   } hover:opacity-80`}

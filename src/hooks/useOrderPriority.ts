@@ -1,4 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   PriorityLevel, 
   OrderComplexity, 
@@ -8,8 +10,6 @@ import {
   OrderAlert,
   ComandaItemWithMenu 
 } from '../types/bar-attendance';
-import { MenuItem } from '../types';
-import { useNotificationSound } from './useNotificationSound';
 
 interface OrderTimer {
   id: string;
@@ -19,18 +19,100 @@ interface OrderTimer {
   alertsSent: string[];
 }
 
+interface UseOrderPriorityState {
+  orderQueue: ComandaItemWithMenu[];
+  alerts: OrderAlert[];
+  loading: boolean;
+  error: string | null;
+}
+
 export const useOrderPriority = () => {
+  const { user } = useAuth();
   const [orderTimers, setOrderTimers] = useState<OrderTimer[]>([]);
-  const [alerts, setAlerts] = useState<OrderAlert[]>([]);
-  const notificationSound = useNotificationSound();
+  const [state, setState] = useState<UseOrderPriorityState>({
+    orderQueue: [],
+    alerts: [],
+    loading: true,
+    error: null
+  });
+
+  // Função para atualizar estado
+  const updateState = useCallback((updates: Partial<UseOrderPriorityState>) => {
+    setState(prev => ({ ...prev, ...updates }));
+  }, []);
+
+  // Função para tratar erros
+  const handleError = useCallback((error: any, context: string) => {
+    console.error(`Erro em ${context}:`, error);
+    updateState({ 
+      error: `Erro em ${context}: ${error.message || 'Erro desconhecido'}`,
+      loading: false 
+    });
+  }, [updateState]);
+
+  // Carregar fila de pedidos do banco
+  const loadOrderQueue = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      updateState({ loading: true, error: null });
+
+      // Buscar todos os itens pendentes e em preparo com dados do menu usando RPC
+      const { data: items, error } = await supabase.rpc('get_order_queue_items');
+
+      if (error) throw error;
+
+      // Processar itens com cálculo de prioridade
+      const processedItems: ComandaItemWithMenu[] = (items || []).map(item => {
+        const priority = calculateOrderPriority([item as ComandaItemWithMenu]);
+        
+        return {
+          ...item,
+          priority: {
+            level: priority.priorityLevel,
+            complexity: getOrderComplexity(priority.finalEstimate),
+            estimatedTime: priority.finalEstimate,
+            isManuallyPrioritized: item.is_priority || false,
+            createdAt: new Date(item.added_at),
+            timerStatus: calculateTimerStatus(new Date(item.added_at), priority.finalEstimate),
+            alertsEnabled: true
+          }
+        };
+      });
+
+      // Ordenar por prioridade
+      const sortedItems = sortOrdersByPriority(processedItems);
+
+      updateState({
+        orderQueue: sortedItems,
+        loading: false
+      });
+
+    } catch (error) {
+      handleError(error, 'carregamento da fila de pedidos');
+    }
+  }, [user, updateState, handleError]);
+
+  // Calcular status do timer
+  const calculateTimerStatus = (createdAt: Date, estimatedTime: number): TimerStatus => {
+    const now = new Date();
+    const elapsedMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60);
+    const warningThreshold = estimatedTime * 0.8;
+    const overdueThreshold = estimatedTime * 1.2;
+    
+    if (elapsedMinutes >= overdueThreshold) return 'overdue';
+    if (elapsedMinutes >= warningThreshold) return 'warning';
+    return 'normal';
+  };
 
   // Configurações de complexidade por categoria
   const complexitySettings = {
-    'Bebidas': { baseTime: 2, complexity: 'simple' as OrderComplexity },
-    'Petiscos': { baseTime: 8, complexity: 'medium' as OrderComplexity },
-    'Prato Principal': { baseTime: 15, complexity: 'complex' as OrderComplexity },
-    'Sobremesas': { baseTime: 5, complexity: 'simple' as OrderComplexity },
-    'Lanches': { baseTime: 10, complexity: 'medium' as OrderComplexity }
+    'bebidas': { baseTime: 2, complexity: 'simple' as OrderComplexity },
+    'drinks': { baseTime: 3, complexity: 'simple' as OrderComplexity },
+    'petiscos': { baseTime: 8, complexity: 'medium' as OrderComplexity },
+    'pratos': { baseTime: 15, complexity: 'complex' as OrderComplexity },
+    'sobremesas': { baseTime: 5, complexity: 'simple' as OrderComplexity },
+    'cafes': { baseTime: 3, complexity: 'simple' as OrderComplexity }
   };
 
   // Multiplicadores de complexidade
@@ -48,24 +130,24 @@ export const useOrderPriority = () => {
 
     items.forEach(item => {
       if (item.menu_items) {
-        const category = item.menu_items.category;
+        const category = item.menu_items.category.toLowerCase();
         const preparationTime = item.menu_items.preparation_time || 0;
         
         // Usar tempo de preparo do item ou tempo base da categoria
         const itemBaseTime = preparationTime > 0 ? preparationTime : 
-          (complexitySettings[category as keyof typeof complexitySettings]?.baseTime || 5);
+          (complexitySettings[category as keyof typeof complexitySettings]?.baseTime || 8);
         
         totalBaseTime += itemBaseTime * item.quantity;
         
         // Determinar complexidade máxima
-        const itemComplexity = complexitySettings[category as keyof typeof complexitySettings]?.complexity || 'simple';
+        const itemComplexity = complexitySettings[category as keyof typeof complexitySettings]?.complexity || 'medium';
         if (getComplexityValue(itemComplexity) > getComplexityValue(maxComplexity)) {
           maxComplexity = itemComplexity;
         }
 
         // Bônus por categorias especiais
-        if (category === 'Prato Principal') categoryBonus += 2;
-        if (category === 'Petiscos') categoryBonus += 1;
+        if (category === 'pratos') categoryBonus += 2;
+        if (category === 'petiscos') categoryBonus += 1;
       }
     });
 
@@ -217,6 +299,83 @@ export const useOrderPriority = () => {
     });
   }, []);
 
+  // Marcar item como prioritário
+  const markItemAsPriority = useCallback(async (
+    itemId: string, 
+    isPriority: boolean
+  ): Promise<void> => {
+    try {
+      const { error } = await supabase
+        .from('comanda_items')
+        .update({
+          is_priority: isPriority,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      // Atualizar estado local
+      updateState({
+        orderQueue: state.orderQueue.map(item => {
+          if (item.id === itemId && item.priority) {
+            return {
+              ...item,
+              priority: {
+                ...item.priority,
+                isManuallyPrioritized: isPriority,
+                level: isPriority ? 'urgent' : item.priority.level
+              }
+            };
+          }
+          return item;
+        })
+      });
+
+      // Recarregar para garantir consistência
+      await loadOrderQueue();
+
+    } catch (error) {
+      handleError(error, 'marcação de prioridade');
+      throw error;
+    }
+  }, [state.orderQueue, updateState, handleError, loadOrderQueue]);
+
+  // Atualizar status do item
+  const updateItemStatus = useCallback(async (
+    itemId: string, 
+    status: string
+  ): Promise<void> => {
+    try {
+      const updateData: any = {
+        status,
+        updated_at: new Date().toISOString()
+      };
+
+      // Adicionar timestamps específicos
+      if (status === 'preparing') {
+        updateData.started_at = new Date().toISOString();
+      } else if (status === 'ready') {
+        updateData.prepared_at = new Date().toISOString();
+      } else if (status === 'delivered') {
+        updateData.delivered_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from('comanda_items')
+        .update(updateData)
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      await loadOrderQueue();
+
+    } catch (error) {
+      handleError(error, 'atualização de status');
+      throw error;
+    }
+  }, [handleError, loadOrderQueue]);
+
   // Criar alerta
   const createAlert = useCallback((
     orderId: string,
@@ -232,95 +391,190 @@ export const useOrderPriority = () => {
       acknowledged: false
     };
 
-    setAlerts(prev => [alert, ...prev]);
-    
-    // Tocar som de notificação para alertas importantes
-    if (type === 'ready' || type === 'overdue') {
-      notificationSound.play();
-    }
-  }, [notificationSound]);
+    updateState({
+      alerts: [alert, ...state.alerts]
+    });
+  }, [state.alerts, updateState]);
 
   // Marcar alerta como reconhecido
-  const acknowledgeAlert = useCallback((alertId: string) => {
-    setAlerts(prev => prev.map(alert =>
-      alert.id === alertId
-        ? { ...alert, acknowledged: true }
-        : alert
-    ));
+  const dismissAlert = useCallback((alertId: string) => {
+    updateState({
+      alerts: state.alerts.map(alert =>
+        alert.id === alertId
+          ? { ...alert, acknowledged: true }
+          : alert
+      )
+    });
+  }, [state.alerts, updateState]);
+
+  // Limpar todos os alertas
+  const clearAllAlerts = useCallback(() => {
+    updateState({ alerts: [] });
+  }, [updateState]);
+
+  // Funções de utilidade
+  const getItemPriority = useCallback((item: ComandaItemWithMenu): OrderPriority => {
+    if (item.priority) return item.priority;
+    
+    // Calcular prioridade se não existir
+    const priority = calculateOrderPriority([item]);
+    return {
+      level: priority.priorityLevel,
+      complexity: getOrderComplexity(priority.finalEstimate),
+      estimatedTime: priority.finalEstimate,
+      isManuallyPrioritized: false,
+      createdAt: new Date(item.added_at),
+      timerStatus: calculateTimerStatus(new Date(item.added_at), priority.finalEstimate),
+      alertsEnabled: true
+    };
   }, []);
 
-  // Limpar alertas antigos
-  const clearOldAlerts = useCallback(() => {
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    setAlerts(prev => prev.filter(alert => 
-      alert.timestamp > oneHourAgo || !alert.acknowledged
-    ));
-  }, []);
+  const getTimerStatus = useCallback((item: ComandaItemWithMenu): TimerStatus => {
+    const priority = getItemPriority(item);
+    return calculateTimerStatus(priority.createdAt, priority.estimatedTime);
+  }, [getItemPriority]);
 
-  // Atualizar status dos timers periodicamente
+  const getRemainingTime = useCallback((item: ComandaItemWithMenu): number => {
+    const priority = getItemPriority(item);
+    const elapsedMinutes = (new Date().getTime() - priority.createdAt.getTime()) / (1000 * 60);
+    return Math.max(0, priority.estimatedTime - elapsedMinutes);
+  }, [getItemPriority]);
+
+  const formatRemainingTime = useCallback((item: ComandaItemWithMenu): string => {
+    const remainingTime = getRemainingTime(item);
+    if (remainingTime < 1) return '< 1min';
+    if (remainingTime < 60) return `${Math.ceil(remainingTime)}min`;
+    
+    const hours = Math.floor(remainingTime / 60);
+    const minutes = Math.ceil(remainingTime % 60);
+    
+    if (minutes === 0) return `${hours}h`;
+    return `${hours}h ${minutes}min`;
+  }, [getRemainingTime]);
+
+  // Estatísticas de prioridade
+  const getPriorityStats = useCallback(() => {
+    const stats = {
+      urgent: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+      overdue: 0,
+      warning: 0
+    };
+
+    state.orderQueue.forEach(item => {
+      const priority = getItemPriority(item);
+      stats[priority.level]++;
+      
+      if (priority.timerStatus === 'overdue') stats.overdue++;
+      else if (priority.timerStatus === 'warning') stats.warning++;
+    });
+
+    return stats;
+  }, [state.orderQueue, getItemPriority]);
+
+  // Atualizar fila
+  const refreshQueue = useCallback(async (): Promise<void> => {
+    await loadOrderQueue();
+  }, [loadOrderQueue]);
+
+  // Configurar subscriptions em tempo real
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('order-priority-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comanda_items' },
+        (payload) => {
+          console.log('Mudança em itens de comanda:', payload);
+          loadOrderQueue();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, loadOrderQueue]);
+
+  // Carregar dados iniciais
+  useEffect(() => {
+    if (user) {
+      loadOrderQueue();
+    }
+  }, [user, loadOrderQueue]);
+
+  // Atualizar timers a cada minuto
   useEffect(() => {
     const interval = setInterval(() => {
-      const now = new Date();
-      
-      setOrderTimers(prev => prev.map(timer => {
-        const elapsedMinutes = (now.getTime() - timer.startTime.getTime()) / (1000 * 60);
-        const warningThreshold = timer.estimatedTime * 0.8; // 80% do tempo estimado
-        
-        let newStatus: TimerStatus = timer.status;
-        
-        if (elapsedMinutes > timer.estimatedTime) {
-          newStatus = 'overdue';
-          // Criar alerta de atraso se ainda não foi enviado
-          if (!timer.alertsSent.includes('overdue')) {
-            createAlert(timer.id, 'overdue', 'Pedido em atraso! Tempo estimado ultrapassado.');
-            timer.alertsSent.push('overdue');
+      if (state.orderQueue.length > 0) {
+        // Atualizar status dos timers
+        const updatedQueue = state.orderQueue.map(item => {
+          if (item.priority) {
+            const newTimerStatus = calculateTimerStatus(
+              item.priority.createdAt,
+              item.priority.estimatedTime
+            );
+            
+            return {
+              ...item,
+              priority: {
+                ...item.priority,
+                timerStatus: newTimerStatus
+              }
+            };
           }
-        } else if (elapsedMinutes > warningThreshold) {
-          newStatus = 'warning';
-          // Criar alerta de aviso se ainda não foi enviado
-          if (!timer.alertsSent.includes('warning')) {
-            createAlert(timer.id, 'warning', 'Atenção! Pedido se aproximando do tempo limite.');
-            timer.alertsSent.push('warning');
-          }
-        }
-        
-        return { ...timer, status: newStatus };
-      }));
-    }, 30000); // Verificar a cada 30 segundos
+          return item;
+        });
+
+        updateState({ orderQueue: updatedQueue });
+      }
+    }, 60000); // A cada minuto
 
     return () => clearInterval(interval);
-  }, [createAlert]);
-
-  // Limpar alertas antigos periodicamente
-  useEffect(() => {
-    const interval = setInterval(clearOldAlerts, 5 * 60 * 1000); // A cada 5 minutos
-    return () => clearInterval(interval);
-  }, [clearOldAlerts]);
+  }, [state.orderQueue, updateState]);
 
   return {
+    // Estado
+    ...state,
+    
+    // Funções de priorização
+    markItemAsPriority,
+    updateItemStatus,
+    
+    // Funções de alertas
+    dismissAlert,
+    clearAllAlerts,
+    
+    // Funções de utilidade
+    getItemPriority,
+    getTimerStatus,
+    getRemainingTime,
+    formatRemainingTime,
+    
+    // Estatísticas
+    getPriorityStats,
+    
+    // Atualização
+    refreshQueue,
+    
+    // Utilitários
+    getPriorityLabel,
+    getPriorityColor,
+    sortOrdersByPriority,
+    
     // Funções principais
     calculateOrderPriority,
     calculateAutoPriority,
     startOrderTimer,
     stopOrderTimer,
     markOrderAsPriority,
-    sortOrdersByPriority,
     
-    // Utilitários
-    getPriorityLabel,
-    getPriorityColor,
-    
-    // Alertas
-    createAlert,
-    acknowledgeAlert,
-    clearOldAlerts,
-    
-    // Notificações sonoras
-    notificationSound,
-    
-    // Estados
+    // Estados legados (manter compatibilidade)
     orderTimers,
-    alerts: alerts.filter(alert => !alert.acknowledged),
-    allAlerts: alerts
+    allAlerts: state.alerts
   };
 };
