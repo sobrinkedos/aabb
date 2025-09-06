@@ -85,6 +85,7 @@ interface AppContextType {
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
   
   kitchenOrders: Order[];
+  refreshKitchenOrders: () => Promise<void>;
   
   inventory: InventoryItem[];
   inventoryCategories: InventoryCategory[];
@@ -500,9 +501,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           console.log('New data:', payload.new);
           console.log('Old data:', payload.old);
           
-          // Sempre recarregar para garantir sincronização
-          console.log('🔄 Recarregando pedidos da cozinha...');
-          fetchKitchenOrders();
+          // Aguardar um pouco para garantir que a transação foi commitada
+          setTimeout(() => {
+            console.log('🔄 Recarregando pedidos da cozinha...');
+            fetchKitchenOrders();
+          }, 100);
           
           // Log adicional para debug
           if (payload.eventType === 'INSERT') {
@@ -512,6 +515,22 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           } else if (payload.eventType === 'DELETE') {
             console.log('🗑️ Item da comanda removido');
           }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'comandas'
+        },
+        (payload) => {
+          console.log('🔥 SUBSCRIPTION ATIVADA - comandas:', payload);
+          // Recarregar pedidos quando comandas mudarem também
+          setTimeout(() => {
+            console.log('🔄 Recarregando pedidos da cozinha (comandas)...');
+            fetchKitchenOrders();
+          }, 100);
         }
       )
       .subscribe((status) => {
@@ -524,6 +543,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       });
 
     return () => {
+      console.log('🔌 Desconectando subscription kitchen-orders');
       subscription.unsubscribe();
     };
   }, []);
@@ -535,6 +555,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     <AppContext.Provider value={{
       menuItems, addMenuItem, updateMenuItem, removeMenuItem,
       orders, addOrder, updateOrderStatus, kitchenOrders: activeKitchenOrders,
+      refreshKitchenOrders: fetchKitchenOrders,
       inventory, inventoryCategories, addInventoryItem, updateInventoryItem, removeInventoryItem,
       members, addMember, updateMember,
       notifications, addNotification, clearNotifications,

@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Comanda, ComandaItem, BillSplitConfig, BillSplit, ComandaWithItems } from '../types/bar-attendance';
 import { useNotificationSound } from './useNotificationSound';
+import { useApp } from '../contexts/AppContext';
 
 export const useComandas = () => {
   const [comandas, setComandas] = useState<ComandaWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const notificationSound = useNotificationSound();
+  const { refreshKitchenOrders } = useApp();
 
   const fetchComandas = async () => {
     try {
@@ -116,6 +118,10 @@ export const useComandas = () => {
         }
         return comanda;
       }));
+      
+      // Atualizar pedidos da cozinha imediatamente
+      console.log('🍳 Atualizando pedidos da cozinha após adicionar item...');
+      await refreshKitchenOrders();
       
       return data;
     } catch (err) {
