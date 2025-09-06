@@ -372,7 +372,91 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const clearNotifications = () => setNotifications([]);
 
-  const kitchenOrders = orders.filter(order => order.items.some(item => menuItems.find(mi => mi.id === item.menuItemId)));
+  // Buscar pedidos da cozinha a partir dos comanda_items
+  const [kitchenOrders, setKitchenOrders] = useState<Order[]>([]);
+
+  // Função para buscar pedidos da cozinha
+  const fetchKitchenOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('comanda_items')
+        .select(`
+          *,
+          comanda:comandas(
+            id,
+            table_id,
+            customer_name,
+            opened_at,
+            table:bar_tables(number)
+          ),
+          menu_item:menu_items(*)
+        `)
+        .in('status', ['pending', 'preparing'])
+        .order('added_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Agrupar itens por comanda para criar orders
+      const orderMap = new Map<string, Order>();
+      
+      data?.forEach(item => {
+        const comandaId = item.comanda?.id;
+        if (!comandaId) return;
+
+        if (!orderMap.has(comandaId)) {
+          orderMap.set(comandaId, {
+            id: comandaId,
+            tableNumber: item.comanda?.table?.number,
+            items: [],
+            status: item.status as Order['status'],
+            total: 0,
+            createdAt: new Date(item.comanda?.opened_at || item.added_at),
+            updatedAt: new Date(item.created_at),
+            employeeId: '',
+            notes: item.notes
+          });
+        }
+
+        const order = orderMap.get(comandaId)!;
+        order.items.push({
+          id: item.id,
+          menuItemId: item.menu_item_id,
+          quantity: item.quantity,
+          price: item.price,
+          notes: item.notes
+        });
+        order.total += item.price * item.quantity;
+      });
+
+      setKitchenOrders(Array.from(orderMap.values()));
+    } catch (error) {
+      console.error('Erro ao buscar pedidos da cozinha:', error);
+    }
+  };
+
+  // Buscar pedidos da cozinha quando o componente monta
+  useEffect(() => {
+    fetchKitchenOrders();
+    
+    // Configurar subscription para atualizações em tempo real
+    const subscription = supabase
+      .channel('kitchen-orders')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comanda_items' },
+        () => {
+          fetchKitchenOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Filtrar apenas pedidos que realmente existem
+  const activeKitchenOrders = kitchenOrders.filter(order => order.items.length > 0);
 
   return (
     <AppContext.Provider value={{

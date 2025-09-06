@@ -86,7 +86,12 @@ const ComandaDetailsModal: React.FC<ComandaDetailsModalProps> = ({
     setLoading(true);
     try {
       for (const cartItem of cart) {
-        await addItemToComanda(comanda.id, cartItem.item.id, cartItem.quantity, cartItem.notes);
+        await addItemToComanda(comanda.id, {
+          menu_item_id: cartItem.item.id,
+          quantity: cartItem.quantity,
+          price: cartItem.item.price,
+          notes: cartItem.notes
+        });
       }
       setCart([]);
       onComandaUpdated?.();
