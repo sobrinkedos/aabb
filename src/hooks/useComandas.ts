@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Comanda, ComandaItem } from '../types';
-import { BillSplitConfig, BillSplit } from '../types/bar-attendance';
+import { Comanda, ComandaItem, BillSplitConfig, BillSplit, ComandaWithItems } from '../types/bar-attendance';
 import { useNotificationSound } from './useNotificationSound';
 
 export const useComandas = () => {
-  const [comandas, setComandas] = useState<Comanda[]>([]);
+  const [comandas, setComandas] = useState<ComandaWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const notificationSound = useNotificationSound();
@@ -66,7 +65,7 @@ export const useComandas = () => {
     }
   };
 
-  const updateComandaStatus = async (comandaId: string, status: Comanda['status']) => {
+  const updateComandaStatus = async (comandaId: string, status: string) => {
     try {
       const updateData: any = { status };
       if (status === 'closed') {
@@ -124,7 +123,7 @@ export const useComandas = () => {
     }
   };
 
-  const updateItemStatus = async (itemId: string, status: ComandaItem['status']) => {
+  const updateItemStatus = async (itemId: string, status: string) => {
     try {
       const updateData: any = { status };
       if (status === 'ready') {

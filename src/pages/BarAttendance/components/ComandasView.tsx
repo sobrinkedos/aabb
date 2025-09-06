@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Eye } from 'lucide-react';
 import NovaComandaModal from './NovaComandaModal';
 import ComandaDetailsModal from './ComandaDetailsModal';
@@ -29,6 +29,16 @@ const ComandasView: React.FC = () => {
     setSelectedComanda(comanda);
     setShowDetailsModal(true);
   };
+
+  // Atualizar comanda selecionada quando as comandas mudarem
+  useEffect(() => {
+    if (selectedComanda && comandas.length > 0) {
+      const updatedComanda = comandas.find(c => c.id === selectedComanda.id);
+      if (updatedComanda && JSON.stringify(updatedComanda) !== JSON.stringify(selectedComanda)) {
+        setSelectedComanda(updatedComanda);
+      }
+    }
+  }, [comandas, selectedComanda]);
 
   const handleDismissAlert = (comandaId: string) => {
     setDismissedAlerts(prev => new Set([...prev, comandaId]));
@@ -322,17 +332,7 @@ const ComandasView: React.FC = () => {
           setSelectedComanda(null);
         }}
         comanda={selectedComanda}
-        onComandaUpdated={async () => {
-          await refetch();
-          // Atualizar a comanda selecionada com os dados mais recentes
-          if (selectedComanda) {
-            // Buscar a comanda atualizada após o refetch
-            const updatedComanda = comandas.find(c => c.id === selectedComanda.id);
-            if (updatedComanda) {
-              setSelectedComanda(updatedComanda);
-            }
-          }
-        }}
+        onComandaUpdated={refetch}
       />
     </div>
   );
