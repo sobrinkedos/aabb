@@ -14,6 +14,8 @@ interface KitchenOrdersProps {
 const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
   const { updateOrderStatus } = useApp();
 
+
+
   const getEstimatedTime = (order: Order): number => {
     return order.items.reduce((total, item) => {
       const menuItem = menuItems.find(mi => mi.id === item.menuItemId) || item.menuItem;
@@ -50,10 +52,8 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
           {orders.map((order) => {
             const priority = getOrderPriority(order);
             const estimatedTime = getEstimatedTime(order);
-            const foodItems = order.items.filter(item => {
-              const menuItem = menuItems.find(mi => mi.id === item.menuItemId);
-              return menuItem; // Exibir todos os itens do pedido
-            });
+            // Exibir todos os itens do pedido, já que agora temos dados diretos
+            const foodItems = order.items;
 
             return (
               <motion.div

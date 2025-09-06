@@ -438,6 +438,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       if (error) throw error;
 
+
+
       // Agrupar itens por comanda E por timestamp de adição para criar pedidos separados
        const orderMap = new Map<string, Order>();
        
