@@ -69,6 +69,27 @@ const OrderQueue: React.FC<OrderQueueProps> = ({ onUpdateItemStatus }) => {
     // Extrair número do pedido do ID (últimos 4 caracteres)
     return item.id.slice(-4).toUpperCase();
   };
+    const tableItems = new Map<string, ComandaItemWithMenu[]>();
+    activeOrders.forEach(item => {
+      const tableKey = item.comandas?.bar_tables?.number || 'Balcão';
+      if (!tableItems.has(tableKey)) {
+        tableItems.set(tableKey, []);
+      }
+      tableItems.get(tableKey)!.push(item);
+    });
+    return tableItems;
+  };
+
+  const tableItemsMap = getItemsByTable();
+
+  const hasMultipleOrdersForTable = (tableNumber: string): boolean => {
+    return (tableItemsMap.get(tableNumber) || []).length > 1;
+  };
+
+  const getOrderNumber = (item: ComandaItemWithMenu): string => {
+    // Extrair número do pedido do ID (últimos 4 caracteres)
+    return item.id.slice(-4).toUpperCase();
+  };
 
 
 
@@ -210,6 +231,11 @@ const OrderQueue: React.FC<OrderQueueProps> = ({ onUpdateItemStatus }) => {
           <p className="text-gray-600">
             {activeOrders.length} itens na fila, ordenados por prioridade
           </p>
+          {Array.from(tableItemsMap.entries()).filter(([_, items]) => items.length > 1).length > 0 && (
+            <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium mt-1 inline-block">
+              {Array.from(tableItemsMap.entries()).filter(([_, items]) => items.length > 1).length} mesa(s) com múltiplos pedidos
+            </span>
+          )}
         </div>
         {alerts.length > 0 && !showAlerts && (
           <button
@@ -223,6 +249,22 @@ const OrderQueue: React.FC<OrderQueueProps> = ({ onUpdateItemStatus }) => {
           </button>
         )}
       </div>
+
+      {/* Resumo de mesas com múltiplos pedidos */}
+      {Array.from(tableItemsMap.entries()).filter(([_, items]) => items.length > 1).length > 0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-orange-800 mb-2">⚠️ Mesas com Múltiplos Pedidos:</h3>
+          <div className="flex flex-wrap gap-2">
+            {Array.from(tableItemsMap.entries())
+              .filter(([_, items]) => items.length > 1)
+              .map(([tableNumber, items]) => (
+                <span key={tableNumber} className="bg-orange-200 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
+                  Mesa {tableNumber}: {items.length} itens
+                </span>
+              ))}
+          </div>
+        </div>
+      )}
 
       {/* Lista de Pedidos */}
       <div className="space-y-4">
@@ -251,6 +293,10 @@ const OrderQueue: React.FC<OrderQueueProps> = ({ onUpdateItemStatus }) => {
                       : priority?.level === 'medium'
                         ? 'border-yellow-500'
                         : 'border-green-500'
+                } ${
+                  hasMultipleOrdersForTable(item.comandas?.bar_tables?.number || 'Balcão') 
+                    ? 'ring-2 ring-orange-300 ring-offset-2' 
+                    : ''
                 }`}
               >
                 <div className="flex items-start justify-between">
@@ -284,6 +330,12 @@ const OrderQueue: React.FC<OrderQueueProps> = ({ onUpdateItemStatus }) => {
                       {item.comandas?.bar_tables?.number && (
                         <div className="flex items-center space-x-2">
                           <span>Mesa {item.comandas.bar_tables.number}</span>
+                          
+                          {/* Badge do número do pedido */}
+                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                            #{getOrderNumber(item)}
+                          </span>
+                          
                           {/* Indicador de múltiplos pedidos */}
                           {hasMultipleOrdersForTable(item.comandas.bar_tables.number) && (
                             <span className="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-bold">
