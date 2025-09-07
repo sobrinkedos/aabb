@@ -13,10 +13,12 @@ const KitchenModule: React.FC = () => {
     order.status === 'pending' || order.status === 'preparing'
   );
 
-  const averagePreparationTime = menuItems
+  const preparedMenuItems = menuItems.filter(item => item.item_type !== 'direct');
+  
+  const averagePreparationTime = preparedMenuItems
     .filter(item => item.preparationTime)
     .reduce((avg, item) => avg + (item.preparationTime || 0), 0) / 
-    menuItems.filter(item => item.preparationTime).length || 0;
+    preparedMenuItems.filter(item => item.preparationTime).length || 0;
 
   return (
     <div className="space-y-6">
@@ -83,7 +85,7 @@ const KitchenModule: React.FC = () => {
             <div>
               <h3 className="text-lg font-semibold text-gray-800 mb-1">Pratos Disponíveis</h3>
               <p className="text-3xl font-bold text-green-600">
-                {menuItems.filter(item => item.available).length}
+                {preparedMenuItems.filter(item => item.available).length}
               </p>
             </div>
             <div className="p-3 bg-green-100 rounded-full">
@@ -95,9 +97,9 @@ const KitchenModule: React.FC = () => {
 
       <div className="bg-white rounded-lg shadow-md">
         {activeTab === 'orders' ? (
-          <KitchenOrders orders={pendingKitchenOrders} menuItems={menuItems} />
+          <KitchenOrders orders={pendingKitchenOrders} menuItems={preparedMenuItems} />
         ) : (
-          <MenuManagement menuItems={menuItems} />
+          <MenuManagement menuItems={preparedMenuItems} />
         )}
       </div>
     </div>
