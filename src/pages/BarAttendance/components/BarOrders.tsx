@@ -14,6 +14,21 @@ interface BarOrdersProps {
 const BarOrders: React.FC<BarOrdersProps> = ({ orders, menuItems }) => {
   const { updateOrderStatus } = useApp();
 
+  // Agrupar pedidos por mesa para identificar múltiplos pedidos
+  const getOrdersByTable = () => {
+    const tableOrders = new Map<string, Order[]>();
+    orders.forEach(order => {
+      const tableKey = order.tableNumber || 'Balcão';
+      if (!tableOrders.has(tableKey)) {
+        tableOrders.set(tableKey, []);
+      }
+      tableOrders.get(tableKey)!.push(order);
+    });
+    return tableOrders;
+  };
+
+  const tableOrdersMap = getOrdersByTable();
+
   const getEstimatedTime = (order: Order): number => {
     return order.items.reduce((total, item) => {
       const menuItem = menuItems.find(mi => mi.id === item.menuItemId) || item.menuItem;
@@ -48,9 +63,43 @@ const BarOrders: React.FC<BarOrdersProps> = ({ orders, menuItems }) => {
     return itemType === 'direct' ? 'Estoque' : 'Preparo';
   };
 
+  const getOrderNumber = (order: Order): string => {
+    // Extrair número do pedido do ID (últimos 4 caracteres)
+    return order.id.slice(-4).toUpperCase();
+  };
+
+  const hasMultipleOrdersForTable = (tableNumber: string): boolean => {
+    return (tableOrdersMap.get(tableNumber) || []).length > 1;
+  };
+
   return (
     <div className="p-6">
-      <h2 className="text-xl font-semibold text-gray-800 mb-6">Pedidos do Bar</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-gray-800">Pedidos do Bar</h2>
+        <div className="text-sm text-gray-600">
+          {Array.from(tableOrdersMap.entries()).filter(([_, orders]) => orders.length > 1).length > 0 && (
+            <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
+              {Array.from(tableOrdersMap.entries()).filter(([_, orders]) => orders.length > 1).length} mesa(s) com múltiplos pedidos
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Resumo de mesas com múltiplos pedidos */}
+      {Array.from(tableOrdersMap.entries()).filter(([_, orders]) => orders.length > 1).length > 0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+          <h3 className="text-sm font-semibold text-orange-800 mb-2">⚠️ Mesas com Múltiplos Pedidos:</h3>
+          <div className="flex flex-wrap gap-2">
+            {Array.from(tableOrdersMap.entries())
+              .filter(([_, orders]) => orders.length > 1)
+              .map(([tableNumber, orders]) => (
+                <span key={tableNumber} className="bg-orange-200 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
+                  Mesa {tableNumber}: {orders.length} pedidos
+                </span>
+              ))}
+          </div>
+        </div>
+      )}
       
       {orders.length === 0 ? (
         <div className="text-center py-8">
@@ -73,17 +122,33 @@ const BarOrders: React.FC<BarOrdersProps> = ({ orders, menuItems }) => {
               return menuItem?.item_type === 'direct';
             });
 
+            const hasMultipleOrders = hasMultipleOrdersForTable(order.tableNumber || 'Balcão');
+            
             return (
               <motion.div
                 key={order.id}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className={`border-2 rounded-lg p-4 ${getPriorityColor(priority)}`}
+                className={`border-2 rounded-lg p-4 ${getPriorityColor(priority)} ${
+                  hasMultipleOrders ? 'ring-2 ring-orange-300 ring-offset-2' : ''
+                }`}
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-2">
                     <MapPin size={16} className="text-gray-500" />
                     <span className="font-bold text-lg">Mesa {order.tableNumber || 'N/A'}</span>
+                    
+                    {/* Badge do número do pedido */}
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                      #{getOrderNumber(order)}
+                    </span>
+                    
+                    {/* Indicador de múltiplos pedidos */}
+                    {hasMultipleOrdersForTable(order.tableNumber || 'Balcão') && (
+                      <span className="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                        {(tableOrdersMap.get(order.tableNumber || 'Balcão') || []).length} pedidos
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center space-x-1 text-sm text-gray-600">
                     <Clock size={14} />
