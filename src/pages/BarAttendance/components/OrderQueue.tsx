@@ -46,6 +46,30 @@ const OrderQueue: React.FC<OrderQueueProps> = ({ onUpdateItemStatus }) => {
   // Usar os dados diretamente do hook useOrderPriority
   const activeOrders = orderQueue;
 
+  // Agrupar itens por mesa para identificar múltiplos pedidos
+  const getItemsByTable = () => {
+    const tableItems = new Map<string, ComandaItemWithMenu[]>();
+    activeOrders.forEach(item => {
+      const tableKey = item.comandas?.bar_tables?.number || 'Balcão';
+      if (!tableItems.has(tableKey)) {
+        tableItems.set(tableKey, []);
+      }
+      tableItems.get(tableKey)!.push(item);
+    });
+    return tableItems;
+  };
+
+  const tableItemsMap = getItemsByTable();
+
+  const hasMultipleOrdersForTable = (tableNumber: string): boolean => {
+    return (tableItemsMap.get(tableNumber) || []).length > 1;
+  };
+
+  const getOrderNumber = (item: ComandaItemWithMenu): string => {
+    // Extrair número do pedido do ID (últimos 4 caracteres)
+    return item.id.slice(-4).toUpperCase();
+  };
+
 
 
 
@@ -243,6 +267,11 @@ const OrderQueue: React.FC<OrderQueueProps> = ({ onUpdateItemStatus }) => {
                         <span className="text-sm text-gray-500">
                           x{item.quantity}
                         </span>
+                        
+                        {/* Badge do número do pedido */}
+                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                          #{getOrderNumber(item)}
+                        </span>
                       </div>
                       
                       {priority?.isManuallyPrioritized && (
@@ -252,11 +281,19 @@ const OrderQueue: React.FC<OrderQueueProps> = ({ onUpdateItemStatus }) => {
 
                     {/* Informações da Comanda */}
                     <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-                      {item.table_number && (
-                        <span>Mesa {item.table_number}</span>
+                      {item.comandas?.bar_tables?.number && (
+                        <div className="flex items-center space-x-2">
+                          <span>Mesa {item.comandas.bar_tables.number}</span>
+                          {/* Indicador de múltiplos pedidos */}
+                          {hasMultipleOrdersForTable(item.comandas.bar_tables.number) && (
+                            <span className="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                              {(tableItemsMap.get(item.comandas.bar_tables.number) || []).length} itens
+                            </span>
+                          )}
+                        </div>
                       )}
-                      {item.customer_name && (
-                        <span>Cliente: {item.customer_name}</span>
+                      {item.comandas?.customer_name && (
+                        <span>Cliente: {item.comandas.customer_name}</span>
                       )}
                       <span>
                         Pedido às {format(new Date(item.added_at || ''), 'HH:mm', { locale: ptBR })}
