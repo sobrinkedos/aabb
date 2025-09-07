@@ -42,13 +42,22 @@ const fromMemberSupabase = (member: Tables<'members'>): Member => ({
 });
 
 const fromMenuItemSupabase = (item: any): MenuItem => {
+    const isDirectItem = item.item_type === 'direct';
+    const inventoryItem = item.inventory_items;
+    
     return {
         id: item.id,
-        name: item.name,
+        // Para itens diretos, usar o nome do produto do estoque se disponível
+        name: isDirectItem && inventoryItem?.name 
+            ? inventoryItem.name 
+            : item.name,
         description: item.description || '',
         price: item.price,
         category: item.category as MenuItem['category'],
-        image_url: item.image_url || undefined,
+        // Para itens diretos, usar image_url do inventory_items se disponível
+        image_url: isDirectItem && inventoryItem?.image_url 
+            ? inventoryItem.image_url 
+            : item.image_url || undefined,
         available: item.available,
         preparation_time: item.preparation_time || undefined,
         item_type: (item.item_type as MenuItem['item_type']) || 'prepared',
@@ -134,8 +143,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   useEffect(() => {
     const fetchData = async () => {
       const [menuData, inventoryData, categoriesData, membersData] = await Promise.all([
-        // Buscar apenas itens preparados (não diretos do estoque) para o módulo cozinha
-        supabase.from('menu_items').select('*').neq('item_type', 'direct'),
+        // Buscar todos os itens do menu (incluindo diretos do estoque) para o módulo bar
+        supabase.from('menu_items').select(`
+          *,
+          inventory_items!left(name, image_url)
+        `).order('name'),
         supabase.from('inventory_items').select('*').order('name'),
         supabase.from('inventory_categories').select('*').eq('is_active', true).order('name'),
         supabase.from('members').select('*').order('name'),
