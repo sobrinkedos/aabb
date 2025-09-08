@@ -304,6 +304,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const updateOrderStatus = async (orderId: string, status: Order['status']) => {
     try {
+      console.log('updateOrderStatus chamado:', { orderId, status });
+      
       // Extrair comandaId do orderId (UUID completo antes do timestamp)
       // UUID tem formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
       // Então precisamos pegar as primeiras 5 partes separadas por hífen
@@ -312,6 +314,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       
       // Extrair timeKey do orderId (timestamp após o UUID)
       const timeKey = parts.slice(5).join('-');
+      
+      console.log('Decomposição do ID:', { parts, realComandaId, timeKey });
       
       // Buscar itens específicos deste pedido baseado no timestamp
       const { data: currentItems, error: fetchError } = await supabase
@@ -329,19 +333,27 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         return timeKey === itemTimeKey;
       }) || [];
 
+      console.log('Itens encontrados para atualizar:', itemsToUpdate.length);
+
       // Atualizar apenas os itens deste pedido específico
       if (itemsToUpdate.length > 0) {
         const itemIds = itemsToUpdate.map(item => item.id);
+        console.log('Atualizando itens:', itemIds, 'para status:', status);
+        
         const { error } = await supabase
           .from('comanda_items')
           .update({ status })
           .in('id', itemIds);
 
         if (error) throw error;
+        console.log('Atualização realizada com sucesso');
+      } else {
+        console.log('Nenhum item encontrado para atualizar');
       }
       
-      // Recarregar pedidos da cozinha
+      // Recarregar pedidos da cozinha e do bar
       await fetchKitchenOrders();
+      await fetchBarOrders();
     } catch (error) {
       console.error('Erro ao atualizar status do pedido:', error);
     }
