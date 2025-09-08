@@ -88,21 +88,44 @@ const ComandasView: React.FC = () => {
   };
 
   const handleAddItemsToComanda = async () => {
-    if (!selectedComanda || cart.length === 0) return;
+    console.log('🔥 Botão clicado! Iniciando adição de itens à comanda');
+    console.log('Comanda selecionada:', selectedComanda);
+    console.log('Itens no carrinho:', cart);
+    
+    if (!selectedComanda) {
+      console.error('❌ Nenhuma comanda selecionada');
+      return;
+    }
+    
+    if (cart.length === 0) {
+      console.error('❌ Carrinho vazio');
+      return;
+    }
     
     try {
+      console.log('📦 Adicionando', cart.length, 'itens à comanda', selectedComanda.id);
+      
       for (const item of cart) {
-        await adicionarItemComanda(selectedComanda.id, {
-          menu_item_id: item.menu_item_id,
-          quantity: item.quantity,
-          price: item.price,
-          notes: item.notes
-        });
+        console.log('➕ Adicionando item:', item);
+        await adicionarItemComanda(
+          selectedComanda.id,
+          item.menu_item_id,
+          item.quantity,
+          item.notes || ''
+        );
+        console.log('✅ Item adicionado com sucesso');
       }
+      
+      console.log('🧹 Limpando carrinho');
       setCart([]);
+      
+      console.log('🔄 Atualizando dados');
       refetch();
+      
+      console.log('🎉 Processo concluído com sucesso!');
     } catch (error) {
-      console.error('Erro ao adicionar itens à comanda:', error);
+      console.error('❌ Erro ao adicionar itens à comanda:', error);
+      alert('Erro ao adicionar itens à comanda: ' + error.message);
     }
   };
 
