@@ -28,8 +28,12 @@ const MesasView: React.FC = () => {
     const mesasEnriquecidas: TableWithComanda[] = tables.map(table => {
       const comanda = comandas.find(c => c.table_id === table.id && c.status === 'open');
       
+      // Atualizar status da mesa baseado na comanda
+      const statusAtualizado = comanda ? 'occupied' : table.status;
+      
       return {
         ...table,
+        status: statusAtualizado as TableStatus,
         currentComanda: comanda,
         occupiedSince: comanda?.opened_at,
         currentTotal: comanda?.total || 0,
