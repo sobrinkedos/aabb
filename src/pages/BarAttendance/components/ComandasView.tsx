@@ -384,8 +384,9 @@ const ComandasView: React.FC = () => {
         </div>
       </div>
     );
-  }  r
-eturn (
+  }
+
+  return (
     <div className="comandas-container">
       {/* Alertas de Comandas com Tempo Excessivo */}
       <ComandaAlerts 
