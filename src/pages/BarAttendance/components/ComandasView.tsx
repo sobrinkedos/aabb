@@ -337,11 +337,65 @@ const ComandasView: React.FC = () => {
             {/* Header do Carrinho */}
             <div className="p-6 border-b border-gray-200 flex-shrink-0">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Itens Selecionados</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Pedidos da Comanda</h3>
+              </div>
+            </div>
+
+            {/* Itens Existentes da Comanda */}
+            {selectedComanda?.items && selectedComanda.items.length > 0 && (
+              <div className="border-b border-gray-200">
+                <div className="p-4 bg-blue-50">
+                  <h4 className="text-sm font-medium text-blue-900 mb-3">
+                    Itens já pedidos ({selectedComanda.items.length})
+                  </h4>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {selectedComanda.items.map((item: any) => (
+                      <div key={item.id} className="bg-white rounded-lg p-3 shadow-sm">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1">
+                            <h5 className="font-medium text-gray-900 text-sm">
+                              {item.menu_item?.name || 'Item não encontrado'}
+                            </h5>
+                            <p className="text-xs text-gray-600">
+                              R$ {item.price.toFixed(2)} cada
+                            </p>
+                          </div>
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            item.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                            item.status === 'ready' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {item.status === 'pending' ? 'Pendente' :
+                             item.status === 'preparing' ? 'Preparando' :
+                             item.status === 'ready' ? 'Pronto' :
+                             item.status === 'delivered' ? 'Entregue' : item.status}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Qtd: {item.quantity}</span>
+                          <span className="font-medium text-green-600 text-sm">
+                            R$ {(item.price * item.quantity).toFixed(2)}
+                          </span>
+                        </div>
+                        {item.notes && (
+                          <p className="text-xs text-gray-500 mt-1">Obs: {item.notes}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Seção de Novos Itens */}
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium text-gray-900">Novos Itens ({cart.length})</h4>
                 {cart.length > 0 && (
                   <button
                     onClick={() => setCart([])}
-                    className="text-sm text-red-600 hover:text-red-800"
+                    className="text-xs text-red-600 hover:text-red-800"
                   >
                     Limpar
                   </button>
@@ -349,12 +403,12 @@ const ComandasView: React.FC = () => {
               </div>
             </div>
             
-            {/* Lista de Itens - Expansível */}
-            <div className="flex-1 overflow-y-auto p-6 min-h-0">
+            {/* Lista de Novos Itens - Expansível */}
+            <div className="flex-1 overflow-y-auto p-4 min-h-0">
               {cart.length === 0 ? (
-                <div className="text-center text-gray-500 py-8 h-full flex flex-col items-center justify-center">
-                  <ShoppingCart className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                  <p>Nenhum item selecionado</p>
+                <div className="text-center text-gray-500 py-4 h-full flex flex-col items-center justify-center">
+                  <ShoppingCart className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                  <p className="text-sm">Nenhum item novo selecionado</p>
                 </div>
               ) : (
                 <div className="space-y-4">
