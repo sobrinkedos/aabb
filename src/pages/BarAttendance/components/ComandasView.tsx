@@ -400,13 +400,22 @@ const ComandasView: React.FC = () => {
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         statusFilter={statusFilter}
-        onStatusChange={setStatusFilter}
+        onStatusFilterChange={setStatusFilter}
         employeeFilter={employeeFilter}
-        onEmployeeChange={setEmployeeFilter}
+        onEmployeeFilterChange={setEmployeeFilter}
         tableFilter={tableFilter}
-        onTableChange={setTableFilter}
+        onTableFilterChange={setTableFilter}
         timeFilter={timeFilter}
-        onTimeChange={setTimeFilter}
+        onTimeFilterChange={setTimeFilter}
+        employees={[]}
+        tables={tables || []}
+        onClearFilters={() => {
+          setSearchTerm('');
+          setStatusFilter('all');
+          setEmployeeFilter('');
+          setTableFilter('');
+          setTimeFilter('all');
+        }}
       />
 
       {/* Header com estatísticas e botão nova comanda */}
