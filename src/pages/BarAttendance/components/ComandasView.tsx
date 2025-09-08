@@ -310,7 +310,7 @@ const ComandasView: React.FC = () => {
             </div>
           </div> 
           {/* Carrinho de Pedido */}
-          <div className="w-96 bg-gray-50 border-l border-gray-200 flex flex-col relative">
+          <div className="w-96 bg-gray-50 border-l border-gray-200 flex flex-col">
             {/* Header do Carrinho */}
             <div className="p-6 border-b border-gray-200 flex-shrink-0">
               <div className="flex items-center justify-between">
@@ -327,7 +327,7 @@ const ComandasView: React.FC = () => {
             </div>
             
             {/* Lista de Itens - Expansível */}
-            <div className="flex-1 overflow-y-auto p-6 min-h-0" style={{ paddingBottom: cart.length > 0 ? '120px' : '0' }}>
+            <div className="flex-1 overflow-y-auto p-6 min-h-0">
               {cart.length === 0 ? (
                 <div className="text-center text-gray-500 py-8 h-full flex flex-col items-center justify-center">
                   <ShoppingCart className="h-12 w-12 mx-auto mb-2 text-gray-300" />
@@ -366,39 +366,24 @@ const ComandasView: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                </div>
-              )}
-            </div>
+                  
+                  {/* Botão logo após os itens */}
+                  <div className="mt-6 pt-4 border-t border-gray-200">
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-lg font-semibold text-gray-900">Total:</span>
+                      <span className="text-2xl font-bold text-green-600">
+                        R$ {getTotalPrice().toFixed(2)}
+                      </span>
+                    </div>
 
-            {/* Footer do Carrinho - Fixo */}
-            <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-6" style={{ zIndex: 10 }}>
-              <div className="mb-4">
-                <p className="text-sm text-gray-600">Debug: Carrinho tem {cart.length} itens</p>
-                <p className="text-sm text-gray-600">Condição: {cart.length > 0 ? 'TRUE' : 'FALSE'}</p>
-              </div>
-              
-              {cart.length > 0 && (
-                <>
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-lg font-semibold text-gray-900">Total:</span>
-                    <span className="text-2xl font-bold text-green-600">
-                      R$ {getTotalPrice().toFixed(2)}
-                    </span>
+                    <button
+                      onClick={handleAddItemsToComanda}
+                      className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <Plus size={20} />
+                      <span>Adicionar à Comanda</span>
+                    </button>
                   </div>
-
-                  <button
-                    onClick={handleAddItemsToComanda}
-                    className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
-                  >
-                    <Plus size={20} />
-                    <span>Adicionar à Comanda</span>
-                  </button>
-                </>
-              )}
-              
-              {cart.length === 0 && (
-                <div className="text-center text-gray-500 py-4">
-                  <p>Carrinho vazio - botão não deve aparecer</p>
                 </div>
               )}
             </div>
