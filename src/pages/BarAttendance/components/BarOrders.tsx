@@ -14,6 +14,9 @@ interface BarOrdersProps {
 const BarOrders: React.FC<BarOrdersProps> = ({ orders, menuItems }) => {
   const { updateOrderStatus } = useApp();
 
+  console.log('BarOrders - Pedidos recebidos:', orders.length);
+  console.log('BarOrders - MenuItems recebidos:', menuItems.length);
+
   // Agrupar pedidos por mesa para identificar múltiplos pedidos
   const getOrdersByTable = () => {
     const tableOrders = new Map<string, Order[]>();

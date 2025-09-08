@@ -69,33 +69,6 @@ const OrderQueue: React.FC<OrderQueueProps> = ({ onUpdateItemStatus }) => {
     // Extrair número do pedido do ID (últimos 4 caracteres)
     return item.id.slice(-4).toUpperCase();
   };
-    const tableItems = new Map<string, ComandaItemWithMenu[]>();
-    activeOrders.forEach(item => {
-      const tableKey = item.comandas?.bar_tables?.number || 'Balcão';
-      if (!tableItems.has(tableKey)) {
-        tableItems.set(tableKey, []);
-      }
-      tableItems.get(tableKey)!.push(item);
-    });
-    return tableItems;
-  };
-
-  const tableItemsMap = getItemsByTable();
-
-  const hasMultipleOrdersForTable = (tableNumber: string): boolean => {
-    return (tableItemsMap.get(tableNumber) || []).length > 1;
-  };
-
-  const getOrderNumber = (item: ComandaItemWithMenu): string => {
-    // Extrair número do pedido do ID (últimos 4 caracteres)
-    return item.id.slice(-4).toUpperCase();
-  };
-
-
-
-
-
-
 
   // Atualizar status do item
   const handleUpdateStatus = async (itemId: string, newStatus: string) => {
