@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Plus, RotateCcw, Eye } from 'lucide-react';
+import { Settings, Plus, RotateCcw } from 'lucide-react';
 import NovaComandaModal from './NovaComandaModal';
 import ConfigurarLayoutModal from './ConfigurarLayoutModal';
 import MesaDetailsModal from './MesaDetailsModal';
-import LayoutSalao from './LayoutSalao';
-import MesasLegend from './MesasLegend';
 import { useBarTables } from '../../../hooks/useBarTables';
 import { useComandas } from '../../../hooks/useComandas';
 import { BarTable, Comanda, TableStatus } from '../../../types';
@@ -162,38 +160,7 @@ const MesasView: React.FC = () => {
         </div>
       </div>
         
-      {/* Layout do salão */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Layout do Salão</h3>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <Eye size={16} />
-              <span>Clique nas mesas para ver detalhes ou abrir comandas</span>
-            </div>
-          </div>
-          
-          {/* Legenda */}
-          <div className="mb-6">
-            <MesasLegend stats={stats} />
-          </div>
-        </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-2">Carregando mesas...</span>
-          </div>
-        ) : (
-          <LayoutSalao
-            mesas={mesasWithComandas}
-            onMesaClick={handleTableClick}
-            onMesaPositionChange={handlePositionChange}
-            onStatusChange={handleStatusChange}
-            isDragEnabled={true}
-          />
-        )}
-      </div>
 
       {/* Modais */}
       <NovaComandaModal 
