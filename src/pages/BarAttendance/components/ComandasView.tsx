@@ -28,6 +28,11 @@ const ComandasView: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [searchTermItems, setSearchTermItems] = useState('');
   
+  // Estados para feedback visual
+  const [isAddingItems, setIsAddingItems] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  
   // Hook para menu items
   const { menuItems, loading: menuLoading } = useMenuItems(true);
   const { adicionarItemComanda } = useBarAttendance();
@@ -102,6 +107,8 @@ const ComandasView: React.FC = () => {
       return;
     }
     
+    setIsAddingItems(true);
+    
     try {
       console.log('📦 Adicionando', cart.length, 'itens à comanda', selectedComanda.id);
       
@@ -117,15 +124,31 @@ const ComandasView: React.FC = () => {
       }
       
       console.log('🧹 Limpando carrinho');
+      const itemCount = cart.length;
       setCart([]);
       
       console.log('🔄 Atualizando dados');
       refetch();
       
+      // Mostrar mensagem de sucesso
+      setSuccessMessage(`✅ ${itemCount} ${itemCount === 1 ? 'item adicionado' : 'itens adicionados'} com sucesso!`);
+      setShowSuccessMessage(true);
+      
+      // Esconder mensagem após 3 segundos
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+      
       console.log('🎉 Processo concluído com sucesso!');
     } catch (error) {
       console.error('❌ Erro ao adicionar itens à comanda:', error);
-      alert('Erro ao adicionar itens à comanda: ' + error.message);
+      setSuccessMessage('❌ Erro ao adicionar itens à comanda');
+      setShowSuccessMessage(true);
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+    } finally {
+      setIsAddingItems(false);
     }
   };
 
@@ -455,11 +478,36 @@ const ComandasView: React.FC = () => {
 
                     <button
                       onClick={handleAddItemsToComanda}
-                      className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+                      disabled={isAddingItems}
+                      className={`w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${
+                        isAddingItems 
+                          ? 'bg-gray-400 cursor-not-allowed' 
+                          : 'bg-green-600 hover:bg-green-700 text-white'
+                      }`}
                     >
-                      <Plus size={20} />
-                      <span>Adicionar à Comanda</span>
+                      {isAddingItems ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          <span>Adicionando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus size={20} />
+                          <span>Adicionar à Comanda</span>
+                        </>
+                      )}
                     </button>
+
+                    {/* Mensagem de Feedback */}
+                    {showSuccessMessage && (
+                      <div className={`mt-3 p-3 rounded-lg text-sm font-medium text-center transition-all duration-300 ${
+                        successMessage.includes('❌') 
+                          ? 'bg-red-100 text-red-800 border border-red-200' 
+                          : 'bg-green-100 text-green-800 border border-green-200'
+                      }`}>
+                        {successMessage}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
