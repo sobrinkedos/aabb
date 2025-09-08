@@ -7,6 +7,7 @@ import { useComandas } from '../../../hooks/useComandas';
 import { useBarTables } from '../../../hooks/useBarTables';
 import { useMenuItems } from '../../../hooks/useMenuItems';
 import { useBarAttendance } from '../../../hooks/useBarAttendance';
+import { useApp } from '../../../contexts/AppContext';
 import { Comanda, ComandaStatus } from '../../../types/bar-attendance';
 import { MenuItem } from '../../../types';
 
@@ -36,6 +37,7 @@ const ComandasView: React.FC = () => {
   // Hook para menu items
   const { menuItems, loading: menuLoading } = useMenuItems(true);
   const { adicionarItemComanda } = useBarAttendance();
+  const { refreshBarOrders, refreshKitchenOrders } = useApp();
 
   // Atualizar comanda selecionada quando as comandas mudarem
   useEffect(() => {
@@ -141,6 +143,12 @@ const ComandasView: React.FC = () => {
       console.log('🔄 Atualizando dados');
       await refetch();
       console.log('📋 Dados atualizados, comanda selecionada será atualizada automaticamente');
+      
+      // Forçar atualização dos pedidos do bar e cozinha
+      console.log('🍺 Forçando atualização dos pedidos do bar e cozinha...');
+      await refreshBarOrders();
+      await refreshKitchenOrders();
+      console.log('✅ Pedidos do bar e cozinha atualizados');
       
       // Mostrar mensagem de sucesso
       setSuccessMessage(`✅ ${itemCount} ${itemCount === 1 ? 'item adicionado' : 'itens adicionados'} com sucesso!`);
