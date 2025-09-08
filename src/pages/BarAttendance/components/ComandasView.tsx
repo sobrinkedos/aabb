@@ -34,9 +34,13 @@ const ComandasView: React.FC = () => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   
+  // Estados para fechamento de conta
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [isClosingComanda, setIsClosingComanda] = useState(false);
+  
   // Hook para menu items
   const { menuItems, loading: menuLoading } = useMenuItems(true);
-  const { adicionarItemComanda } = useBarAttendance();
+  const { adicionarItemComanda, fecharComanda } = useBarAttendance();
   const { refreshBarOrders, refreshKitchenOrders } = useApp();
 
   // Atualizar comanda selecionada quando as comandas mudarem
@@ -172,6 +176,48 @@ const ComandasView: React.FC = () => {
     }
   };
 
+  const handleCloseComanda = async (metodoPagamento: string, observacoes?: string) => {
+    if (!selectedComanda) return;
+    
+    setIsClosingComanda(true);
+    
+    try {
+      console.log('💳 Fechando comanda:', selectedComanda.id, 'Método:', metodoPagamento);
+      
+      await fecharComanda(selectedComanda.id, metodoPagamento, observacoes);
+      
+      console.log('✅ Comanda fechada com sucesso');
+      
+      // Atualizar dados
+      await refetch();
+      await refreshBarOrders();
+      await refreshKitchenOrders();
+      
+      // Voltar para a lista
+      setViewMode('list');
+      setSelectedComanda(null);
+      setCart([]);
+      setShowCloseModal(false);
+      
+      // Mostrar mensagem de sucesso
+      setSuccessMessage('✅ Comanda fechada e enviada para o caixa!');
+      setShowSuccessMessage(true);
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+      
+    } catch (error) {
+      console.error('❌ Erro ao fechar comanda:', error);
+      setSuccessMessage('❌ Erro ao fechar comanda');
+      setShowSuccessMessage(true);
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+    } finally {
+      setIsClosingComanda(false);
+    }
+  };
+
   const handleDismissAlert = (comandaId: string) => {
     setDismissedAlerts(prev => new Set([...prev, comandaId]));
   };
@@ -300,6 +346,17 @@ const ComandasView: React.FC = () => {
               </div>
             </div>
           </div>
+          
+          {/* Botão Fechar Conta */}
+          {selectedComanda?.status === 'open' && (
+            <button
+              onClick={() => setShowCloseModal(true)}
+              className="bg-red-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center space-x-2"
+            >
+              <CreditCard size={20} />
+              <span>Fechar Conta</span>
+            </button>
+          )}
         </div>
 
         <div className="flex-1 flex overflow-hidden min-h-0">
@@ -710,6 +767,30 @@ const ComandasView: React.FC = () => {
           refetch();
         }}
       />
+
+      {/* Modal Fechar Conta */}
+      {showCloseModal && selectedComanda && (
+        <CloseComandaModal
+          isOpen={showCloseModal}
+          onClose={() => setShowCloseModal(false)}
+          comanda={selectedComanda}
+          onConfirm={handleCloseComanda}
+          isLoading={isClosingComanda}
+        />
+      )}
+
+      {/* Mensagem de Feedback Global */}
+      {showSuccessMessage && viewMode === 'list' && (
+        <div className="fixed top-4 right-4 z-50">
+          <div className={`p-4 rounded-lg shadow-lg ${
+            successMessage.includes('❌') 
+              ? 'bg-red-100 text-red-800 border border-red-200' 
+              : 'bg-green-100 text-green-800 border border-green-200'
+          }`}>
+            {successMessage}
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -725,6 +806,117 @@ const ComandasView: React.FC = () => {
     }
     return `${diffMinutes}min`;
   }
+};
+
+// Modal para fechar comanda
+interface CloseComandaModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  comanda: Comanda;
+  onConfirm: (metodoPagamento: string, observacoes?: string) => void;
+  isLoading: boolean;
+}
+
+const CloseComandaModal: React.FC<CloseComandaModalProps> = ({
+  isOpen,
+  onClose,
+  comanda,
+  onConfirm,
+  isLoading
+}) => {
+  const [metodoPagamento, setMetodoPagamento] = useState('dinheiro');
+  const [observacoes, setObservacoes] = useState('');
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onConfirm(metodoPagamento, observacoes);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+        <div className="p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Fechar Conta</h2>
+          
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <h3 className="font-semibold text-gray-900 mb-2">
+              Mesa {comanda.table?.number || 'N/A'} - {comanda.customer_name || 'Cliente'}
+            </h3>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Total da conta:</span>
+              <span className="text-2xl font-bold text-green-600">
+                R$ {comanda.total?.toFixed(2) || '0,00'}
+              </span>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Método de Pagamento
+              </label>
+              <select
+                value={metodoPagamento}
+                onChange={(e) => setMetodoPagamento(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              >
+                <option value="dinheiro">Dinheiro</option>
+                <option value="cartao_credito">Cartão de Crédito</option>
+                <option value="cartao_debito">Cartão de Débito</option>
+                <option value="pix">PIX</option>
+                <option value="vale_refeicao">Vale Refeição</option>
+                <option value="outros">Outros</option>
+              </select>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Observações (opcional)
+              </label>
+              <textarea
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
+                placeholder="Observações sobre o pagamento..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isLoading}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Fechando...</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard size={16} />
+                    <span>Fechar Conta</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default ComandasView;
