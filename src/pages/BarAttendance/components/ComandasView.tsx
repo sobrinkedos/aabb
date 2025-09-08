@@ -49,20 +49,25 @@ const ComandasView: React.FC = () => {
 
   // Funções do carrinho
   const addToCart = (item: MenuItem) => {
+    console.log('Adicionando item ao carrinho:', item);
     const existingIndex = cart.findIndex(cartItem => cartItem.menu_item_id === item.id);
     
     if (existingIndex >= 0) {
       const newCart = [...cart];
       newCart[existingIndex].quantity += 1;
       setCart(newCart);
+      console.log('Item já existia, quantidade atualizada:', newCart);
     } else {
-      setCart([...cart, {
+      const newCartItem = {
         menu_item_id: item.id,
         name: item.name,
         price: typeof item.price === 'string' ? parseFloat(item.price) : item.price,
         quantity: 1,
         notes: ''
-      }]);
+      };
+      const newCart = [...cart, newCartItem];
+      setCart(newCart);
+      console.log('Novo item adicionado ao carrinho:', newCart);
     }
   };
 
@@ -192,7 +197,11 @@ const ComandasView: React.FC = () => {
     const matchesSearch = item.name.toLowerCase().includes(searchTermItems.toLowerCase());
     return matchesCategory && matchesSearch && item.available;
   }); 
- // Renderização condicional baseada no modo de visualização
+  // Debug: verificar estado do carrinho
+  console.log('Estado atual do carrinho:', cart);
+  console.log('Carrinho tem itens?', cart.length > 0);
+
+  // Renderização condicional baseada no modo de visualização
   if (viewMode === 'details' && selectedComanda) {
     return (
       <div className="comanda-details-container h-full flex flex-col bg-gray-50">
@@ -300,7 +309,7 @@ const ComandasView: React.FC = () => {
               )}
             </div>
           </div> 
-         {/* Carrinho de Pedido */}
+          {/* Carrinho de Pedido */}
           <div className="w-96 bg-gray-50 border-l border-gray-200 flex flex-col relative">
             {/* Header do Carrinho */}
             <div className="p-6 border-b border-gray-200 flex-shrink-0">
@@ -318,7 +327,7 @@ const ComandasView: React.FC = () => {
             </div>
             
             {/* Lista de Itens - Expansível */}
-            <div className="flex-1 overflow-y-auto p-6 min-h-0">
+            <div className="flex-1 overflow-y-auto p-6 min-h-0" style={{ paddingBottom: cart.length > 0 ? '120px' : '0' }}>
               {cart.length === 0 ? (
                 <div className="text-center text-gray-500 py-8 h-full flex flex-col items-center justify-center">
                   <ShoppingCart className="h-12 w-12 mx-auto mb-2 text-gray-300" />
@@ -363,7 +372,7 @@ const ComandasView: React.FC = () => {
 
             {/* Footer do Carrinho - Fixo */}
             {cart.length > 0 && (
-              <div className="bg-white border-t border-gray-200 p-6 mt-auto flex-shrink-0">
+              <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-6">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-lg font-semibold text-gray-900">Total:</span>
                   <span className="text-2xl font-bold text-green-600">
