@@ -312,6 +312,13 @@ const ComandasView: React.FC = () => {
   // Debug: verificar estado do carrinho
   console.log('Estado atual do carrinho:', cart);
   console.log('Carrinho tem itens?', cart.length > 0);
+  
+  // Debug: verificar se botão deve aparecer
+  console.log('🔍 Debug botão Fechar Conta:', {
+    selectedComanda: !!selectedComanda,
+    status: selectedComanda?.status,
+    shouldShow: selectedComanda?.status === 'open'
+  });
 
   // Renderização condicional baseada no modo de visualização
   if (viewMode === 'details' && selectedComanda) {
@@ -350,7 +357,13 @@ const ComandasView: React.FC = () => {
           {/* Botão Fechar Conta */}
           {selectedComanda?.status === 'open' && (
             <button
-              onClick={() => setShowCloseModal(true)}
+              onClick={() => {
+                console.log('🔴 Botão Fechar Conta clicado!');
+                console.log('Comanda selecionada:', selectedComanda);
+                console.log('Status da comanda:', selectedComanda?.status);
+                setShowCloseModal(true);
+                console.log('showCloseModal definido como true');
+              }}
               className="bg-red-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center space-x-2"
             >
               <CreditCard size={20} />
@@ -772,12 +785,18 @@ const ComandasView: React.FC = () => {
       {showCloseModal && selectedComanda && (
         <CloseComandaModal
           isOpen={showCloseModal}
-          onClose={() => setShowCloseModal(false)}
+          onClose={() => {
+            console.log('🔴 Fechando modal');
+            setShowCloseModal(false);
+          }}
           comanda={selectedComanda}
           onConfirm={handleCloseComanda}
           isLoading={isClosingComanda}
         />
       )}
+
+      {/* Debug do estado do modal */}
+      {console.log('🔍 Debug modal:', { showCloseModal, selectedComanda: !!selectedComanda, viewMode })}
 
       {/* Mensagem de Feedback Global */}
       {showSuccessMessage && viewMode === 'list' && (
@@ -827,7 +846,14 @@ const CloseComandaModal: React.FC<CloseComandaModalProps> = ({
   const [metodoPagamento, setMetodoPagamento] = useState('dinheiro');
   const [observacoes, setObservacoes] = useState('');
 
-  if (!isOpen) return null;
+  console.log('🔴 CloseComandaModal renderizado:', { isOpen, comanda: !!comanda, isLoading });
+
+  if (!isOpen) {
+    console.log('🔴 Modal não está aberto, retornando null');
+    return null;
+  }
+
+  console.log('🔴 Modal está aberto, renderizando interface');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
