@@ -37,6 +37,17 @@ const ComandasView: React.FC = () => {
   const { menuItems, loading: menuLoading } = useMenuItems(true);
   const { adicionarItemComanda } = useBarAttendance();
 
+  // Atualizar comanda selecionada quando as comandas mudarem
+  useEffect(() => {
+    if (selectedComanda && comandas.length > 0) {
+      const updatedComanda = comandas.find(c => c.id === selectedComanda.id);
+      if (updatedComanda) {
+        console.log('🔄 Atualizando comanda selecionada com novos dados:', updatedComanda);
+        setSelectedComanda(updatedComanda);
+      }
+    }
+  }, [comandas, selectedComanda?.id]);
+
   const handleNewComanda = () => {
     setShowNovaComandaModal(true);
   };
@@ -128,7 +139,8 @@ const ComandasView: React.FC = () => {
       setCart([]);
       
       console.log('🔄 Atualizando dados');
-      refetch();
+      await refetch();
+      console.log('📋 Dados atualizados, comanda selecionada será atualizada automaticamente');
       
       // Mostrar mensagem de sucesso
       setSuccessMessage(`✅ ${itemCount} ${itemCount === 1 ? 'item adicionado' : 'itens adicionados'} com sucesso!`);
@@ -370,6 +382,9 @@ const ComandasView: React.FC = () => {
                 <div className="p-4 bg-blue-50">
                   <h4 className="text-sm font-medium text-blue-900 mb-3">
                     Itens já pedidos ({selectedComanda.items.length})
+                    <span className="text-xs text-gray-500 ml-2">
+                      (Debug: {new Date().toLocaleTimeString()})
+                    </span>
                   </h4>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {selectedComanda.items.map((item: any) => (
