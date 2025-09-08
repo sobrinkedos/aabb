@@ -354,22 +354,27 @@ const ComandasView: React.FC = () => {
             </div>
           </div>
           
-          {/* Botão Fechar Conta */}
-          {selectedComanda?.status === 'open' && (
+          {/* Botão Fechar Conta - Sempre visível para debug */}
+          <div className="flex flex-col space-y-2">
+            <div className="text-xs text-gray-500">
+              Debug: Status = {selectedComanda?.status || 'undefined'}
+            </div>
             <button
               onClick={() => {
                 console.log('🔴 Botão Fechar Conta clicado!');
                 console.log('Comanda selecionada:', selectedComanda);
                 console.log('Status da comanda:', selectedComanda?.status);
+                alert('Botão clicado! Verifique o console.');
                 setShowCloseModal(true);
                 console.log('showCloseModal definido como true');
               }}
               className="bg-red-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center space-x-2"
+              style={{ zIndex: 1000 }}
             >
               <CreditCard size={20} />
-              <span>Fechar Conta</span>
+              <span>Fechar Conta (Debug)</span>
             </button>
-          )}
+          </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden min-h-0">
@@ -781,18 +786,22 @@ const ComandasView: React.FC = () => {
         }}
       />
 
-      {/* Modal Fechar Conta */}
-      {showCloseModal && selectedComanda && (
-        <CloseComandaModal
-          isOpen={showCloseModal}
-          onClose={() => {
-            console.log('🔴 Fechando modal');
-            setShowCloseModal(false);
-          }}
-          comanda={selectedComanda}
-          onConfirm={handleCloseComanda}
-          isLoading={isClosingComanda}
-        />
+      {/* Modal Fechar Conta - Simplificado para debug */}
+      {showCloseModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Modal de Debug</h2>
+            <p>Modal está funcionando!</p>
+            <p>showCloseModal: {showCloseModal.toString()}</p>
+            <p>selectedComanda: {selectedComanda ? 'Existe' : 'Não existe'}</p>
+            <button
+              onClick={() => setShowCloseModal(false)}
+              className="mt-4 bg-gray-600 text-white px-4 py-2 rounded"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Debug do estado do modal */}
