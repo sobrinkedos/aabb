@@ -99,6 +99,42 @@ const MesasView: React.FC = () => {
 
   const stats = getStatusStats();
 
+  // Função para obter o estilo baseado no status da mesa
+  const getTableStatusStyle = (status: TableStatus) => {
+    switch (status) {
+      case 'available':
+        return 'bg-green-100 border-green-300 text-green-800 hover:bg-green-200';
+      case 'occupied':
+        return 'bg-red-100 border-red-300 text-red-800 hover:bg-red-200';
+      case 'reserved':
+        return 'bg-yellow-100 border-yellow-300 text-yellow-800 hover:bg-yellow-200';
+      case 'cleaning':
+        return 'bg-gray-100 border-gray-300 text-gray-800 hover:bg-gray-200';
+      case 'maintenance':
+        return 'bg-orange-100 border-orange-300 text-orange-800 hover:bg-orange-200';
+      default:
+        return 'bg-gray-100 border-gray-300 text-gray-800 hover:bg-gray-200';
+    }
+  };
+
+  // Função para obter o ícone baseado no status da mesa
+  const getTableStatusIcon = (status: TableStatus) => {
+    switch (status) {
+      case 'available':
+        return '✓';
+      case 'occupied':
+        return '👥';
+      case 'reserved':
+        return '📅';
+      case 'cleaning':
+        return '🧹';
+      case 'maintenance':
+        return '🔧';
+      default:
+        return '?';
+    }
+  };
+
   return (
     <div className="mesas-container space-y-6">
       {/* Header com estatísticas */}
@@ -161,6 +197,69 @@ const MesasView: React.FC = () => {
       </div>
         
 
+
+      {/* Painel de Gerenciamento de Mesas */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-medium text-gray-900">Layout do Salão</h3>
+          <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <span>Clique nas mesas para gerenciar</span>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-2">Carregando mesas...</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-4 p-4 bg-gray-50 rounded-lg min-h-96">
+            {mesasWithComandas.map((mesa) => (
+              <div
+                key={mesa.id}
+                onClick={() => handleTableClick(mesa)}
+                className={`
+                  relative aspect-square rounded-lg border-2 cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg
+                  flex flex-col items-center justify-center text-center p-2
+                  ${getTableStatusStyle(mesa.status)}
+                `}
+              >
+                {/* Número da Mesa */}
+                <div className="font-bold text-sm mb-1">
+                  {mesa.number}
+                </div>
+                
+                {/* Ícone de Status */}
+                <div className="text-xs opacity-75">
+                  {getTableStatusIcon(mesa.status)}
+                </div>
+                
+                {/* Informações da Comanda (se houver) */}
+                {mesa.currentComanda && (
+                  <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {mesa.peopleCount || '!'}
+                  </div>
+                )}
+                
+                {/* Capacidade */}
+                <div className="text-xs mt-1 opacity-60">
+                  {mesa.capacity}p
+                </div>
+              </div>
+            ))}
+            
+            {/* Espaços vazios para completar o grid se necessário */}
+            {Array.from({ length: Math.max(0, 40 - mesasWithComandas.length) }).map((_, index) => (
+              <div
+                key={`empty-${index}`}
+                className="aspect-square rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 text-xs"
+              >
+                Vazio
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Modais */}
       <NovaComandaModal 
