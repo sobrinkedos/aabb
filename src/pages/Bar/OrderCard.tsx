@@ -9,9 +9,18 @@ import { ptBR } from 'date-fns/locale';
 interface OrderCardProps {
   order: Order;
   menuItems: MenuItem[];
+  hasMultipleOrders?: boolean;
+  orderNumber?: string;
+  totalOrdersForTable?: number;
 }
 
-const OrderCard: React.FC<OrderCardProps> = ({ order, menuItems }) => {
+const OrderCard: React.FC<OrderCardProps> = ({ 
+  order, 
+  menuItems, 
+  hasMultipleOrders = false,
+  orderNumber,
+  totalOrdersForTable = 1
+}) => {
   const { updateOrderStatus } = useApp();
 
   const getStatusColor = (status: Order['status']) => {
@@ -51,7 +60,9 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, menuItems }) => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+      className={`bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow ${
+        hasMultipleOrders ? 'ring-2 ring-orange-300 ring-offset-2' : ''
+      }`}
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center space-x-2">
@@ -59,6 +70,20 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, menuItems }) => {
           <span className="font-medium text-gray-800">
             Mesa {order.tableNumber || 'N/A'}
           </span>
+          
+          {/* Badge do número do pedido */}
+          {orderNumber && (
+            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+              #{orderNumber}
+            </span>
+          )}
+          
+          {/* Indicador de múltiplos pedidos */}
+          {hasMultipleOrders && (
+            <span className="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+              {totalOrdersForTable} pedidos
+            </span>
+          )}
         </div>
         <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(order.status)}`}>
           {getStatusText(order.status)}

@@ -14,6 +14,30 @@ const BarModule: React.FC = () => {
   // Exibir todos os pratos sem filtro por categoria
   const filteredMenuItems = menuItems;
 
+  // Agrupar pedidos por mesa para identificar múltiplos pedidos
+  const getOrdersByTable = () => {
+    const tableOrders = new Map<string, typeof barOrders>();
+    barOrders.forEach(order => {
+      const tableKey = order.tableNumber || 'Balcão';
+      if (!tableOrders.has(tableKey)) {
+        tableOrders.set(tableKey, []);
+      }
+      tableOrders.get(tableKey)!.push(order);
+    });
+    return tableOrders;
+  };
+
+  const tableOrdersMap = getOrdersByTable();
+
+  const hasMultipleOrdersForTable = (tableNumber: string): boolean => {
+    return (tableOrdersMap.get(tableNumber) || []).length > 1;
+  };
+
+  const getOrderNumber = (order: any): string => {
+    // Extrair número do pedido do ID (últimos 4 caracteres)
+    return order.id.slice(-4).toUpperCase();
+  };
+
   const filteredOrders = barOrders.filter(order => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     const matchesSearch = order.tableNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -67,7 +91,14 @@ const BarModule: React.FC = () => {
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4 sm:mb-0">Pedidos</h2>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">Pedidos</h2>
+            {Array.from(tableOrdersMap.entries()).filter(([_, orders]) => orders.length > 1).length > 0 && (
+              <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
+                {Array.from(tableOrdersMap.entries()).filter(([_, orders]) => orders.length > 1).length} mesa(s) com múltiplos pedidos
+              </span>
+            )}
+          </div>
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
             <div className="relative">
               <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -94,9 +125,32 @@ const BarModule: React.FC = () => {
           </div>
         </div>
 
+        {/* Resumo de mesas com múltiplos pedidos */}
+        {Array.from(tableOrdersMap.entries()).filter(([_, orders]) => orders.length > 1).length > 0 && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+            <h3 className="text-sm font-semibold text-orange-800 mb-2">⚠️ Mesas com Múltiplos Pedidos:</h3>
+            <div className="flex flex-wrap gap-2">
+              {Array.from(tableOrdersMap.entries())
+                .filter(([_, orders]) => orders.length > 1)
+                .map(([tableNumber, orders]) => (
+                  <span key={tableNumber} className="bg-orange-200 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
+                    Mesa {tableNumber}: {orders.length} pedidos
+                  </span>
+                ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredOrders.map((order) => (
-            <OrderCard key={order.id} order={order} menuItems={menuItems} />
+            <OrderCard 
+              key={order.id} 
+              order={order} 
+              menuItems={menuItems}
+              hasMultipleOrders={hasMultipleOrdersForTable(order.tableNumber || 'Balcão')}
+              orderNumber={getOrderNumber(order)}
+              totalOrdersForTable={(tableOrdersMap.get(order.tableNumber || 'Balcão') || []).length}
+            />
           ))}
         </div>
 
