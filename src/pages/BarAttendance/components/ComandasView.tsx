@@ -243,13 +243,13 @@ const ComandasView: React.FC = () => {
   // Renderização condicional baseada no modo de visualização
   if (viewMode === 'details' && selectedComanda) {
     return (
-      <div className="comanda-details-container">
+      <div className="comanda-details-container h-full flex flex-col bg-gray-50">
         {/* Header com botão voltar */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between p-6 border-b bg-white flex-shrink-0">
           <div className="flex items-center space-x-4">
             <button
               onClick={handleBackToList}
-              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
+              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
             >
               <ArrowLeft size={20} />
               <span>Voltar para Comandas</span>
@@ -265,112 +265,167 @@ const ComandasView: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Menu de itens */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Adicionar Itens</h3>
-              
-              {/* Filtros */}
-              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mb-6">
+        <div className="flex-1 flex overflow-hidden min-h-0">
+          {/* Menu de Itens */}
+          <div className="flex-1 flex flex-col p-6">
+            {/* Filtros e Busca */}
+            <div className="flex items-center space-x-4 mb-6">
+              <div className="flex-1 relative">
                 <input
                   type="text"
                   placeholder="Buscar itens..."
                   value={searchTermItems}
                   onChange={(e) => setSearchTermItems(e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">Todas as Categorias</option>
-                  {categories.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
               </div>
-
-              {/* Grid de itens */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {filteredMenuItems.map(item => (
-                  <div key={item.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <h4 className="font-medium text-gray-900 mb-2">{item.name}</h4>
-                    {item.description && (
-                      <p className="text-sm text-gray-600 mb-3">{item.description}</p>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg font-bold text-green-600">
-                        R$ {(typeof item.price === 'string' ? parseFloat(item.price) : item.price).toFixed(2)}
-                      </span>
-                      <button
-                        onClick={() => addToCart(item)}
-                        className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors"
-                      >
-                        <Plus size={16} />
-                      </button>
-                    </div>
-                  </div>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">Todas as Categorias</option>
+                {categories.map(category => (
+                  <option key={category} value={category}>{category}</option>
                 ))}
-              </div>
+              </select>
             </div>
-          </div>
 
-          {/* Carrinho */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm p-6 sticky top-6">
-              <div className="flex items-center mb-4">
-                <ShoppingCart size={20} className="mr-2" />
-                <h3 className="text-lg font-medium">Itens Selecionados</h3>
-              </div>
-
-              {cart.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">Nenhum item selecionado</p>
+            {/* Grid de Itens */}
+            <div className="flex-1 overflow-y-auto">
+              {menuLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : filteredMenuItems.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-2">Nenhum item encontrado</p>
+                </div>
               ) : (
-                <div className="space-y-4">
-                  {cart.map(item => (
-                    <div key={item.menu_item_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-sm">{item.name}</h4>
-                        <p className="text-sm text-gray-600">R$ {item.price.toFixed(2)} cada</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {filteredMenuItems.map(item => (
+                    <div
+                      key={item.id}
+                      onClick={() => addToCart(item)}
+                      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer group"
+                    >
+                      <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center group-hover:bg-gray-200 transition-colors">
+                        {item.image_url ? (
+                          <img
+                            src={item.image_url}
+                            alt={item.name}
+                            className="max-w-full max-h-full object-contain rounded-lg"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextElementSibling.style.display = 'block';
+                            }}
+                          />
+                        ) : null}
+                        <div className="text-gray-400 text-2xl" style={{ display: item.image_url ? 'none' : 'block' }}>
+                          🍺
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => updateQuantity(item.menu_item_id, item.quantity - 1)}
-                          className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300"
-                        >
-                          <Minus size={12} />
-                        </button>
-                        <span className="w-8 text-center">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.menu_item_id, item.quantity + 1)}
-                          className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300"
-                        >
-                          <Plus size={12} />
-                        </button>
+                      <h3 className="font-medium text-gray-900 mb-1 line-clamp-2">
+                        {item.name}
+                      </h3>
+                      <p className="text-sm text-gray-500 mb-2 line-clamp-2">
+                        {item.description}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg font-bold text-green-600">
+                          R$ {(typeof item.price === 'string' ? parseFloat(item.price) : item.price).toFixed(2)}
+                        </span>
+                        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                          {item.category}
+                        </span>
                       </div>
                     </div>
                   ))}
-
-                  <div className="border-t pt-4">
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="text-lg font-semibold">Total:</span>
-                      <span className="text-xl font-bold text-green-600">
-                        R$ {getTotalPrice().toFixed(2)}
-                      </span>
-                    </div>
-
-                    <button
-                      onClick={handleAddItemsToComanda}
-                      className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors"
-                    >
-                      Adicionar à Comanda
-                    </button>
-                  </div>
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Carrinho de Pedido */}
+          <div className="w-96 bg-gray-50 border-l border-gray-200 flex flex-col relative">
+            {/* Header do Carrinho */}
+            <div className="p-6 border-b border-gray-200 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Itens Selecionados</h3>
+                {cart.length > 0 && (
+                  <button
+                    onClick={() => setCart([])}
+                    className="text-sm text-red-600 hover:text-red-800"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            {/* Lista de Itens - Expansível */}
+            <div className="flex-1 overflow-y-auto p-6 min-h-0 pb-32">
+              {cart.length === 0 ? (
+                <div className="text-center text-gray-500 py-8 h-full flex flex-col items-center justify-center">
+                  <ShoppingCart className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                  <p>Nenhum item selecionado</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {cart.map(item => (
+                    <div key={item.menu_item_id} className="bg-white rounded-lg p-4 shadow-sm">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-900 mb-1">{item.name}</h4>
+                          <p className="text-sm text-gray-600">R$ {item.price.toFixed(2)} cada</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <button
+                            onClick={() => updateQuantity(item.menu_item_id, item.quantity - 1)}
+                            className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <span className="w-8 text-center font-medium">{item.quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(item.menu_item_id, item.quantity + 1)}
+                            className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                        <span className="font-bold text-green-600">
+                          R$ {(item.price * item.quantity).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer do Carrinho - Fixo */}
+            {cart.length > 0 && (
+              <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-lg font-semibold text-gray-900">Total:</span>
+                  <span className="text-2xl font-bold text-green-600">
+                    R$ {getTotalPrice().toFixed(2)}
+                  </span>
+                </div>
+
+                <button
+                  onClick={handleAddItemsToComanda}
+                  className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+                >
+                  <Plus size={20} />
+                  <span>Adicionar à Comanda</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
