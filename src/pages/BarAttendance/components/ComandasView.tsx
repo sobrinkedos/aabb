@@ -371,24 +371,37 @@ const ComandasView: React.FC = () => {
             </div>
 
             {/* Footer do Carrinho - Fixo */}
-            {cart.length > 0 && (
-              <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-lg font-semibold text-gray-900">Total:</span>
-                  <span className="text-2xl font-bold text-green-600">
-                    R$ {getTotalPrice().toFixed(2)}
-                  </span>
-                </div>
-
-                <button
-                  onClick={handleAddItemsToComanda}
-                  className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
-                >
-                  <Plus size={20} />
-                  <span>Adicionar à Comanda</span>
-                </button>
+            <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-6" style={{ zIndex: 10 }}>
+              <div className="mb-4">
+                <p className="text-sm text-gray-600">Debug: Carrinho tem {cart.length} itens</p>
+                <p className="text-sm text-gray-600">Condição: {cart.length > 0 ? 'TRUE' : 'FALSE'}</p>
               </div>
-            )}
+              
+              {cart.length > 0 && (
+                <>
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-lg font-semibold text-gray-900">Total:</span>
+                    <span className="text-2xl font-bold text-green-600">
+                      R$ {getTotalPrice().toFixed(2)}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={handleAddItemsToComanda}
+                    className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <Plus size={20} />
+                    <span>Adicionar à Comanda</span>
+                  </button>
+                </>
+              )}
+              
+              {cart.length === 0 && (
+                <div className="text-center text-gray-500 py-4">
+                  <p>Carrinho vazio - botão não deve aparecer</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
