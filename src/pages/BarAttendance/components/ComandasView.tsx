@@ -285,9 +285,19 @@ const ComandasView: React.FC = () => {
               <h2 className="text-xl font-semibold text-gray-900">
                 Mesa {selectedComanda.table?.number || 'N/A'} - {selectedComanda.customer_name || 'Cliente'}
               </h2>
-              <p className="text-sm text-gray-600">
-                Aberta em {formatDate(selectedComanda.opened_at)} • Total: R$ {selectedComanda.total?.toFixed(2) || '0,00'}
-              </p>
+              <div className="flex items-center space-x-4 mt-2">
+                <p className="text-sm text-gray-600">
+                  Aberta em {formatDate(selectedComanda.opened_at)}
+                </p>
+                <div className="bg-green-100 px-4 py-2 rounded-lg border border-green-200">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-green-800">Total da Comanda:</span>
+                    <span className="text-xl font-bold text-green-900">
+                      R$ {selectedComanda.total?.toFixed(2) || '0,00'}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -492,11 +502,13 @@ const ComandasView: React.FC = () => {
                   
                   {/* Botão logo após os itens */}
                   <div className="mt-6 pt-4 border-t border-gray-200">
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="text-lg font-semibold text-gray-900">Total:</span>
-                      <span className="text-2xl font-bold text-green-600">
-                        R$ {getTotalPrice().toFixed(2)}
-                      </span>
+                    <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200 mb-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold text-green-800">Total dos Novos Itens:</span>
+                        <span className="text-3xl font-bold text-green-900">
+                          R$ {getTotalPrice().toFixed(2)}
+                        </span>
+                      </div>
                     </div>
 
                     <button
