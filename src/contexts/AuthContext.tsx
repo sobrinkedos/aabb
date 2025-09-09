@@ -69,6 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
     
     if (session) {
+      console.log('AuthContext: Sessão encontrada, buscando perfil:', session.user.id);
       // Se há uma sessão, buscamos o perfil do usuário.
       supabase
         .from('profiles')
@@ -76,6 +77,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .eq('id', session.user.id)
         .single()
         .then(({ data: profile, error }) => {
+          console.log('AuthContext: Resultado da busca de perfil:', { profile, error });
           if (error || !profile) {
             console.error('Perfil não encontrado ou erro na busca, deslogando.', error);
             // Se o perfil não existe, algo está errado. Forçamos o logout.
@@ -89,6 +91,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               role: profile.role as User['role'],
               avatar: profile.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${profile.name || session.user.email}`,
             };
+            console.log('AuthContext: Usuário da aplicação criado:', appUser);
             setUser(appUser);
           }
         });
