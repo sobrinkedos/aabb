@@ -3,6 +3,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useComandas } from "../../hooks/useComandas";
 import BarHeader from "./components/BarHeader";
 import BalcaoView from "./components/BalcaoView";
+import BalcaoViewNew from "./components/BalcaoViewNew";
+import BalcaoPendingPanel from "./components/BalcaoPendingPanel";
 import MesasView from "./components/MesasView";
 import ComandasView from "./components/ComandasView";
 import OrderQueue from "./components/OrderQueue";
@@ -22,6 +24,7 @@ const BarAttendance: React.FC = () => {
   const { updateItemStatus } = useComandas();
   const { barOrders, menuItems } = useApp();
   const [activeMode, setActiveMode] = useState<BarAttendanceMode>("balcao");
+  const [showPendingOrders, setShowPendingOrders] = useState(false);
 
   const handleModeChange = (mode: BarAttendanceMode) => {
     setActiveMode(mode);
@@ -39,7 +42,7 @@ const BarAttendance: React.FC = () => {
   const renderContent = () => {
     switch (activeMode) {
       case "balcao":
-        return <BalcaoView />;
+        return showPendingOrders ? <BalcaoPendingPanel /> : <BalcaoViewNew />;
       case "mesas":
         return <MesasView />;
       case "comandas":
@@ -49,7 +52,7 @@ const BarAttendance: React.FC = () => {
       case "pedidos":
         return <BarOrders orders={barOrders} menuItems={menuItems} />;
       default:
-        return <BalcaoView />;
+        return <BalcaoViewNew />;
     }
   };
 
@@ -60,6 +63,34 @@ const BarAttendance: React.FC = () => {
         onModeChange={handleModeChange}
         user={user}
       />
+
+      {/* Controle específico para Balcão */}
+      {activeMode === "balcao" && (
+        <div className="bg-white border-b border-gray-200 px-4 py-2">
+          <div className="flex items-center justify-center space-x-2">
+            <button
+              onClick={() => setShowPendingOrders(false)}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                !showPendingOrders
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              🛒 Criar Pedido
+            </button>
+            <button
+              onClick={() => setShowPendingOrders(true)}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                showPendingOrders
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              📋 Gerenciar Pedidos
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="bar-content flex-1 p-4 md:p-6 overflow-auto">
         {renderContent()}

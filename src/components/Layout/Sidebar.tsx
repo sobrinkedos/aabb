@@ -10,7 +10,8 @@ import {
   Settings,
   LogOut,
   Zap,
-  Coffee
+  Coffee,
+  DollarSign
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { motion } from 'framer-motion';
@@ -22,6 +23,7 @@ const Sidebar: React.FC = () => {
     { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
     { name: 'Bar', icon: Wine, path: '/bar' },
     { name: 'Atendimento Bar', icon: Coffee, path: '/bar/attendance' },
+    { name: 'Gestão de Caixa', icon: DollarSign, path: '/cash' },
     { name: 'Clientes', icon: Users, path: '/bar-customers' },
     { name: 'Funcionários', icon: UserCheck, path: '/bar-employees' },
     { name: 'Cozinha', icon: ChefHat, path: '/kitchen' },

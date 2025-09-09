@@ -256,7 +256,7 @@ const Dashboard: React.FC = () => {
         className="bg-white rounded-lg shadow-md p-6"
       >
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Módulos Disponíveis</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link
             to="/bar"
             className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors cursor-pointer group"
@@ -268,12 +268,22 @@ const Dashboard: React.FC = () => {
             <p className="text-sm text-gray-600">Gestão completa de pedidos, comandas e vendas do bar</p>
           </Link>
           <Link
-            to="/kitchen"
+            to="/cash"
             className="p-4 border border-gray-200 rounded-lg hover:border-green-300 transition-colors cursor-pointer group"
           >
             <div className="flex items-center space-x-2 mb-2">
-              <ChefHat className="w-5 h-5 text-green-600" />
-              <h4 className="font-medium text-gray-800 group-hover:text-green-600 transition-colors">Módulo Cozinha</h4>
+              <DollarSign className="w-5 h-5 text-green-600" />
+              <h4 className="font-medium text-gray-800 group-hover:text-green-600 transition-colors">Gestão de Caixa</h4>
+            </div>
+            <p className="text-sm text-gray-600">Controle financeiro, fechamento de caixa e relatórios</p>
+          </Link>
+          <Link
+            to="/kitchen"
+            className="p-4 border border-gray-200 rounded-lg hover:border-orange-300 transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center space-x-2 mb-2">
+              <ChefHat className="w-5 h-5 text-orange-600" />
+              <h4 className="font-medium text-gray-800 group-hover:text-orange-600 transition-colors">Módulo Cozinha</h4>
             </div>
             <p className="text-sm text-gray-600">Controle de cardápio, pedidos e gestão da cozinha</p>
           </Link>

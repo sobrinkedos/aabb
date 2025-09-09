@@ -14,7 +14,7 @@ const BarHeader: React.FC<BarHeaderProps> = ({ mode, onModeChange, user }) => {
     mesas: 'Mesas',
     comandas: 'Comandas',
     fila: 'Fila',
-    pedidos: 'Pedidos'
+    pedidos: 'Preparo'
   };
 
   const modeLabelsLong = {

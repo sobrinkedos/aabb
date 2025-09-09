@@ -306,49 +306,86 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     try {
       console.log('updateOrderStatus chamado:', { orderId, status });
       
-      // Extrair comandaId do orderId (UUID completo antes do timestamp)
-      // UUID tem formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-      // Então precisamos pegar as primeiras 5 partes separadas por hífen
-      const parts = orderId.split('-');
-      const realComandaId = parts.slice(0, 5).join('-');
-      
-      // Extrair timeKey do orderId (timestamp após o UUID)
-      const timeKey = parts.slice(5).join('-');
-      
-      console.log('Decomposição do ID:', { parts, realComandaId, timeKey });
-      
-      // Buscar itens específicos deste pedido baseado no timestamp
-      const { data: currentItems, error: fetchError } = await supabase
-        .from('comanda_items')
-        .select('*')
-        .eq('comanda_id', realComandaId)
-        .in('status', ['pending', 'preparing', 'ready']);
-
-      if (fetchError) throw fetchError;
-
-      // Filtrar itens que pertencem a este pedido específico (mesmo minuto)
-      const itemsToUpdate = currentItems?.filter(item => {
-        const addedAt = new Date(item.added_at);
-        const itemTimeKey = `${addedAt.getFullYear()}-${addedAt.getMonth()}-${addedAt.getDate()}-${addedAt.getHours()}-${addedAt.getMinutes()}`;
-        return timeKey === itemTimeKey;
-      }) || [];
-
-      console.log('Itens encontrados para atualizar:', itemsToUpdate.length);
-
-      // Atualizar apenas os itens deste pedido específico
-      if (itemsToUpdate.length > 0) {
-        const itemIds = itemsToUpdate.map(item => item.id);
-        console.log('Atualizando itens:', itemIds, 'para status:', status);
+      // Verificar se é um pedido de balcão (começa com 'balcao-')
+      if (orderId.startsWith('balcao-')) {
+        // Extrair o ID real do pedido de balcão
+        const realBalcaoOrderId = orderId.replace('balcao-', '');
+        console.log('Atualizando pedido de balcão:', realBalcaoOrderId);
+        
+        // Para pedidos de balcão, atualizar o status do pedido inteiro
+        // Mapear status da Order para status do balcao_order
+        let balcaoStatus: string;
+        switch (status) {
+          case 'pending':
+            balcaoStatus = 'paid';
+            break;
+          case 'preparing':
+            balcaoStatus = 'preparing';
+            break;
+          case 'ready':
+            balcaoStatus = 'ready';
+            break;
+          default:
+            balcaoStatus = status;
+        }
         
         const { error } = await supabase
-          .from('comanda_items')
-          .update({ status })
-          .in('id', itemIds);
+          .from('balcao_orders')
+          .update({ 
+            status: balcaoStatus,
+            preparation_started_at: status === 'preparing' ? new Date().toISOString() : undefined,
+            preparation_completed_at: status === 'ready' ? new Date().toISOString() : undefined
+          })
+          .eq('id', realBalcaoOrderId);
 
         if (error) throw error;
-        console.log('Atualização realizada com sucesso');
+        console.log('Pedido de balcão atualizado com sucesso');
       } else {
-        console.log('Nenhum item encontrado para atualizar');
+        // Lógica original para comandas
+        // Extrair comandaId do orderId (UUID completo antes do timestamp)
+        // UUID tem formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+        // Então precisamos pegar as primeiras 5 partes separadas por hífen
+        const parts = orderId.split('-');
+        const realComandaId = parts.slice(0, 5).join('-');
+        
+        // Extrair timeKey do orderId (timestamp após o UUID)
+        const timeKey = parts.slice(5).join('-');
+        
+        console.log('Decomposição do ID:', { parts, realComandaId, timeKey });
+        
+        // Buscar itens específicos deste pedido baseado no timestamp
+        const { data: currentItems, error: fetchError } = await supabase
+          .from('comanda_items')
+          .select('*')
+          .eq('comanda_id', realComandaId)
+          .in('status', ['pending', 'preparing', 'ready']);
+
+        if (fetchError) throw fetchError;
+
+        // Filtrar itens que pertencem a este pedido específico (mesmo minuto)
+        const itemsToUpdate = currentItems?.filter(item => {
+          const addedAt = new Date(item.added_at);
+          const itemTimeKey = `${addedAt.getFullYear()}-${addedAt.getMonth()}-${addedAt.getDate()}-${addedAt.getHours()}-${addedAt.getMinutes()}`;
+          return timeKey === itemTimeKey;
+        }) || [];
+
+        console.log('Itens encontrados para atualizar:', itemsToUpdate.length);
+
+        // Atualizar apenas os itens deste pedido específico
+        if (itemsToUpdate.length > 0) {
+          const itemIds = itemsToUpdate.map(item => item.id);
+          console.log('Atualizando itens:', itemIds, 'para status:', status);
+          
+          const { error } = await supabase
+            .from('comanda_items')
+            .update({ status })
+            .in('id', itemIds);
+
+          if (error) throw error;
+          console.log('Atualização realizada com sucesso');
+        } else {
+          console.log('Nenhum item encontrado para atualizar');
+        }
       }
       
       // Recarregar pedidos da cozinha e do bar
@@ -447,7 +484,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // Função para buscar pedidos do bar (todos os itens)
   const fetchBarOrders = async () => {
     try {
-      const { data, error } = await supabase
+      // Buscar pedidos de comandas
+      const { data: comandaData, error: comandaError } = await supabase
         .from('comanda_items')
         .select(`
           *,
@@ -466,19 +504,42 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         .in('status', ['pending', 'preparing', 'ready'])
         .order('added_at', { ascending: true });
 
-      if (error) throw error;
+      if (comandaError) throw comandaError;
+
+      // Buscar pedidos de balcão
+      const { data: balcaoData, error: balcaoError } = await supabase
+        .from('balcao_order_items')
+        .select(`
+          *,
+          balcao_order:balcao_orders!inner(
+            id,
+            order_number,
+            customer_name,
+            status,
+            created_at
+          ),
+          menu_item:menu_items(
+            *,
+            inventory_items!left(name, image_url)
+          )
+        `)
+        .in('balcao_order.status', ['paid', 'preparing', 'ready'])
+        .order('created_at', { ascending: true });
+
+      if (balcaoError) throw balcaoError;
 
       // Agrupar itens por comanda E por timestamp de adição para criar pedidos separados
        const orderMap = new Map<string, Order>();
        
-       data?.forEach(item => {
+       // Processar pedidos de comandas
+       comandaData?.forEach(item => {
          const comandaId = item.comanda?.id;
          if (!comandaId) return;
 
          // Criar chave única baseada na comanda + timestamp (agrupando por minuto)
          const addedAt = new Date(item.added_at);
          const timeKey = `${addedAt.getFullYear()}-${addedAt.getMonth()}-${addedAt.getDate()}-${addedAt.getHours()}-${addedAt.getMinutes()}`;
-         const orderKey = `${comandaId}-${timeKey}`;
+         const orderKey = `comanda-${comandaId}-${timeKey}`;
 
          if (!orderMap.has(orderKey)) {
            orderMap.set(orderKey, {
@@ -516,6 +577,50 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
          order.total += item.price * item.quantity;
        });
 
+       // Processar pedidos de balcão
+       balcaoData?.forEach(item => {
+         const balcaoOrderId = item.balcao_order?.id;
+         if (!balcaoOrderId) return;
+
+         const orderKey = `balcao-${balcaoOrderId}`;
+
+         if (!orderMap.has(orderKey)) {
+           orderMap.set(orderKey, {
+             id: orderKey,
+             tableNumber: 'Balcão',
+             items: [],
+             status: item.balcao_order.status === 'paid' ? 'pending' as Order['status'] : 
+                    item.balcao_order.status === 'preparing' ? 'preparing' as Order['status'] : 
+                    'ready' as Order['status'],
+             total: 0,
+             createdAt: new Date(item.balcao_order.created_at),
+             updatedAt: new Date(item.created_at),
+             employeeId: '',
+             notes: `Pedido Balcão #${item.balcao_order.order_number}${item.balcao_order.customer_name ? ` - ${item.balcao_order.customer_name}` : ''}`
+           });
+         }
+
+         const order = orderMap.get(orderKey)!;
+         order.items.push({
+           id: item.id,
+           menuItemId: item.menu_item_id,
+           quantity: item.quantity,
+           price: item.unit_price,
+           notes: item.notes,
+           // Incluir dados do menu item diretamente
+           menuItem: item.menu_item ? {
+             id: item.menu_item.id,
+             name: item.menu_item.item_type === 'direct' && item.menu_item.inventory_items?.name
+               ? item.menu_item.inventory_items.name
+               : item.menu_item.name,
+             category: item.menu_item.category,
+             preparationTime: item.menu_item.preparation_time,
+             item_type: item.menu_item.item_type
+           } : undefined
+         });
+         order.total += item.unit_price * item.quantity;
+       });
+
       setBarOrders(Array.from(orderMap.values()));
     } catch (error) {
       console.error('Erro ao buscar pedidos do bar:', error);
@@ -525,7 +630,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // Função para buscar pedidos da cozinha (apenas itens preparados)
   const fetchKitchenOrders = async () => {
     try {
-      const { data, error } = await supabase
+      // Buscar pedidos de comandas (apenas itens preparados)
+      const { data: comandaData, error: comandaError } = await supabase
         .from('comanda_items')
         .select(`
           *,
@@ -542,21 +648,42 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         .neq('menu_item.item_type', 'direct') // Excluir itens diretos do estoque
         .order('added_at', { ascending: true });
 
-      if (error) throw error;
+      if (comandaError) throw comandaError;
+
+      // Buscar pedidos de balcão (apenas itens preparados)
+      const { data: balcaoData, error: balcaoError } = await supabase
+        .from('balcao_order_items')
+        .select(`
+          *,
+          balcao_order:balcao_orders!inner(
+            id,
+            order_number,
+            customer_name,
+            status,
+            created_at
+          ),
+          menu_item:menu_items!inner(*)
+        `)
+        .in('balcao_order.status', ['paid', 'preparing'])
+        .neq('menu_item.item_type', 'direct') // Excluir itens diretos do estoque
+        .order('created_at', { ascending: true });
+
+      if (balcaoError) throw balcaoError;
 
 
 
       // Agrupar itens por comanda E por timestamp de adição para criar pedidos separados
        const orderMap = new Map<string, Order>();
        
-       data?.forEach(item => {
+       // Processar pedidos de comandas
+       comandaData?.forEach(item => {
          const comandaId = item.comanda?.id;
          if (!comandaId) return;
 
          // Criar chave única baseada na comanda + timestamp (agrupando por minuto)
          const addedAt = new Date(item.added_at);
          const timeKey = `${addedAt.getFullYear()}-${addedAt.getMonth()}-${addedAt.getDate()}-${addedAt.getHours()}-${addedAt.getMinutes()}`;
-         const orderKey = `${comandaId}-${timeKey}`;
+         const orderKey = `comanda-${comandaId}-${timeKey}`;
 
          if (!orderMap.has(orderKey)) {
            orderMap.set(orderKey, {
@@ -588,6 +715,45 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
            } : undefined
          });
          order.total += item.price * item.quantity;
+       });
+
+       // Processar pedidos de balcão
+       balcaoData?.forEach(item => {
+         const balcaoOrderId = item.balcao_order?.id;
+         if (!balcaoOrderId) return;
+
+         const orderKey = `balcao-${balcaoOrderId}`;
+
+         if (!orderMap.has(orderKey)) {
+           orderMap.set(orderKey, {
+             id: orderKey,
+             tableNumber: 'Balcão',
+             items: [],
+             status: item.balcao_order.status === 'paid' ? 'pending' as Order['status'] : 'preparing' as Order['status'],
+             total: 0,
+             createdAt: new Date(item.balcao_order.created_at),
+             updatedAt: new Date(item.created_at),
+             employeeId: '',
+             notes: `Pedido Balcão #${item.balcao_order.order_number}${item.balcao_order.customer_name ? ` - ${item.balcao_order.customer_name}` : ''}`
+           });
+         }
+
+         const order = orderMap.get(orderKey)!;
+         order.items.push({
+           id: item.id,
+           menuItemId: item.menu_item_id,
+           quantity: item.quantity,
+           price: item.unit_price,
+           notes: item.notes,
+           // Incluir dados do menu item diretamente
+           menuItem: item.menu_item ? {
+             id: item.menu_item.id,
+             name: item.menu_item.name,
+             category: item.menu_item.category,
+             preparationTime: item.menu_item.preparation_time
+           } : undefined
+         });
+         order.total += item.unit_price * item.quantity;
        });
 
       setKitchenOrders(Array.from(orderMap.values()));
@@ -646,6 +812,40 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           // Recarregar pedidos quando comandas mudarem também
           setTimeout(() => {
             console.log('🔄 Recarregando pedidos da cozinha e bar (comandas)...');
+            fetchKitchenOrders();
+            fetchBarOrders();
+          }, 100);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'balcao_orders'
+        },
+        (payload) => {
+          console.log('🔥 SUBSCRIPTION ATIVADA - balcao_orders:', payload);
+          // Recarregar pedidos quando pedidos de balcão mudarem
+          setTimeout(() => {
+            console.log('🔄 Recarregando pedidos da cozinha e bar (balcão)...');
+            fetchKitchenOrders();
+            fetchBarOrders();
+          }, 100);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'balcao_order_items'
+        },
+        (payload) => {
+          console.log('🔥 SUBSCRIPTION ATIVADA - balcao_order_items:', payload);
+          // Recarregar pedidos quando itens de balcão mudarem
+          setTimeout(() => {
+            console.log('🔄 Recarregando pedidos da cozinha e bar (itens balcão)...');
             fetchKitchenOrders();
             fetchBarOrders();
           }, 100);

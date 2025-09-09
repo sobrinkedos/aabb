@@ -14,6 +14,7 @@ import ListaEstoqueBaixo from './pages/Inventory/ListaEstoqueBaixo';
 import AtualizacaoMassiva from './pages/Inventory/AtualizacaoMassiva';
 import MembersModule from './pages/Members';
 import BarAttendance from './pages/BarAttendance';
+import CashManagement from './pages/CashManagement';
 
 // Componente que envolve as rotas protegidas, fornecendo o layout e o contexto.
 const ProtectedRoutesWrapper: React.FC = () => {
@@ -54,6 +55,7 @@ function App() {
             <Route path="bar" element={<BarModule />} />
             <Route path="bar-customers" element={<BarCustomersModule />} />
             <Route path="bar-employees" element={<BarEmployeesModule />} />
+            <Route path="cash/*" element={<CashManagement />} />
             <Route path="kitchen" element={<KitchenModule />} />
             <Route path="inventory" element={<InventoryModule />} />
             <Route path="inventory/estoque-baixo" element={<ListaEstoqueBaixo />} />
