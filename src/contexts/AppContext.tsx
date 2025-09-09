@@ -1,7 +1,11 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { MenuItem, Order, InventoryItem, InventoryCategory, Member, Sale, OrderItem } from '../types';
-import { Tables, TablesInsert, TablesUpdate } from '../types/supabase';
+import type { Database } from '../types/supabase';
+
+type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
+type TablesInsert<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert'];
+type TablesUpdate<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update'];
 
 // Helper functions to map between Supabase (snake_case) and App (camelCase)
 
@@ -38,7 +42,7 @@ const fromMemberSupabase = (member: Tables<'members'>): Member => ({
   avatar: member.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${member.name}`,
   status: member.status as Member['status'],
   joinDate: new Date(member.join_date),
-  membershipType: member.membership_type as Member['membershipType']
+  membershipType: (member.membership_type as any) || 'basic'
 });
 
 const fromMenuItemSupabase = (item: any): MenuItem => {
@@ -68,7 +72,7 @@ const fromMenuItemSupabase = (item: any): MenuItem => {
 const fromOrderSupabase = (order: Tables<'orders'> & { order_items: Tables<'order_items'>[] }): Order => ({
     id: order.id,
     tableNumber: order.table_number || undefined,
-    items: order.order_items.map(oi => ({
+    items: order.order_items.map((oi: any) => ({
         id: oi.id.toString(),
         menuItemId: oi.menu_item_id,
         quantity: oi.quantity,
@@ -237,7 +241,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     if (data) {
       console.log('Item inserido com sucesso, atualizando estado...');
       setMenuItems(prev => [fromMenuItemSupabase(data), ...prev].sort((a,b) => a.name.localeCompare(b.name)));
-      addNotification(`Novo prato "${data.name}" adicionado ao cardápio!`);
+      addNotification(`Novo prato "${(data as any).name}" adicionado ao cardápio!`);
       console.log('Estado atualizado com sucesso!');
     }
     console.log('=== addMenuItem FINALIZADO ===');
@@ -258,8 +262,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     const { data, error } = await supabase.from('menu_items').update(itemToUpdate).eq('id', updatedItem.id).select().single();
     if (error) { console.error(error); return; }
     if (data) {
-      setMenuItems(prev => prev.map(item => item.id === data.id ? fromMenuItemSupabase(data) : item).sort((a,b) => a.name.localeCompare(b.name)));
-      addNotification(`Prato "${data.name}" atualizado!`);
+      setMenuItems(prev => prev.map(item => item.id === (data as any).id ? fromMenuItemSupabase(data) : item).sort((a,b) => a.name.localeCompare(b.name)));
+      addNotification(`Prato "${(data as any).name}" atualizado!`);
     }
   };
 
@@ -274,7 +278,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     const { items, tableNumber, employeeId, notes, status } = orderData;
     const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     
-    const orderToInsert: TablesInsert<'orders'> = {
+    const orderToInsert: any = {
         table_number: tableNumber,
         employee_id: employeeId,
         notes,
@@ -287,8 +291,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       console.error('Error creating order:', orderError); return;
     }
     
-    const orderItemsToInsert: TablesInsert<'order_items'>[] = items.map(item => ({ 
-        order_id: newOrder.id,
+    const orderItemsToInsert: any[] = items.map(item => ({ 
+        order_id: (newOrder as any).id,
         menu_item_id: item.menuItemId,
         quantity: item.quantity,
         price: item.price,
@@ -298,7 +302,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     if (itemsError) {
         console.error('Error creating order items:', itemsError);
     } else {
-        addNotification(`Novo pedido #${newOrder.id.slice(0, 4)} criado!`);
+        addNotification(`Novo pedido #${(newOrder as any).id.slice(0, 4)} criado!`);
     }
   };
 
@@ -335,7 +339,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             status: balcaoStatus,
             preparation_started_at: status === 'preparing' ? new Date().toISOString() : undefined,
             preparation_completed_at: status === 'ready' ? new Date().toISOString() : undefined
-          })
+          } as any)
           .eq('id', realBalcaoOrderId);
 
         if (error) throw error;
@@ -364,7 +368,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
         // Filtrar itens que pertencem a este pedido específico (mesmo minuto)
         const itemsToUpdate = currentItems?.filter(item => {
-          const addedAt = new Date(item.added_at);
+          const addedAt = new Date((item as any).added_at);
           const itemTimeKey = `${addedAt.getFullYear()}-${addedAt.getMonth()}-${addedAt.getDate()}-${addedAt.getHours()}-${addedAt.getMinutes()}`;
           return timeKey === itemTimeKey;
         }) || [];
@@ -373,12 +377,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
         // Atualizar apenas os itens deste pedido específico
         if (itemsToUpdate.length > 0) {
-          const itemIds = itemsToUpdate.map(item => item.id);
+          const itemIds = itemsToUpdate.map(item => (item as any).id);
           console.log('Atualizando itens:', itemIds, 'para status:', status);
           
           const { error } = await supabase
             .from('comanda_items')
-            .update({ status })
+            .update({ status } as any)
             .in('id', itemIds);
 
           if (error) throw error;
@@ -397,7 +401,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   };
 
   const addInventoryItem = async (itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
-    const itemToInsert: Omit<TablesInsert<'inventory_items'>, 'id' | 'created_at' | 'last_updated'> = {
+    const itemToInsert: any = {
         name: itemData.name,
         category_id: itemData.categoryId,
         current_stock: itemData.currentStock,
@@ -414,7 +418,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   };
 
   const updateInventoryItem = async (updatedItem: InventoryItem) => {
-    const itemToUpdate: TablesUpdate<'inventory_items'> = {
+    const itemToUpdate: any = {
         name: updatedItem.name,
         category_id: updatedItem.categoryId,
         current_stock: updatedItem.currentStock,
@@ -438,7 +442,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   };
 
   const addMember = async (memberData: Omit<Member, 'id' | 'joinDate'>) => {
-    const memberToInsert: Omit<TablesInsert<'members'>, 'id' | 'created_at' | 'join_date'> = {
+    const memberToInsert: any = {
         name: memberData.name,
         email: memberData.email,
         phone: memberData.phone,
@@ -452,7 +456,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   };
 
   const updateMember = async (updatedMember: Member) => {
-    const memberToUpdate: TablesUpdate<'members'> = {
+    const memberToUpdate: any = {
         name: updatedMember.name,
         email: updatedMember.email,
         phone: updatedMember.phone,
@@ -826,12 +830,26 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         },
         (payload) => {
           console.log('🔥 SUBSCRIPTION ATIVADA - balcao_orders:', payload);
+          console.log('Event Type:', payload.eventType);
+          console.log('New data:', payload.new);
+          console.log('Old data:', payload.old);
+          
+          // Verificar se é mudança de status de pending_payment para paid
+          if (payload.eventType === 'UPDATE' && 
+              payload.old?.status === 'pending_payment' && 
+              payload.new?.status === 'paid') {
+            console.log('🎉 PEDIDO PAGO DETECTADO! Forçando atualização imediata...');
+            // Atualização imediata + fallback
+            fetchKitchenOrders();
+            fetchBarOrders();
+          }
+          
           // Recarregar pedidos quando pedidos de balcão mudarem
           setTimeout(() => {
             console.log('🔄 Recarregando pedidos da cozinha e bar (balcão)...');
             fetchKitchenOrders();
             fetchBarOrders();
-          }, 100);
+          }, 1000); // Aumentado para 1000ms para garantir sincronização
         }
       )
       .on(
@@ -843,12 +861,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         },
         (payload) => {
           console.log('🔥 SUBSCRIPTION ATIVADA - balcao_order_items:', payload);
+          console.log('Event Type:', payload.eventType);
+          
           // Recarregar pedidos quando itens de balcão mudarem
           setTimeout(() => {
             console.log('🔄 Recarregando pedidos da cozinha e bar (itens balcão)...');
             fetchKitchenOrders();
             fetchBarOrders();
-          }, 100);
+          }, 500);
         }
       )
       .subscribe((status) => {

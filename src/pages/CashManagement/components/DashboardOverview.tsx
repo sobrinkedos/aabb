@@ -16,13 +16,16 @@ import {
 } from 'lucide-react';
 import { useCashManagement } from '../../../hooks/useCashManagement';
 import { useBalcaoOrders } from '../../../hooks/useBalcaoOrders';
+import { useAuth } from '../../../contexts/AuthContext';
 import { OpenCashModal } from './OpenCashModal';
 import { CloseCashModal } from './CloseCashModal';
+import PaymentReceipt from '../../BarAttendance/components/PaymentReceipt';
 import { formatCurrency, PAYMENT_METHOD_LABELS, PaymentMethod } from '../../../types/cash-management';
 import { ComandaWithItems } from '../../../types/bar-attendance';
 import { BalcaoOrderWithDetails } from '../../../types/balcao-orders';
 
 export const DashboardOverview: React.FC = () => {
+  const { user } = useAuth();
   const {
     currentSession,
     pendingComandas,
@@ -43,9 +46,11 @@ export const DashboardOverview: React.FC = () => {
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<BalcaoOrderWithDetails | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('dinheiro');
   const [processing, setProcessing] = useState(false);
+  const [lastPaymentData, setLastPaymentData] = useState<any>(null);
 
   // Função para processar pagamento de pedido de balcão
   const handleBalcaoPayment = async (order: BalcaoOrderWithDetails) => {
@@ -70,15 +75,30 @@ export const DashboardOverview: React.FC = () => {
         amount_paid: selectedOrder.final_amount
       });
 
+      // Preparar dados para o comprovante
+      setLastPaymentData({
+        order: selectedOrder,
+        paymentMethod: selectedPaymentMethod,
+        amountPaid: selectedOrder.final_amount,
+        cashierName: user?.name || user?.email || 'Operador de Caixa',
+        timestamp: new Date()
+      });
+
       setShowPaymentModal(false);
+      setShowReceiptModal(true);
       setSelectedOrder(null);
-      alert('Pagamento processado com sucesso!');
     } catch (error) {
       console.error('Erro ao processar pagamento:', error);
       alert('Erro ao processar pagamento. Tente novamente.');
     } finally {
       setProcessing(false);
     }
+  };
+
+  // Callback após impressão do comprovante
+  const handleReceiptPrinted = () => {
+    setShowReceiptModal(false);
+    setLastPaymentData(null);
   };
 
   if (loading) {
@@ -518,7 +538,70 @@ export const DashboardOverview: React.FC = () => {
                 disabled={processing || !currentSession}
                 className="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
               >
-                {processing ? 'Processando...' : 'Confirmar Pagamento'}
+                {processing ? 'Processando...' : 'Processar e Imprimir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Comprovante de Pagamento */}
+      {showReceiptModal && lastPaymentData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-2">
+                <svg className="h-6 w-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <h3 className="text-lg font-semibold text-gray-900">Pagamento Processado!</h3>
+              </div>
+              <button
+                onClick={handleReceiptPrinted}
+                className="text-gray-400 hover:text-gray-600"
+                title="Fechar modal de comprovante"
+                aria-label="Fechar modal de comprovante"
+              >
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-6 text-center">
+              <p className="text-gray-600 mb-2">
+                Pagamento de #{lastPaymentData.order.order_number.toString().padStart(4, '0')} processado com sucesso!
+              </p>
+              <p className="text-sm text-green-600 font-medium">
+                Comprovante de pagamento gerado
+              </p>
+            </div>
+
+            <div className="mb-6">
+              <PaymentReceipt
+                receiptData={lastPaymentData}
+                onPrint={handleReceiptPrinted}
+              />
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={handleReceiptPrinted}
+                className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Fechar
+              </button>
+              <button
+                onClick={() => {
+                  // Reimprimir comprovante
+                  console.log('Reimprimindo comprovante de pagamento...');
+                }}
+                className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+              >
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
+                </svg>
+                <span>Reimprimir</span>
               </button>
             </div>
           </div>

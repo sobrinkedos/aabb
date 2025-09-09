@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, MapPin, User } from 'lucide-react';
 import { Order, MenuItem } from '../../types';
@@ -13,6 +13,7 @@ interface KitchenOrdersProps {
 
 const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
   const { updateOrderStatus } = useApp();
+  const [updatingOrders, setUpdatingOrders] = useState<Set<string>>(new Set());
 
   // Agrupar pedidos por mesa para identificar múltiplos pedidos
   const getOrdersByTable = () => {
@@ -32,7 +33,8 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
   const getEstimatedTime = (order: Order): number => {
     return order.items.reduce((total, item) => {
       const menuItem = menuItems.find(mi => mi.id === item.menuItemId) || item.menuItem;
-      return total + (menuItem?.preparationTime || menuItem?.preparation_time || 0);
+      const preparationTime = (menuItem as any)?.preparation_time || (menuItem as any)?.preparationTime || 0;
+      return total + preparationTime;
     }, 0);
   };
 
@@ -55,6 +57,36 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
   const getOrderNumber = (order: Order): string => {
     // Extrair número do pedido do ID (últimos 4 caracteres)
     return order.id.slice(-4).toUpperCase();
+  };
+
+  // Verificar se o pedido é de balcão (já pago)
+  const isBalcaoOrder = (order: Order): boolean => {
+    return order.id.startsWith('balcao-');
+  };
+
+  // Verificar se o pedido é de comanda (aguardando pagamento)
+  const isComandaOrder = (order: Order): boolean => {
+    return order.id.startsWith('comanda-');
+  };
+
+  // Função para atualizar status com feedback visual
+  const handleStatusUpdate = async (orderId: string, newStatus: Order['status']) => {
+    setUpdatingOrders(prev => new Set([...prev, orderId]));
+    
+    try {
+      await updateOrderStatus(orderId, newStatus);
+      console.log(`✅ Status do pedido ${orderId} atualizado para ${newStatus}`);
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+    } finally {
+      setTimeout(() => {
+        setUpdatingOrders(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(orderId);
+          return newSet;
+        });
+      }, 1000);
+    }
   };
 
   const hasMultipleOrdersForTable = (tableNumber: string): boolean => {
@@ -115,6 +147,8 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
                 animate={{ opacity: 1, scale: 1 }}
                 className={`border-2 rounded-lg p-4 ${getPriorityColor(priority)} ${
                   hasMultipleOrders ? 'ring-2 ring-orange-300 ring-offset-2' : ''
+                } ${
+                  isBalcaoOrder(order) ? 'border-green-400 bg-green-50 shadow-lg' : ''
                 }`}
               >
                 <div className="flex items-center justify-between mb-3">
@@ -126,6 +160,19 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
                     <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
                       #{getOrderNumber(order)}
                     </span>
+                    
+                    {/* Indicador de status de pagamento */}
+                    {isBalcaoOrder(order) && (
+                      <span className="bg-green-600 text-white px-2 py-1 rounded-full text-xs font-bold animate-pulse">
+                        ✓ PAGO
+                      </span>
+                    )}
+                    
+                    {isComandaOrder(order) && (
+                      <span className="bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                        AGUARDA PAGTO
+                      </span>
+                    )}
                     
                     {/* Indicador de múltiplos pedidos */}
                     {hasMultipleOrdersForTable(order.tableNumber || 'Balcão') && (
@@ -150,7 +197,7 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
                           {item.quantity}x {menuItem?.name || 'Item não encontrado'}
                         </span>
                         <span className="text-sm text-gray-600">
-                          {menuItem?.preparationTime || menuItem?.preparation_time || 0}min
+                          {(menuItem as any)?.preparation_time || (menuItem as any)?.preparationTime || 0}min
                         </span>
                       </div>
                     );
@@ -180,19 +227,54 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
                 <div className="space-y-2">
                   {order.status === 'pending' && (
                     <button
-                      onClick={() => updateOrderStatus(order.id, 'preparing')}
-                      className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                      onClick={() => handleStatusUpdate(order.id, 'preparing')}
+                      disabled={updatingOrders.has(order.id)}
+                      className={`w-full py-2 rounded-lg font-medium transition-all duration-300 ${
+                        updatingOrders.has(order.id)
+                          ? 'bg-blue-300 text-blue-700 cursor-not-allowed animate-pulse scale-95'
+                          : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg transform hover:scale-105 active:scale-95'
+                      }`}
                     >
-                      Iniciar Preparo
+                      {updatingOrders.has(order.id) ? (
+                        <div className="flex items-center justify-center space-x-2">
+                          <div className="w-4 h-4 border-2 border-blue-700 border-t-transparent rounded-full animate-spin"></div>
+                          <span>Iniciando...</span>
+                        </div>
+                      ) : (
+                        'Iniciar Preparo'
+                      )}
                     </button>
                   )}
                   {order.status === 'preparing' && (
                     <button
-                      onClick={() => updateOrderStatus(order.id, 'ready')}
-                      className="w-full bg-green-600 text-white py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
+                      onClick={() => handleStatusUpdate(order.id, 'ready')}
+                      disabled={updatingOrders.has(order.id)}
+                      className={`w-full py-2 rounded-lg font-medium transition-all duration-300 ${
+                        updatingOrders.has(order.id)
+                          ? 'bg-green-300 text-green-700 cursor-not-allowed animate-pulse scale-95'
+                          : 'bg-green-600 text-white hover:bg-green-700 hover:shadow-lg transform hover:scale-105 active:scale-95'
+                      }`}
                     >
-                      Marcar como Pronto
+                      {updatingOrders.has(order.id) ? (
+                        <div className="flex items-center justify-center space-x-2">
+                          <div className="w-4 h-4 border-2 border-green-700 border-t-transparent rounded-full animate-spin"></div>
+                          <span>Finalizando...</span>
+                        </div>
+                      ) : (
+                        'Marcar como Pronto'
+                      )}
                     </button>
+                  )}
+                  
+                  {order.status === 'ready' && (
+                    <div className="w-full py-2 rounded-lg font-medium bg-green-100 text-green-800 border-2 border-green-300 text-center animate-pulse">
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="w-5 h-5 bg-green-600 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs font-bold">✓</span>
+                        </div>
+                        <span>Pronto para Entrega</span>
+                      </div>
+                    </div>
                   )}
                 </div>
               </motion.div>

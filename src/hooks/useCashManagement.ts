@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useBarAttendance } from './useBarAttendance';
+import { useApp } from '../contexts/AppContext';
 import {
   CashSession,
   CashSessionWithEmployee,
@@ -31,6 +32,7 @@ import { ComandaWithItems } from '../types/bar-attendance';
 export const useCashManagement = (): UseCashManagementReturn => {
   const { user } = useAuth();
   const { fecharComanda, recarregarDados: recarregarBarAttendance } = useBarAttendance();
+  const { refreshKitchenOrders, refreshBarOrders } = useApp();
   
   const [state, setState] = useState<CashManagementState>({
     currentSession: null,
@@ -301,6 +303,29 @@ export const useCashManagement = (): UseCashManagementReturn => {
       // Recarregar dados
       await loadInitialData();
       await recarregarBarAttendance();
+      
+      // Forçar atualização dos monitores se for pagamento de balcão
+      if (data.notes && data.notes.includes('balcão')) {
+        console.log('🔄 Forçando atualização dos monitores após pagamento de balcão...');
+        
+        // Atualização imediata
+        setTimeout(async () => {
+          await Promise.all([
+            refreshKitchenOrders(),
+            refreshBarOrders()
+          ]);
+          console.log('🚀 Monitores atualizados imediatamente!');
+        }, 500);
+        
+        // Atualização backup
+        setTimeout(async () => {
+          await Promise.all([
+            refreshKitchenOrders(),
+            refreshBarOrders()
+          ]);
+          console.log('🎉 Atualização backup dos monitores concluída!');
+        }, 2000);
+      }
 
     } catch (error) {
       handleError(error, 'processamento de pagamento');

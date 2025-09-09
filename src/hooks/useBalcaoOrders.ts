@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useApp } from '../contexts/AppContext';
 import {
   BalcaoOrderWithDetails,
   BalcaoMetrics,
@@ -22,6 +23,7 @@ interface UseBalcaoOrdersState {
 
 export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
   const { user } = useAuth();
+  const { refreshKitchenOrders, refreshBarOrders } = useApp();
   
   const [state, setState] = useState<UseBalcaoOrdersState>({
     orders: [],
@@ -194,6 +196,8 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
   // Processar pagamento
   const processPayment = useCallback(async (data: ProcessBalcaoPaymentData): Promise<void> => {
     try {
+      console.log('💳 Iniciando processamento de pagamento:', data.order_id);
+      
       await updateOrderStatus(data.order_id, {
         status: 'paid',
         payment_method: data.payment_method,
@@ -215,12 +219,36 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
         });
 
       if (transactionError) throw transactionError;
+      
+      console.log('✅ Pagamento processado com sucesso!');
+      
+      // Forçar atualização dos monitores com múltiplas tentativas
+      console.log('🔄 Forçando atualização dos monitores em múltiplas camadas...');
+      
+      // Atualização imediata
+      setTimeout(async () => {
+        await Promise.all([
+          refreshKitchenOrders(),
+          refreshBarOrders()
+        ]);
+        console.log('🚀 Primeira atualização dos monitores concluída!');
+      }, 500);
+      
+      // Atualização backup
+      setTimeout(async () => {
+        await Promise.all([
+          refreshKitchenOrders(),
+          refreshBarOrders(),
+          loadOrders()
+        ]);
+        console.log('🎉 Atualização backup dos monitores concluída!');
+      }, 1500);
 
     } catch (error) {
       handleError(error, 'processamento de pagamento');
       throw error;
     }
-  }, [updateOrderStatus, handleError, user]);
+  }, [updateOrderStatus, handleError, user, refreshKitchenOrders, refreshBarOrders, loadOrders]);
 
   // Atualizar status de item
   const updateItemStatus = useCallback(async (itemId: string, status: BalcaoOrderItemStatus): Promise<void> => {
