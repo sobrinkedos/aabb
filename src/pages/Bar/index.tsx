@@ -10,6 +10,7 @@ const BarModule: React.FC = () => {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [tableFilter, setTableFilter] = useState<string>('all'); // Novo estado para filtro de mesa
 
   // Exibir todos os pratos sem filtro por categoria
   const filteredMenuItems = menuItems;
@@ -40,10 +41,11 @@ const BarModule: React.FC = () => {
 
   const filteredOrders = barOrders.filter(order => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    const matchesTable = tableFilter === 'all' || (order.tableNumber || 'Balcão') === tableFilter;
     const matchesSearch = order.tableNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          order.notes?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesStatus && matchesSearch;
+    return matchesStatus && matchesTable && matchesSearch;
   });
 
   const barRevenue = barOrders
@@ -93,11 +95,22 @@ const BarModule: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
             <h2 className="text-xl font-semibold text-gray-800 mb-2">Pedidos</h2>
-            {Array.from(tableOrdersMap.entries()).filter(([_, orders]) => orders.length > 1).length > 0 && (
-              <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
-                {Array.from(tableOrdersMap.entries()).filter(([_, orders]) => orders.length > 1).length} mesa(s) com múltiplos pedidos
-              </span>
-            )}
+            <div className="flex items-center space-x-2">
+              {Array.from(tableOrdersMap.entries()).filter(([_, orders]) => orders.length > 1).length > 0 && (
+                <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
+                  {Array.from(tableOrdersMap.entries()).filter(([_, orders]) => orders.length > 1).length} mesa(s) com múltiplos pedidos
+                </span>
+              )}
+              {tableFilter !== 'all' && (
+                <button
+                  onClick={() => setTableFilter('all')}
+                  className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium hover:bg-blue-200 transition-colors flex items-center space-x-1"
+                >
+                  <span>Filtro: {tableFilter}</span>
+                  <span className="text-blue-600">✕</span>
+                </button>
+              )}
+            </div>
           </div>
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
             <div className="relative">
@@ -133,9 +146,18 @@ const BarModule: React.FC = () => {
               {Array.from(tableOrdersMap.entries())
                 .filter(([_, orders]) => orders.length > 1)
                 .map(([tableNumber, orders]) => (
-                  <span key={tableNumber} className="bg-orange-200 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
+                  <button
+                    key={tableNumber}
+                    onClick={() => setTableFilter(tableNumber)}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors hover:shadow-md transform hover:scale-105 ${
+                      tableFilter === tableNumber
+                        ? 'bg-orange-400 text-white'
+                        : 'bg-orange-200 text-orange-800 hover:bg-orange-300'
+                    }`}
+                    title={`Filtrar pedidos da ${tableNumber}`}
+                  >
                     Mesa {tableNumber}: {orders.length} pedidos
-                  </span>
+                  </button>
                 ))}
             </div>
           </div>
@@ -149,7 +171,6 @@ const BarModule: React.FC = () => {
               menuItems={menuItems}
               hasMultipleOrders={hasMultipleOrdersForTable(order.tableNumber || 'Balcão')}
               orderNumber={getOrderNumber(order)}
-              totalOrdersForTable={(tableOrdersMap.get(order.tableNumber || 'Balcão') || []).length}
             />
           ))}
         </div>

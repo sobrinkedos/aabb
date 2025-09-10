@@ -11,15 +11,13 @@ interface OrderCardProps {
   menuItems: MenuItem[];
   hasMultipleOrders?: boolean;
   orderNumber?: string;
-  totalOrdersForTable?: number;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({ 
   order, 
   menuItems, 
   hasMultipleOrders = false,
-  orderNumber,
-  totalOrdersForTable = 1
+  orderNumber
 }) => {
   const { updateOrderStatus } = useApp();
 
@@ -56,12 +54,24 @@ const OrderCard: React.FC<OrderCardProps> = ({
 
   const nextStatus = getNextStatus(order.status);
 
+  // Verificar se o pedido é de balcão (já pago)
+  const isBalcaoOrder = (order: Order): boolean => {
+    return order.id.startsWith('balcao-');
+  };
+
+  // Verificar se o pedido é de comanda (aguardando pagamento)
+  const isComandaOrder = (order: Order): boolean => {
+    return order.id.startsWith('comanda-');
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className={`bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow ${
         hasMultipleOrders ? 'ring-2 ring-orange-300 ring-offset-2' : ''
+      } ${
+        isBalcaoOrder(order) ? 'border-green-400 bg-green-50 shadow-lg' : ''
       }`}
     >
       <div className="flex items-center justify-between mb-3">
@@ -78,10 +88,16 @@ const OrderCard: React.FC<OrderCardProps> = ({
             </span>
           )}
           
-          {/* Indicador de múltiplos pedidos */}
-          {hasMultipleOrders && (
-            <span className="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-              {totalOrdersForTable} pedidos
+          {/* Indicador de status de pagamento */}
+          {isBalcaoOrder(order) && (
+            <span className="bg-green-600 text-white px-2 py-1 rounded-full text-xs font-bold animate-pulse">
+              ✓ PAGO
+            </span>
+          )}
+          
+          {isComandaOrder(order) && (
+            <span className="bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+              AGUARDA PAGTO
             </span>
           )}
         </div>
@@ -125,7 +141,25 @@ const OrderCard: React.FC<OrderCardProps> = ({
       {nextStatus && (
         <button
           onClick={() => updateOrderStatus(order.id, nextStatus)}
-          className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
+            isBalcaoOrder(order)
+              ? order.status === 'pending'
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : order.status === 'preparing'
+                ? 'bg-green-700 text-white hover:bg-green-800'
+                : 'bg-green-800 text-white hover:bg-green-900'
+              : isComandaOrder(order)
+              ? order.status === 'pending'
+                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                : order.status === 'preparing'
+                ? 'bg-yellow-700 text-white hover:bg-yellow-800'
+                : 'bg-yellow-800 text-white hover:bg-yellow-900'
+              : order.status === 'pending'
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : order.status === 'preparing'
+              ? 'bg-blue-700 text-white hover:bg-blue-800'
+              : 'bg-blue-800 text-white hover:bg-blue-900'
+          }`}
         >
           {nextStatus === 'preparing' && 'Iniciar Preparo'}
           {nextStatus === 'ready' && 'Marcar como Pronto'}

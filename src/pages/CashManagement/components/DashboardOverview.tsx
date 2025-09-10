@@ -547,9 +547,9 @@ export const DashboardOverview: React.FC = () => {
 
       {/* Modal de Comprovante de Pagamento */}
       {showReceiptModal && lastPaymentData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center justify-between mb-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6 sticky top-0 bg-white pb-4 border-b">
               <div className="flex items-center space-x-2">
                 <svg className="h-6 w-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -584,7 +584,7 @@ export const DashboardOverview: React.FC = () => {
               />
             </div>
 
-            <div className="flex space-x-3">
+            <div className="flex space-x-3 sticky bottom-0 bg-white pt-4 border-t">
               <button
                 onClick={handleReceiptPrinted}
                 className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors"

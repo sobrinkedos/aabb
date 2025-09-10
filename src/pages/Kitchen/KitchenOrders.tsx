@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, MapPin, User } from 'lucide-react';
 import { Order, MenuItem } from '../../types';
@@ -14,6 +15,7 @@ interface KitchenOrdersProps {
 const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
   const { updateOrderStatus } = useApp();
   const [updatingOrders, setUpdatingOrders] = useState<Set<string>>(new Set());
+  const [tableFilter, setTableFilter] = useState<string>('all'); // Novo estado para filtro de mesa
 
   // Agrupar pedidos por mesa para identificar múltiplos pedidos
   const getOrdersByTable = () => {
@@ -93,16 +95,36 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
     return (tableOrdersMap.get(tableNumber) || []).length > 1;
   };
 
+  // Filtrar pedidos baseado no filtro de mesa
+  const filteredOrders = orders.filter(order => {
+    if (tableFilter === 'all') return true;
+    return (order.tableNumber || 'Balcão') === tableFilter;
+  });
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-800">Pedidos da Cozinha</h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800">Pedidos da Cozinha</h2>
+          <div className="flex items-center space-x-2 mt-2">
+            {Array.from(tableOrdersMap.entries()).filter(([_, orders]) => orders.length > 1).length > 0 && (
+              <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
+                {Array.from(tableOrdersMap.entries()).filter(([_, orders]) => orders.length > 1).length} mesa(s) com múltiplos pedidos
+              </span>
+            )}
+            {tableFilter !== 'all' && (
+              <button
+                onClick={() => setTableFilter('all')}
+                className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium hover:bg-blue-200 transition-colors flex items-center space-x-1"
+              >
+                <span>Filtro: {tableFilter}</span>
+                <span className="text-blue-600">✕</span>
+              </button>
+            )}
+          </div>
+        </div>
         <div className="text-sm text-gray-600">
-          {Array.from(tableOrdersMap.entries()).filter(([_, orders]) => orders.length > 1).length > 0 && (
-            <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
-              {Array.from(tableOrdersMap.entries()).filter(([_, orders]) => orders.length > 1).length} mesa(s) com múltiplos pedidos
-            </span>
-          )}
+          {filteredOrders.length} de {orders.length} pedidos
         </div>
       </div>
 
@@ -114,9 +136,18 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
             {Array.from(tableOrdersMap.entries())
               .filter(([_, orders]) => orders.length > 1)
               .map(([tableNumber, orders]) => (
-                <span key={tableNumber} className="bg-orange-200 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
+                <button
+                  key={tableNumber}
+                  onClick={() => setTableFilter(tableNumber)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors hover:shadow-md transform hover:scale-105 ${
+                    tableFilter === tableNumber
+                      ? 'bg-orange-400 text-white'
+                      : 'bg-orange-200 text-orange-800 hover:bg-orange-300'
+                  }`}
+                  title={`Filtrar pedidos da ${tableNumber}`}
+                >
                   Mesa {tableNumber}: {orders.length} pedidos
-                </span>
+                </button>
               ))}
           </div>
         </div>
