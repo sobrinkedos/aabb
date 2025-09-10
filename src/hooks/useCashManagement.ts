@@ -15,6 +15,8 @@ import {
   ProcessComandaPaymentData,
   ProcessRefundData,
   ProcessAdjustmentData,
+  ProcessCashWithdrawalData,
+  ProcessTreasuryTransferData,
   DailySummary,
   MonthlyCashReport,
   EmployeePerformanceReport,
@@ -44,6 +46,9 @@ export const useCashManagement = (): UseCashManagementReturn => {
       total_sessions: 0,
       total_sales: 0,
       total_transactions: 0,
+      total_cash_withdrawals: 0,
+      total_treasury_transfers: 0,
+      cash_balance: 0,
       by_payment_method: [],
       by_employee: [],
       discrepancies: [],
@@ -391,6 +396,89 @@ export const useCashManagement = (): UseCashManagementReturn => {
     }
   }, [state.currentSession, user, updateState, handleError, loadInitialData]);
 
+  // ===== FUNÇÕES DE SAÍDA DE DINHEIRO E TRANSFERÊNCIA =====
+
+  const processCashWithdrawal = useCallback(async (data: ProcessCashWithdrawalData): Promise<string> => {
+    if (!state.currentSession) throw new Error('Nenhuma sessão de caixa aberta');
+
+    try {
+      updateState({ loading: true, error: null });
+
+      const transactionData = {
+        cash_session_id: state.currentSession.id,
+        transaction_type: 'adjustment' as TransactionType, // Usando 'adjustment' temporariamente até migrar o banco
+        payment_method: 'dinheiro' as PaymentMethod,
+        amount: -Math.abs(data.amount), // Valor negativo para saída
+        processed_by: user!.id,
+        notes: `[SAÍDA] ${data.purpose}: ${data.reason}. Autorizado por: ${data.authorized_by}${data.recipient ? `. Destinatário: ${data.recipient}` : ''}`
+      };
+
+      const { data: newTransaction, error } = await (supabase as any)
+        .from('cash_transactions')
+        .insert(transactionData)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      // Atualizar valor esperado da sessão
+      const newExpectedAmount = state.currentSession.expected_amount - data.amount;
+      const { error: sessionError } = await (supabase as any)
+        .from('cash_sessions')
+        .update({ expected_amount: newExpectedAmount })
+        .eq('id', state.currentSession.id);
+
+      if (sessionError) throw sessionError;
+
+      await loadInitialData();
+      return newTransaction.id; // Retorna ID da transação para o comprovante
+    } catch (error) {
+      handleError(error, 'processamento de saída de dinheiro');
+      throw error;
+    }
+  }, [state.currentSession, user, updateState, handleError, loadInitialData]);
+
+  const processTreasuryTransfer = useCallback(async (data: ProcessTreasuryTransferData): Promise<string> => {
+    if (!state.currentSession) throw new Error('Nenhuma sessão de caixa aberta');
+
+    try {
+      updateState({ loading: true, error: null });
+
+      // Criar transação de transferência
+      const transactionData = {
+        cash_session_id: state.currentSession.id,
+        transaction_type: 'adjustment' as TransactionType, // Usando 'adjustment' temporariamente até migrar o banco
+        payment_method: 'dinheiro' as PaymentMethod,
+        amount: -Math.abs(data.amount), // Valor negativo para transferência
+        processed_by: user!.id,
+        notes: `[TRANSFERÊNCIA TESOURARIA] Autorizado por: ${data.authorized_by}${data.treasury_receipt_number ? `. Comprovante: ${data.treasury_receipt_number}` : ''}${data.notes ? `. Obs: ${data.notes}` : ''}`
+      };
+
+      const { data: newTransaction, error } = await (supabase as any)
+        .from('cash_transactions')
+        .insert(transactionData)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      // Atualizar valor esperado da sessão
+      const newExpectedAmount = state.currentSession.expected_amount - data.amount;
+      const { error: sessionError } = await (supabase as any)
+        .from('cash_sessions')
+        .update({ expected_amount: newExpectedAmount })
+        .eq('id', state.currentSession.id);
+
+      if (sessionError) throw sessionError;
+
+      await loadInitialData();
+      return newTransaction.id; // Retorna ID da transação para o comprovante
+    } catch (error) {
+      handleError(error, 'processamento de transferência para tesouraria');
+      throw error;
+    }
+  }, [state.currentSession, user, updateState, handleError, loadInitialData]);
+
   // ===== FUNÇÕES DE RELATÓRIO =====
 
   const generateDailySummary = useCallback(async (date?: Date): Promise<DailySummary> => {
@@ -412,6 +500,9 @@ export const useCashManagement = (): UseCashManagementReturn => {
           total_sessions: 0,
           total_sales: 0,
           total_transactions: 0,
+          total_cash_withdrawals: 0,
+          total_treasury_transfers: 0,
+          cash_balance: 0,
           by_payment_method: [],
           by_employee: [],
           discrepancies: [],
@@ -443,6 +534,9 @@ export const useCashManagement = (): UseCashManagementReturn => {
         total_sessions: sessions.length,
         total_sales: totalSales,
         total_transactions: totalTransactions,
+        total_cash_withdrawals: 0, // TODO: Calcular saídas de dinheiro
+        total_treasury_transfers: 0, // TODO: Calcular transferências
+        cash_balance: totalSales, // TODO: Calcular saldo real
         by_payment_method: byPaymentMethod,
         by_employee: sessions.map((s: any) => ({
           employee_id: s.employee_id,
@@ -734,6 +828,8 @@ export const useCashManagement = (): UseCashManagementReturn => {
     processComandaPayment,
     processRefund,
     processAdjustment,
+    processCashWithdrawal,
+    processTreasuryTransfer,
     getDailySummary,
     getMonthlyCashReport,
     getEmployeePerformance,

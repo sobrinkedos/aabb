@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, DollarSign, CreditCard, Smartphone, Building2 } from 'lucide-react';
+import { X, DollarSign, CreditCard, Smartphone, Building2, AlertTriangle, Clock, ShoppingBag } from 'lucide-react';
 import { CashSessionWithEmployee, CloseCashSessionData, PaymentReconciliationData, PaymentMethod, formatCurrency, PAYMENT_METHOD_LABELS } from '../../../types/cash-management';
+import { useBalcaoOrders } from '../../../hooks/useBalcaoOrders';
+import { supabase } from '../../../lib/supabase';
 
 interface CloseCashModalProps {
   isOpen: boolean;
@@ -15,6 +17,8 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
   session,
   onCloseCash
 }) => {
+  const { preparingOrders, readyOrders } = useBalcaoOrders();
+  
   const [formData, setFormData] = useState<CloseCashSessionData>({    
     closing_amount: session.expected_amount,
     closing_notes: '',
@@ -27,8 +31,10 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
     ]
   });
   const [loading, setLoading] = useState(false);
+  const [pendingCommandaItems, setPendingCommandaItems] = useState<any[]>([]);
+  const [loadingValidation, setLoadingValidation] = useState(false);
 
-  // Carregar dados de reconciliação quando a modal abrir
+  // Carregar dados de reconciliação e validar pedidos pendentes quando a modal abrir
   useEffect(() => {
     if (isOpen && session) {
       // Aqui você pode carregar os valores esperados por método de pagamento
@@ -37,11 +43,64 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
         ...prev,
         closing_amount: session.expected_amount
       }));
+      
+      // Carregar itens de comandas pendentes de entrega
+      loadPendingCommandaItems();
     }
   }, [isOpen, session]);
+  
+  // Função para carregar itens de comandas pendentes de entrega
+  const loadPendingCommandaItems = async () => {
+    setLoadingValidation(true);
+    try {
+      const { data: pendingItems, error } = await supabase
+        .from('comanda_items')
+        .select(`
+          *,
+          comanda:comandas!inner(
+            id,
+            customer_name,
+            table_id,
+            bar_tables(number)
+          ),
+          menu_item:menu_items(name)
+        `)
+        .in('status', ['pending', 'preparing', 'ready'])
+        .eq('comanda.status', 'open')
+        .order('added_at', { ascending: true });
+      
+      if (error) {
+        console.error('Erro ao carregar itens pendentes:', error);
+        setPendingCommandaItems([]);
+      } else {
+        setPendingCommandaItems(pendingItems || []);
+      }
+    } catch (error) {
+      console.error('Erro ao validar pedidos pendentes:', error);
+      setPendingCommandaItems([]);
+    } finally {
+      setLoadingValidation(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Verificar se há pedidos pendentes de entrega
+    const totalPendingOrders = preparingOrders.length + readyOrders.length + pendingCommandaItems.length;
+    
+    if (totalPendingOrders > 0) {
+      const confirmMessage = `ATENÇÃO: Existem ${totalPendingOrders} pedidos pendentes de entrega:\n\n` +
+        `• ${preparingOrders.length} pedidos de balcão em preparo\n` +
+        `• ${readyOrders.length} pedidos de balcão prontos para entrega\n` +
+        `• ${pendingCommandaItems.length} itens de comandas não entregues\n\n` +
+        'Tem certeza que deseja fechar o caixa mesmo com pedidos pendentes?';
+      
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+    }
+    
     setLoading(true);
     
     try {
@@ -67,6 +126,10 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
 
   const totalActualAmount = formData.reconciliation.reduce((sum, recon) => sum + recon.actual_amount, 0);
   const cashDiscrepancy = totalActualAmount - session.expected_amount;
+  
+  // Calcular total de pedidos pendentes
+  const totalPendingOrders = preparingOrders.length + readyOrders.length + pendingCommandaItems.length;
+  const hasPendingDeliveries = totalPendingOrders > 0;
 
   if (!isOpen) return null;
 
@@ -86,6 +149,42 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Alerta de Pedidos Pendentes */}
+          {hasPendingDeliveries && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <AlertTriangle className="h-6 w-6 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-yellow-800 mb-2">
+                    ⚠️ Atenção: Pedidos Pendentes de Entrega
+                  </h3>
+                  <div className="text-sm text-yellow-700 space-y-1">
+                    {preparingOrders.length > 0 && (
+                      <div className="flex items-center space-x-2">
+                        <Clock className="h-4 w-4" />
+                        <span>{preparingOrders.length} pedidos de balcão em preparo</span>
+                      </div>
+                    )}
+                    {readyOrders.length > 0 && (
+                      <div className="flex items-center space-x-2">
+                        <ShoppingBag className="h-4 w-4" />
+                        <span>{readyOrders.length} pedidos de balcão prontos para entrega</span>
+                      </div>
+                    )}
+                    {pendingCommandaItems.length > 0 && (
+                      <div className="flex items-center space-x-2">
+                        <Clock className="h-4 w-4" />
+                        <span>{pendingCommandaItems.length} itens de comandas não entregues</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-yellow-600 mt-2">
+                    Recomenda-se entregar todos os pedidos antes de fechar o caixa.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Resumo da Sessão */}
           <div className="bg-gray-50 rounded-lg p-4">
             <h3 className="text-lg font-medium text-gray-900 mb-3">Resumo da Sessão</h3>
@@ -249,16 +348,22 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+              disabled={loading || loadingValidation}
+              className={`flex-1 px-4 py-2 text-white rounded-md disabled:opacity-50 transition-colors ${
+                hasPendingDeliveries 
+                  ? 'bg-yellow-600 hover:bg-yellow-700' 
+                  : 'bg-red-600 hover:bg-red-700'
+              }`}
             >
-              {loading ? 'Fechando...' : 'Fechar Caixa'}
+              {loading ? 'Fechando...' : 
+               loadingValidation ? 'Validando...' :
+               hasPendingDeliveries ? 'Fechar Mesmo Assim' : 'Fechar Caixa'}
             </button>
           </div>
         </form>

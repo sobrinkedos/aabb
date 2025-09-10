@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, MapPin, User } from 'lucide-react';
 import { Order, MenuItem } from '../../types';
@@ -153,13 +152,18 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
         </div>
       )}
       
-      {orders.length === 0 ? (
+      {filteredOrders.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-gray-500">Nenhum pedido pendente na cozinha</p>
+          <p className="text-gray-500">
+            {tableFilter !== 'all' 
+              ? `Nenhum pedido encontrado para ${tableFilter}`
+              : 'Nenhum pedido pendente na cozinha'
+            }
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-          {orders.map((order) => {
+          {filteredOrders.map((order) => {
             const priority = getOrderPriority(order);
             const estimatedTime = getEstimatedTime(order);
             // Filtrar apenas itens que precisam ser preparados na cozinha (não diretos do estoque)
@@ -202,13 +206,6 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
                     {isComandaOrder(order) && (
                       <span className="bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-medium">
                         AGUARDA PAGTO
-                      </span>
-                    )}
-                    
-                    {/* Indicador de múltiplos pedidos */}
-                    {hasMultipleOrdersForTable(order.tableNumber || 'Balcão') && (
-                      <span className="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-                        {(tableOrdersMap.get(order.tableNumber || 'Balcão') || []).length} pedidos
                       </span>
                     )}
                   </div>

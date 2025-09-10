@@ -77,7 +77,7 @@ export type PaymentReconciliationUpdate = Partial<PaymentReconciliationInsert>;
 
 export type CashSessionStatus = 'open' | 'closed' | 'reconciled';
 
-export type TransactionType = 'sale' | 'refund' | 'adjustment' | 'tip';
+export type TransactionType = 'sale' | 'refund' | 'adjustment' | 'tip' | 'cash_withdrawal' | 'treasury_transfer';
 
 export type PaymentMethod = 'dinheiro' | 'cartao_debito' | 'cartao_credito' | 'pix' | 'transferencia';
 
@@ -123,7 +123,9 @@ export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   sale: 'Venda',
   refund: 'Estorno',
   adjustment: 'Ajuste',
-  tip: 'Gorjeta'
+  tip: 'Gorjeta',
+  cash_withdrawal: 'Saída de Dinheiro',
+  treasury_transfer: 'Transferência para Tesouraria'
 };
 
 // ===== INTERFACES PARA DADOS COMPOSTOS =====
@@ -225,6 +227,24 @@ export interface ProcessAdjustmentData {
   payment_method?: PaymentMethod;
 }
 
+// Dados para saída de dinheiro
+export interface ProcessCashWithdrawalData {
+  amount: number;
+  reason: string;
+  authorized_by: string;
+  recipient?: string;
+  purpose: 'change' | 'expense' | 'transfer' | 'other';
+}
+
+// Dados para transferência para tesouraria
+export interface ProcessTreasuryTransferData {
+  amount: number;
+  transfer_date: string;
+  authorized_by: string;
+  treasury_receipt_number?: string;
+  notes?: string;
+}
+
 // ===== INTERFACES PARA RELATÓRIOS =====
 
 // Resumo diário das operações de caixa
@@ -233,6 +253,9 @@ export interface DailySummary {
   total_sessions: number;
   total_sales: number;
   total_transactions: number;
+  total_cash_withdrawals: number;
+  total_treasury_transfers: number;
+  cash_balance: number;
   by_payment_method: PaymentMethodSummary[];
   by_employee: EmployeeSummary[];
   discrepancies: DiscrepancySummary[];
@@ -433,6 +456,8 @@ export interface UseCashManagementReturn extends CashManagementState {
   processComandaPayment: (data: ProcessComandaPaymentData) => Promise<void>;
   processRefund: (data: ProcessRefundData) => Promise<void>;
   processAdjustment: (data: ProcessAdjustmentData) => Promise<void>;
+  processCashWithdrawal: (data: ProcessCashWithdrawalData) => Promise<string>;
+  processTreasuryTransfer: (data: ProcessTreasuryTransferData) => Promise<string>;
   
   // Funções de relatório
   getDailySummary: (date?: Date) => Promise<DailySummary>;
