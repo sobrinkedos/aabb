@@ -72,13 +72,19 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
 
   // Função para atualizar status com feedback visual
   const handleStatusUpdate = async (orderId: string, newStatus: Order['status']) => {
+    console.log('🍳 Cozinha - Atualizando status:', {
+      orderId,
+      newStatus,
+      isComandaOrder: isComandaOrder({ id: orderId } as Order)
+    });
+    
     setUpdatingOrders(prev => new Set([...prev, orderId]));
     
     try {
       await updateOrderStatus(orderId, newStatus);
       console.log(`✅ Status do pedido ${orderId} atualizado para ${newStatus}`);
     } catch (error) {
-      console.error('Erro ao atualizar status:', error);
+      console.error('❌ Erro ao atualizar status:', error);
     } finally {
       setTimeout(() => {
         setUpdatingOrders(prev => {

@@ -184,6 +184,140 @@ export const useCashManagement = (): UseCashManagementReturn => {
     }
   }, [user, updateState, handleError]);
 
+  // ===== FUNÇÕES AUXILIARES PARA HISTÓRICO =====
+
+  const getLastClosedSessionBalance = useCallback(async (employeeId?: string): Promise<number> => {
+    try {
+      const targetEmployeeId = employeeId || user?.id;
+      if (!targetEmployeeId) return 0;
+
+      // Buscar a última sessão fechada do funcionário
+      const { data: lastSession, error } = await (supabase as any)
+        .from('cash_sessions')
+        .select('closing_amount, session_date')
+        .eq('employee_id', targetEmployeeId)
+        .eq('status', 'closed')
+        .order('session_date', { ascending: false })
+        .order('closed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erro ao buscar última sessão fechada:', error);
+        return 0;
+      }
+
+      return lastSession?.closing_amount || 0;
+    } catch (error) {
+      console.error('Erro ao obter saldo da última sessão:', error);
+      return 0;
+    }
+  }, [user]);
+
+  const getDailyCashMovement = useCallback(async (date: string): Promise<{
+    sessions: CashSessionWithEmployee[];
+    transactions: CashTransactionWithDetails[];
+    summary: {
+      opening_total: number;
+      closing_total: number;
+      sales_total: number;
+      cash_sales: number;
+      card_sales: number;
+      pix_sales: number;
+      adjustments: number;
+      discrepancy_total: number;
+      transaction_count: number;
+    };
+  }> => {
+    try {
+      // Buscar todas as sessões do dia
+      const { data: sessionsData, error: sessionsError } = await (supabase as any)
+        .from('cash_sessions')
+        .select(`
+          *,
+          profiles!cash_sessions_employee_id_fkey(id, name, role)
+        `)
+        .eq('session_date', date)
+        .order('opened_at', { ascending: true });
+
+      if (sessionsError) throw sessionsError;
+
+      // Buscar todas as transações do dia
+      const { data: transactionsData, error: transactionsError } = await (supabase as any)
+        .from('cash_transactions')
+        .select(`
+          *,
+          comandas(id, customer_name, table_id, total),
+          profiles!cash_transactions_processed_by_fkey(id, name),
+          cash_sessions(id, session_date, employee_id)
+        `)
+        .gte('processed_at', `${date}T00:00:00.000Z`)
+        .lt('processed_at', `${date}T23:59:59.999Z`)
+        .order('processed_at', { ascending: true });
+
+      if (transactionsError) throw transactionsError;
+
+      // Processar dados
+      const sessions: CashSessionWithEmployee[] = sessionsData?.map((session: any) => ({
+        ...session,
+        employee: session.profiles || { id: session.employee_id, name: 'Usuário', role: 'employee' }
+      })) || [];
+
+      const transactions: CashTransactionWithDetails[] = transactionsData?.map((transaction: any) => ({
+        ...transaction,
+        comanda: transaction.comandas || undefined,
+        processed_by_employee: transaction.profiles || { id: transaction.processed_by, name: 'Usuário' },
+        session: transaction.cash_sessions || undefined
+      })) || [];
+
+      // Calcular resumo
+      const opening_total = sessions.reduce((sum, session) => sum + (session.opening_amount || 0), 0);
+      const closing_total = sessions.reduce((sum, session) => sum + (session.closing_amount || 0), 0);
+      const discrepancy_total = sessions.reduce((sum, session) => sum + (session.cash_discrepancy || 0), 0);
+
+      const sales_transactions = transactions.filter(t => t.transaction_type === 'sale');
+      const sales_total = sales_transactions.reduce((sum, t) => sum + t.amount, 0);
+      const cash_sales = sales_transactions.filter(t => t.payment_method === 'dinheiro').reduce((sum, t) => sum + t.amount, 0);
+      const card_sales = sales_transactions.filter(t => ['cartao_debito', 'cartao_credito'].includes(t.payment_method)).reduce((sum, t) => sum + t.amount, 0);
+      const pix_sales = sales_transactions.filter(t => t.payment_method === 'pix').reduce((sum, t) => sum + t.amount, 0);
+      const adjustments = transactions.filter(t => t.transaction_type === 'adjustment').reduce((sum, t) => sum + t.amount, 0);
+
+      return {
+        sessions,
+        transactions,
+        summary: {
+          opening_total,
+          closing_total,
+          sales_total,
+          cash_sales,
+          card_sales,
+          pix_sales,
+          adjustments,
+          discrepancy_total,
+          transaction_count: transactions.length
+        }
+      };
+    } catch (error) {
+      console.error('Erro ao obter movimento diário:', error);
+      // Retornar dados padrão em caso de erro
+      return {
+        sessions: [],
+        transactions: [],
+        summary: {
+          opening_total: 0,
+          closing_total: 0,
+          sales_total: 0,
+          cash_sales: 0,
+          card_sales: 0,
+          pix_sales: 0,
+          adjustments: 0,
+          discrepancy_total: 0,
+          transaction_count: 0
+        }
+      };
+    }
+  }, []);
+
   // ===== FUNÇÕES DE SESSÃO DE CAIXA =====
 
   const openCashSession = useCallback(async (data: OpenCashSessionData): Promise<void> => {
@@ -838,6 +972,8 @@ export const useCashManagement = (): UseCashManagementReturn => {
     refreshData,
     exportReport,
     searchTransactions,
-    searchSessions
+    searchSessions,
+    getLastClosedSessionBalance,
+    getDailyCashMovement
   };
 };

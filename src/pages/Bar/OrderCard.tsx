@@ -140,7 +140,16 @@ const OrderCard: React.FC<OrderCardProps> = ({
 
       {nextStatus && (
         <button
-          onClick={() => updateOrderStatus(order.id, nextStatus)}
+          onClick={() => {
+            console.log('🔄 Clicando para atualizar status:', {
+              orderId: order.id,
+              currentStatus: order.status,
+              nextStatus,
+              isComandaOrder: isComandaOrder(order),
+              isBalcaoOrder: isBalcaoOrder(order)
+            });
+            updateOrderStatus(order.id, nextStatus);
+          }}
           className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
             isBalcaoOrder(order)
               ? order.status === 'pending'

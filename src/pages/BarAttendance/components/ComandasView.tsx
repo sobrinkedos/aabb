@@ -469,12 +469,14 @@ const ComandasView: React.FC = () => {
                     </span>
                   </h4>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {selectedComanda.items.map((item: any) => (
-                      <div key={item.id} className="bg-white rounded-lg p-3 shadow-sm">
+                    {selectedComanda.items.map((item: any) => {
+                      console.log('🔍 Debug item da comanda:', item);
+                      return (
+                        <div key={item.id} className="bg-white rounded-lg p-3 shadow-sm">
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex-1">
                             <h5 className="font-medium text-gray-900 text-sm">
-                              {item.menu_item?.name || 'Item não encontrado'}
+                              {item.menu_item?.name || item.menu_items?.name || `Item ${item.menu_item_id}`}
                             </h5>
                             <p className="text-xs text-gray-600">
                               R$ {item.price.toFixed(2)} cada
@@ -501,8 +503,9 @@ const ComandasView: React.FC = () => {
                         {item.notes && (
                           <p className="text-xs text-gray-500 mt-1">Obs: {item.notes}</p>
                         )}
-                      </div>
-                    ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

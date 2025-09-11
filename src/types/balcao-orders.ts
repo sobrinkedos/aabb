@@ -1,4 +1,5 @@
 // Types para o sistema de pedidos de balcão independente
+import { PaymentMethod } from './cash-management';
 
 // Enums para status
 export type BalcaoOrderStatus = 'pending_payment' | 'paid' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
@@ -203,9 +204,6 @@ export interface BalcaoNotification {
   read: boolean;
   data?: any;
 }
-
-// Reutilização do PaymentMethod do sistema de caixa
-export type PaymentMethod = 'dinheiro' | 'cartao_debito' | 'cartao_credito' | 'pix' | 'transferencia';
 
 // Constantes para o sistema
 export const BALCAO_ORDER_STATUS_LABELS: Record<BalcaoOrderStatus, string> = {
