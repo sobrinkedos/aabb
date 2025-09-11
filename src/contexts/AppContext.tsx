@@ -356,12 +356,32 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         console.log('Decomposição do ID para Comanda:', { orderId, realComandaId, timeKey });
 
         // Converter timeKey (formato: "ano-mês-dia-hora-minuto") para intervalo de tempo em UTC
-        const [year, month, day, hour, minute] = timeKey.split('-').map(Number);
+        const timeKeyParts = timeKey.split('-');
+        console.log('Partes do timeKey:', timeKeyParts);
+        
+        const [year, month, day, hour, minute] = timeKeyParts.map(Number);
+        console.log('Valores parseados:', { year, month, day, hour, minute });
+        
+        // Validar se todos os valores são números válidos
+        if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
+          console.error('❌ Valores de data inválidos:', { year, month, day, hour, minute });
+          throw new Error(`Valores de data inválidos no timeKey: ${timeKey}`);
+        }
+        
         // Importante: month vindo da chave já está 0-based; usar Date.UTC garante alinhamento com timestamptz do banco
         const startTime = new Date(Date.UTC(year, month, day, hour, minute));
         const endTime = new Date(Date.UTC(year, month, day, hour, minute + 1));
 
-        console.log('Intervalo de tempo:', { startTime: startTime.toISOString(), endTime: endTime.toISOString() });
+        // Verificar se as datas são válidas antes de tentar toISOString
+        if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+          console.error('❌ Datas inválidas criadas:', { startTime, endTime });
+          throw new Error(`Datas inválidas criadas com timeKey: ${timeKey}`);
+        }
+
+        console.log('Intervalo de tempo:', { 
+          startTime: startTime.toISOString(), 
+          endTime: endTime.toISOString() 
+        });
 
         // Buscar itens específicos deste "pedido" (agrupamento por timestamp)
         const { data: itemsToUpdate, error: fetchError } = await supabase
