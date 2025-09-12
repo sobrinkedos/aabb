@@ -407,9 +407,10 @@ const ComandasView: React.FC = () => {
                   {filteredMenuItems.map(item => (
                     <div
                       key={item.id}
-                      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow group"
+                      onClick={() => addToCart(item)}
+                      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200 group cursor-pointer hover:border-blue-300 hover:bg-blue-50"
                     >
-                      <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center group-hover:bg-gray-200 transition-colors">
+                      <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
                         {item.image_url ? (
                           <img
                             src={item.image_url}
@@ -421,27 +422,23 @@ const ComandasView: React.FC = () => {
                             }}
                           />
                         ) : null}
-                        <div className="text-gray-400 text-2xl" style={{ display: item.image_url ? 'none' : 'block' }}>
+                        <div className="text-gray-400 text-2xl group-hover:text-blue-500 transition-colors" style={{ display: item.image_url ? 'none' : 'block' }}>
                           🍺
                         </div>
                       </div>
-                      <h3 className="font-medium text-gray-900 mb-1 line-clamp-2">
+                      <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 group-hover:text-blue-900">
                         {item.name}
                       </h3>
-                      <p className="text-sm text-gray-500 mb-2 line-clamp-2">
+                      <p className="text-sm text-gray-500 mb-2 line-clamp-2 group-hover:text-blue-700">
                         {item.description}
                       </p>
                       <div className="flex items-center justify-between">
-                        <span className="text-lg font-bold text-green-600">
+                        <span className="text-lg font-bold text-green-600 group-hover:text-green-700">
                           R$ {(typeof item.price === 'string' ? parseFloat(item.price) : item.price).toFixed(2)}
                         </span>
-                        <button
-                          onClick={() => addToCart(item)}
-                          className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors"
-                          title={`Adicionar ${item.name}`}
-                        >
+                        <div className="bg-blue-600 text-white p-2 rounded-lg group-hover:bg-blue-700 transition-colors">
                           <Plus size={16} />
-                        </button>
+                        </div>
                       </div>
                     </div>
                   ))}
