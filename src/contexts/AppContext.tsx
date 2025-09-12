@@ -346,17 +346,43 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         console.log('Pedido de balcão atualizado com sucesso');
       } else {
         // Lógica original para comandas
-        // Extrair comandaId do orderId (UUID completo antes do timestamp)
-        // UUID tem formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-        // Então precisamos pegar as primeiras 5 partes separadas por hífen
-        const parts = orderId.split('-');
-        const realComandaId = parts.slice(0, 5).join('-');
+        // Extrair comandaId do orderId
+        let realComandaId: string;
+        let timeKey: string;
         
-        // Extrair timeKey do orderId (timestamp após o UUID)
-        const timeKey = parts.slice(5).join('-');
+        if (orderId.startsWith('comanda-')) {
+          // Formato: comanda-{uuid}-{timeKey}
+          // Remover o prefixo 'comanda-'
+          const withoutPrefix = orderId.replace('comanda-', '');
+          
+          // Encontrar onde termina o UUID (após 5 grupos separados por hífen)
+          // UUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+          const uuidMatch = withoutPrefix.match(/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-(.+)$/i);
+          
+          if (uuidMatch) {
+            realComandaId = uuidMatch[1];
+            timeKey = uuidMatch[2];
+          } else {
+            // Fallback: assumir que é só o UUID sem timestamp
+            realComandaId = withoutPrefix;
+            timeKey = '';
+          }
+        } else {
+          // Formato original sem prefixo
+          const parts = orderId.split('-');
+          realComandaId = parts.slice(0, 5).join('-');
+          timeKey = parts.slice(5).join('-');
+        }
         
-        console.log('Decomposição do ID:', { parts, realComandaId, timeKey });
+        console.log('Decomposição do ID:', { orderId, realComandaId, timeKey });
         
+        // Validar se o realComandaId é um UUID válido
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(realComandaId)) {
+          console.error('ID da comanda inválido:', realComandaId);
+          throw new Error(`ID da comanda inválido: ${realComandaId}`);
+        }
+
         // Buscar itens específicos deste pedido baseado no timestamp
         const { data: currentItems, error: fetchError } = await supabase
           .from('comanda_items')
@@ -364,7 +390,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           .eq('comanda_id', realComandaId)
           .in('status', ['pending', 'preparing', 'ready']);
 
-        if (fetchError) throw fetchError;
+        if (fetchError) {
+          console.error('Erro na busca dos itens da comanda:', fetchError);
+          throw fetchError;
+        }
 
         // Filtrar itens que pertencem a este pedido específico (mesmo minuto)
         const itemsToUpdate = currentItems?.filter(item => {
