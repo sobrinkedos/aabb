@@ -3,8 +3,7 @@
 @tailwind utilities;
 
 /* Previne o overscroll bounce que causa a faixa branca */
-html,
-body {
+html, body {
   overscroll-behavior: none;
   overflow-x: hidden;
 }
@@ -16,30 +15,27 @@ body {
 
 /* Esconde a barra de rolagem mas mantém a funcionalidade */
 .scrollbar-hide {
-  -ms-overflow-style: none;
-  /* Internet Explorer 10+ */
-  scrollbar-width: none;
-  /* Firefox */
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
 }
 
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;
-  /* Safari and Chrome */
+  display: none;  /* Safari and Chrome */
 }
 
 @layer components {
   .form-input {
     @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed;
   }
-
+  
   .form-select {
     @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed bg-white;
   }
-
+  
   .btn-primary {
     @apply px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors duration-200 font-medium;
   }
-
+  
   .btn-secondary {
     @apply px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed;
   }
