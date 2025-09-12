@@ -39,7 +39,8 @@ const Sidebar: React.FC = () => {
       initial={{ x: -280 }}
       animate={{ x: 0 }}
       transition={{ duration: 0.3 }}
-      className="bg-slate-900 text-white w-64 min-h-screen p-4 flex flex-col"
+      className="bg-slate-900 text-white w-64 h-full p-4 flex flex-col overflow-y-auto scrollbar-hide"
+      style={{ overscrollBehavior: 'contain' }}
     >
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-blue-400">ClubManager</h1>
@@ -76,7 +77,7 @@ const Sidebar: React.FC = () => {
         </div>
       )}
 
-      <nav className="flex-1">
+      <nav className="flex-1 overflow-y-auto scrollbar-hide">
         <ul className="space-y-2">
           {menuItems.map((item) => (
             <li key={item.name}>

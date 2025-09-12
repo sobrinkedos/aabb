@@ -396,12 +396,12 @@ const BalcaoViewNew: React.FC = () => {
                     whileHover={{ scale: isOutOfStock ? 1 : 1.02 }}
                     whileTap={{ scale: isOutOfStock ? 1 : 0.98 }}
                     onClick={() => !isOutOfStock && addToCart(item)}
-                    className={`bg-white rounded-lg p-4 shadow-sm border transition-shadow relative ${
+                    className={`bg-white rounded-lg p-4 shadow-sm border transition-all duration-200 relative ${
                       isOutOfStock 
                         ? 'cursor-not-allowed opacity-50 border-red-300' 
                         : isLowStock 
-                        ? 'cursor-pointer hover:shadow-md border-yellow-300' 
-                        : 'cursor-pointer hover:shadow-md border-gray-200'
+                        ? 'cursor-pointer hover:shadow-lg hover:border-yellow-400 hover:bg-yellow-50 border-yellow-300' 
+                        : 'cursor-pointer hover:shadow-lg hover:border-blue-400 hover:bg-blue-50 border-gray-200'
                     }`}
                   >
                     {/* Indicador de estoque */}

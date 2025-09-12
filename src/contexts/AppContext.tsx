@@ -346,75 +346,124 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         console.log('Pedido de balcão atualizado com sucesso');
       } else {
         // Lógica para comandas
-        // O orderId é no formato `comanda-${comandaId}-${timeKey}` onde timeKey é "ano-mês-dia-hora-minuto"
-        const idString = orderId.replace('comanda-', '');
-        const lastHyphenIndex = idString.lastIndexOf('-');
+        // Extrair comandaId do orderId
+        let realComandaId: string;
+        let timeKey: string;
         
-        const realComandaId = idString.substring(0, lastHyphenIndex);
-        const timeKey = idString.substring(lastHyphenIndex + 1);
-
-        console.log('Decomposição do ID para Comanda:', { orderId, realComandaId, timeKey });
-
-        // Converter timeKey (formato: "ano-mês-dia-hora-minuto") para intervalo de tempo em UTC
-        const timeKeyParts = timeKey.split('-');
-        console.log('Partes do timeKey:', timeKeyParts);
-        
-        const [year, month, day, hour, minute] = timeKeyParts.map(Number);
-        console.log('Valores parseados:', { year, month, day, hour, minute });
-        
-        // Validar se todos os valores são números válidos
-        if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
-          console.error('❌ Valores de data inválidos:', { year, month, day, hour, minute });
-          throw new Error(`Valores de data inválidos no timeKey: ${timeKey}`);
+        if (orderId.startsWith('comanda-')) {
+          // Formato: comanda-{uuid}-{timeKey}
+          // Remover o prefixo 'comanda-'
+          const withoutPrefix = orderId.replace('comanda-', '');
+          
+          // Encontrar onde termina o UUID (após 5 grupos separados por hífen)
+          // UUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+          const uuidMatch = withoutPrefix.match(/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-(.+)$/i);
+          
+          if (uuidMatch) {
+            realComandaId = uuidMatch[1];
+            timeKey = uuidMatch[2];
+          } else {
+            // Fallback: assumir que é só o UUID sem timestamp
+            realComandaId = withoutPrefix;
+            timeKey = '';
+          }
+        } else {
+          // Formato original sem prefixo
+          const parts = orderId.split('-');
+          realComandaId = parts.slice(0, 5).join('-');
+          timeKey = parts.slice(5).join('-');
         }
         
-        // Importante: month vindo da chave já está 0-based; usar Date.UTC garante alinhamento com timestamptz do banco
-        const startTime = new Date(Date.UTC(year, month, day, hour, minute));
-        const endTime = new Date(Date.UTC(year, month, day, hour, minute + 1));
-
-        // Verificar se as datas são válidas antes de tentar toISOString
-        if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
-          console.error('❌ Datas inválidas criadas:', { startTime, endTime });
-          throw new Error(`Datas inválidas criadas com timeKey: ${timeKey}`);
+        console.log('Decomposição do ID:', { orderId, realComandaId, timeKey });
+        
+        // Validar se o realComandaId é um UUID válido
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(realComandaId)) {
+          console.error('ID da comanda inválido:', realComandaId);
+          throw new Error(`ID da comanda inválido: ${realComandaId}`);
         }
 
-        console.log('Intervalo de tempo:', { 
-          startTime: startTime.toISOString(), 
-          endTime: endTime.toISOString() 
-        });
+        // Se não há timeKey, usar abordagem baseada em timestamp
+        if (!timeKey) {
+          // Buscar itens mais recentes da comanda
+          const { data: currentItems, error: fetchError } = await supabase
+            .from('comanda_items')
+            .select('*')
+            .eq('comanda_id', realComandaId)
+            .in('status', ['pending', 'preparing', 'ready'])
+            .order('added_at', { ascending: false });
 
-        // Buscar itens específicos deste "pedido" (agrupamento por timestamp)
-        const { data: itemsToUpdate, error: fetchError } = await supabase
-          .from('comanda_items')
-          .select('id')
-          .eq('comanda_id', realComandaId)
-          .gte('added_at', startTime.toISOString())
-          .lt('added_at', endTime.toISOString());
+          if (fetchError) {
+            console.error('Erro na busca dos itens da comanda:', fetchError);
+            throw fetchError;
+          }
 
-        if (fetchError) {
-          console.error('Erro ao buscar itens do pedido da comanda:', fetchError);
-          throw fetchError;
+          if (currentItems && currentItems.length > 0) {
+            const itemIds = currentItems.map(item => (item as any).id);
+            console.log('Atualizando todos os itens pendentes:', itemIds, 'para status:', status);
+            
+            const { error } = await supabase
+              .from('comanda_items')
+              .update({ status } as any)
+              .in('id', itemIds);
+
+            if (error) throw error;
+            console.log('Atualização realizada com sucesso');
+          } else {
+            console.log('Nenhum item encontrado para atualizar');
+          }
+        } else {
+          // Usar timeKey para filtrar itens específicos
+          // Converter timeKey (formato: "ano-mês-dia-hora-minuto") para intervalo de tempo em UTC
+          const timeKeyParts = timeKey.split('-');
+          console.log('Partes do timeKey:', timeKeyParts);
+          
+          const [year, month, day, hour, minute] = timeKeyParts.map(Number);
+          console.log('Valores parseados:', { year, month, day, hour, minute });
+          
+          // Validar se todos os valores são números válidos
+          if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
+            console.error('❌ Valores de data inválidos:', { year, month, day, hour, minute });
+            throw new Error(`Valores de data inválidos no timeKey: ${timeKey}`);
+          }
+
+          // Buscar itens específicos deste pedido baseado no timestamp
+          const { data: currentItems, error: fetchError } = await supabase
+            .from('comanda_items')
+            .select('*')
+            .eq('comanda_id', realComandaId)
+            .in('status', ['pending', 'preparing', 'ready']);
+
+          if (fetchError) {
+            console.error('Erro na busca dos itens da comanda:', fetchError);
+            throw fetchError;
+          }
+
+          // Filtrar itens que pertencem a este pedido específico (mesmo minuto)
+          const itemsToUpdate = currentItems?.filter(item => {
+            const addedAt = new Date((item as any).added_at);
+            const itemTimeKey = `${addedAt.getFullYear()}-${addedAt.getMonth()}-${addedAt.getDate()}-${addedAt.getHours()}-${addedAt.getMinutes()}`;
+            return timeKey === itemTimeKey;
+          }) || [];
+
+          console.log('Itens encontrados para atualizar:', itemsToUpdate.length);
+
+          // Atualizar apenas os itens deste pedido específico
+          if (itemsToUpdate.length > 0) {
+            const itemIds = itemsToUpdate.map(item => (item as any).id);
+            console.log('Atualizando itens:', itemIds, 'para status:', status);
+            
+            const { error } = await supabase
+              .from('comanda_items')
+              .update({ status } as any)
+              .in('id', itemIds);
+
+            if (error) throw error;
+            console.log('Atualização realizada com sucesso');
+          } else {
+            console.log('Nenhum item encontrado para atualizar');
+          }
         }
-
-        if (!itemsToUpdate || itemsToUpdate.length === 0) {
-          console.warn('Nenhum item encontrado para atualizar para o pedido:', orderId);
-          return;
-        }
-
-        const itemIds = itemsToUpdate.map(item => item.id);
-        console.log(`Atualizando ${itemIds.length} itens para o status '${status}'`, itemIds);
-
-        const { error: updateError } = await supabase
-          .from('comanda_items')
-          .update({ 
-            status: status,
-            preparation_started_at: status === 'preparing' ? new Date().toISOString() : undefined,
-            preparation_completed_at: status === 'ready' ? new Date().toISOString() : undefined
-          })
-          .in('id', itemIds);
-
-        if (updateError) throw updateError;
-        console.log('Itens da comanda atualizados com sucesso');
       }
       
       // Recarregar pedidos da cozinha e do bar
