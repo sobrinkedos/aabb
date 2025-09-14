@@ -160,18 +160,17 @@ export interface CommandItem {
 // Interface para Pendência de Pagamento
 export interface PaymentPending {
   id: string;
-  comanda_id: string;
-  valor_total: number;
-  percentual_comissao: number;
-  valor_comissao: number;
-  metodo_pagamento: PaymentMethod;
-  status: PaymentPendingStatus;
-  criada_em: string;
-  paga_em?: string;
-  vence_em?: string;
-  observacoes?: string;
+  command_id: string;
+  amount: number;
+  commission_percentage: number;
+  commission_amount: number;
+  payment_method: PaymentMethod;
+  status: 'pending' | 'paid' | 'cancelled';
   created_at: string;
-  updated_at: string;
+  paid_at?: string;
+  transaction_id?: string;
+  observations?: string;
+  cash_session_id: string;
   
   // Relação com comanda
   comanda?: Command;
@@ -180,19 +179,18 @@ export interface PaymentPending {
 // Interface para Transação
 export interface Transaction {
   id: string;
-  tipo: TransactionType;
-  valor: number;
-  metodo_pagamento: PaymentMethod;
-  comanda_id?: string;
-  pendencia_id?: string;
-  sessao_caixa_id: string;
-  processada_em: string;
-  processada_por: string;
-  numero_referencia?: string;
-  numero_recibo?: string;
-  documento_fiscal_id?: string;
-  observacoes?: string;
-  created_at: string;
+  type: TransactionType;
+  amount: number;
+  payment_method: PaymentMethod;
+  command_id?: string;
+  pending_id?: string;
+  cash_session_id: string;
+  processed_at: string;
+  processed_by: string;
+  reference_number?: string;
+  receipt_number?: string;
+  fiscal_document_id?: string;
+  observations?: string;
   
   // Relações
   comanda?: Command;
@@ -211,6 +209,7 @@ export interface PaymentData {
   percentual_comissao: number;
   valor_comissao: number;
   metodo_pagamento: PaymentMethod;
+  command_id?: string;
   observacoes?: string;
   numero_referencia?: string;
   dados_pix?: {
@@ -482,18 +481,7 @@ export interface Receipt {
   observacoes?: string;
 }
 
-// Interface para sessão de caixa
-export interface CashSession {
-  id: string;
-  funcionario_id: string;
-  valor_inicial: number;
-  valor_final?: number;
-  aberta_em: string;
-  fechada_em?: string;
-  status: 'aberta' | 'fechada';
-  observacoes_abertura?: string;
-  observacoes_fechamento?: string;
-}
+// Interface para sessão de caixa (removida - usando definição unificada abaixo)
 
 // Interface para fechamento de caixa
 export interface CashClosing {

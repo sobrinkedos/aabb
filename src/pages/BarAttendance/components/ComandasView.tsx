@@ -3,6 +3,8 @@ import { Eye, ArrowLeft, Plus, Minus, ShoppingCart, CreditCard } from 'lucide-re
 import NovaComandaModal from './NovaComandaModal';
 import ComandaAlerts from './ComandaAlerts';
 import ComandaFilters from './ComandaFilters';
+import { CloseAccountModal } from '../../../components/sales/CloseAccountModal';
+import { useCloseAccountModal } from '../../../hooks/useCloseAccountModal';
 import { useComandas } from '../../../hooks/useComandas';
 import { useBarTables } from '../../../hooks/useBarTables';
 import { useMenuItems } from '../../../hooks/useMenuItems';
@@ -10,6 +12,8 @@ import { useBarAttendance } from '../../../hooks/useBarAttendance';
 import { useApp } from '../../../contexts/AppContext';
 import { Comanda, ComandaStatus } from '../../../types/bar-attendance';
 import { MenuItem } from '../../../types';
+import { Command } from '../../../types/sales-management';
+import { supabase } from '../../../lib/supabase';
 
 const ComandasView: React.FC = () => {
   const { comandas, loading, refetch } = useComandas();
@@ -34,9 +38,71 @@ const ComandasView: React.FC = () => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   
-  // Estados para fechamento de conta
-  const [showCloseModal, setShowCloseModal] = useState(false);
-  const [isClosingComanda, setIsClosingComanda] = useState(false);
+  // Hook para fechamento de conta melhorado
+  const {
+    isOpen: showCloseModal,
+    selectedComanda: closeModalComanda,
+    loading: isClosingComanda,
+    error: closeError,
+    openModal: openCloseModal,
+    closeModal: closeCloseModal,
+    handleConfirm: handleCloseConfirm,
+    clearError: clearCloseError
+  } = useCloseAccountModal({
+    onSuccess: async (result) => {
+      console.log('✅ Modal processado com sucesso:', result);
+      
+      // Agora fechar a comanda no sistema real do bar
+      if (selectedComanda) {
+        try {
+          console.log('💳 Fechando comanda no sistema do bar:', selectedComanda.id);
+          
+          // Atualizar status da comanda para pendente de pagamento diretamente
+          const { error: updateError } = await supabase
+            .from('comandas')
+            .update({
+              status: 'pending_payment',
+              payment_method: 'pending',
+              notes: 'Enviado para caixa - aguardando processamento',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', selectedComanda.id);
+
+          if (updateError) {
+            throw new Error(`Erro ao atualizar comanda: ${updateError.message}`);
+          }
+          
+          console.log('✅ [MODAL NOVO] Comanda atualizada para pendente de pagamento com sucesso');
+          
+          // Atualizar dados
+          await refetch();
+          await refreshBarOrders();
+          await refreshKitchenOrders();
+          
+          // Voltar para a lista
+          setViewMode('list');
+          setSelectedComanda(null);
+          setCart([]);
+          
+          setSuccessMessage('Comanda enviada para o caixa com sucesso!');
+          setShowSuccessMessage(true);
+          setTimeout(() => setShowSuccessMessage(false), 3000);
+          
+        } catch (error) {
+          console.error('❌ [MODAL NOVO] Erro ao fechar comanda no sistema do bar:', error);
+          setSuccessMessage('❌ Erro ao processar fechamento da comanda');
+          setShowSuccessMessage(true);
+          setTimeout(() => setShowSuccessMessage(false), 5000);
+        }
+      }
+    },
+    onError: (error) => {
+      console.error('❌ Erro no modal:', error);
+      setSuccessMessage(`Erro: ${error.message}`);
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 5000);
+    }
+  });
   
   // Hook para menu items
   const { menuItems, loading: menuLoading } = useMenuItems(true);
@@ -176,46 +242,56 @@ const ComandasView: React.FC = () => {
     }
   };
 
-  const handleCloseComanda = async (metodoPagamento: string, observacoes?: string) => {
-    if (!selectedComanda) return;
+  // Função para converter comanda do sistema para o formato do modal
+  const convertComandaToCommand = (comanda: any): Command => {
+    console.log('🔄 Convertendo comanda:', comanda);
     
-    setIsClosingComanda(true);
-    
-    try {
-      console.log('💳 Fechando comanda:', selectedComanda.id, 'Método:', metodoPagamento);
-      
-      await fecharComanda(selectedComanda.id, metodoPagamento, observacoes);
-      
-      console.log('✅ Comanda fechada com sucesso');
-      
-      // Atualizar dados
-      await refetch();
-      await refreshBarOrders();
-      await refreshKitchenOrders();
-      
-      // Voltar para a lista
-      setViewMode('list');
-      setSelectedComanda(null);
-      setCart([]);
-      setShowCloseModal(false);
-      
-      // Mostrar mensagem de sucesso
-      setSuccessMessage('✅ Comanda fechada e enviada para o caixa!');
-      setShowSuccessMessage(true);
-      setTimeout(() => {
-        setShowSuccessMessage(false);
-      }, 3000);
-      
-    } catch (error) {
-      console.error('❌ Erro ao fechar comanda:', error);
-      setSuccessMessage('❌ Erro ao fechar comanda');
-      setShowSuccessMessage(true);
-      setTimeout(() => {
-        setShowSuccessMessage(false);
-      }, 3000);
-    } finally {
-      setIsClosingComanda(false);
-    }
+    return {
+      id: comanda.id,
+      mesa_id: comanda.table_id || undefined,
+      cliente_id: comanda.customer_id || undefined,
+      nome_cliente: comanda.customer_name || undefined,
+      funcionario_id: comanda.employee_id,
+      status: comanda.status === 'open' ? 'aberta' as any : comanda.status as any,
+      total: comanda.total || 0,
+      quantidade_pessoas: comanda.people_count || 1,
+      aberta_em: comanda.opened_at || comanda.created_at || new Date().toISOString(),
+      fechada_em: comanda.closed_at || undefined,
+      observacoes: comanda.notes || undefined,
+      created_at: comanda.created_at || new Date().toISOString(),
+      updated_at: comanda.updated_at || comanda.created_at || new Date().toISOString(),
+      data_abertura: comanda.opened_at || comanda.created_at || new Date().toISOString(),
+      mesa: comanda.table ? {
+        id: comanda.table.id,
+        numero: comanda.table.number,
+        capacidade: comanda.table.capacity
+      } : undefined,
+      itens: comanda.items?.map((item: any) => {
+        console.log('🔄 Convertendo item:', item);
+        
+        // Extrair dados do menu_item se disponível
+        const menuItem = item.menu_item || item.menu_items;
+        const nomeItem = item.product_name || menuItem?.name || 'Item sem nome';
+        const precoUnitario = item.unit_price || menuItem?.price || 0;
+        const quantidade = item.quantity || 1;
+        const precoTotal = item.total_price || (precoUnitario * quantidade);
+        
+        return {
+          id: item.id,
+          comanda_id: comanda.id,
+          produto_id: item.menu_item_id || '',
+          nome_produto: nomeItem,
+          quantidade: quantidade,
+          preco_unitario: precoUnitario,
+          preco_total: precoTotal,
+          status: item.status as any,
+          adicionado_em: item.created_at || new Date().toISOString(),
+          entregue_em: item.delivered_at || undefined,
+          created_at: item.created_at || new Date().toISOString(),
+          observacoes: item.notes || undefined
+        };
+      }) || []
+    };
   };
 
   const handleDismissAlert = (comandaId: string) => {
@@ -357,7 +433,20 @@ const ComandasView: React.FC = () => {
           {/* Ações */}
           <div className="flex flex-col space-y-2">
             <button
-              onClick={() => setShowCloseModal(true)}
+              onClick={() => {
+                console.log('🔥 Botão Fechar Conta clicado!');
+                console.log('📋 Comanda selecionada:', selectedComanda);
+                console.log('📋 Itens da comanda:', selectedComanda?.items);
+                if (selectedComanda) {
+                  const commandForModal = convertComandaToCommand(selectedComanda);
+                  console.log('🔄 Comanda convertida:', commandForModal);
+                  console.log('🔄 Itens convertidos:', commandForModal.itens);
+                  console.log('🚀 Abrindo modal...');
+                  openCloseModal(commandForModal);
+                } else {
+                  console.error('❌ Nenhuma comanda selecionada');
+                }
+              }}
               className="bg-red-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center space-x-2"
             >
               <CreditCard size={20} />
@@ -614,14 +703,38 @@ const ComandasView: React.FC = () => {
           </div>
         </div>
 
-        {/* Modal Fechar Conta - Detalhes */}
-        <CloseComandaModal
-          isOpen={showCloseModal}
-          onClose={() => setShowCloseModal(false)}
-          comanda={selectedComanda}
-          onConfirm={handleCloseComanda}
-          isLoading={isClosingComanda}
-        />
+        {/* Modal Fechar Conta Melhorado */}
+        {(() => {
+          console.log('🔍 Debug Modal:', { 
+            showCloseModal, 
+            closeModalComanda: !!closeModalComanda,
+            isClosingComanda 
+          });
+          return closeModalComanda && (
+            <CloseAccountModal
+              isOpen={showCloseModal}
+              comanda={closeModalComanda}
+              onClose={closeCloseModal}
+              onConfirm={handleCloseConfirm}
+              loading={isClosingComanda}
+            />
+          );
+        })()}
+
+        {/* Exibir erro do modal se houver */}
+        {closeError && (
+          <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg z-50">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium">Erro: {closeError}</span>
+              <button
+                onClick={clearCloseError}
+                className="text-red-600 hover:text-red-800"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -818,122 +931,6 @@ const ComandasView: React.FC = () => {
   }
 };
 
-// Modal para fechar comanda
-interface CloseComandaModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  comanda: Comanda;
-  onConfirm: (metodoPagamento: string, observacoes?: string) => void;
-  isLoading: boolean;
-}
 
-const CloseComandaModal: React.FC<CloseComandaModalProps> = ({
-  isOpen,
-  onClose,
-  comanda,
-  onConfirm,
-  isLoading
-}) => {
-  const [metodoPagamento, setMetodoPagamento] = useState('dinheiro');
-  const [observacoes, setObservacoes] = useState('');
-
-  console.log('🔴 CloseComandaModal renderizado:', { isOpen, comanda: !!comanda, isLoading });
-
-  if (!isOpen) {
-    console.log('🔴 Modal não está aberto, retornando null');
-    return null;
-  }
-
-  console.log('🔴 Modal está aberto, renderizando interface');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onConfirm(metodoPagamento, observacoes);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Fechar Conta</h2>
-          
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-semibold text-gray-900 mb-2">
-              Mesa {comanda.table?.number || 'N/A'} - {comanda.customer_name || 'Cliente'}
-            </h3>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Total da conta:</span>
-              <span className="text-2xl font-bold text-green-600">
-                R$ {comanda.total?.toFixed(2) || '0,00'}
-              </span>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Método de Pagamento
-              </label>
-              <select
-                value={metodoPagamento}
-                onChange={(e) => setMetodoPagamento(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              >
-                <option value="dinheiro">Dinheiro</option>
-                <option value="cartao_credito">Cartão de Crédito</option>
-                <option value="cartao_debito">Cartão de Débito</option>
-                <option value="pix">PIX</option>
-                <option value="vale_refeicao">Vale Refeição</option>
-                <option value="outros">Outros</option>
-              </select>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Observações (opcional)
-              </label>
-              <textarea
-                value={observacoes}
-                onChange={(e) => setObservacoes(e.target.value)}
-                placeholder="Observações sobre o pagamento..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows={3}
-              />
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isLoading}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Fechando...</span>
-                  </>
-                ) : (
-                  <>
-                    <CreditCard size={16} />
-                    <span>Fechar Conta</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export default ComandasView;

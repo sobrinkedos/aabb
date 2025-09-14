@@ -32,6 +32,7 @@ import CashWithdrawalReceipt from './CashWithdrawalReceipt';
 import DailyTransactions from './DailyTransactions';
 import PaymentReceipt from '../../BarAttendance/components/PaymentReceipt';
 import { PendingComandas } from './PendingComandas';
+import { ProcessComandaPaymentModal } from '../../../components/cash/ProcessComandaPaymentModal';
 import { useNavigate } from 'react-router-dom';
 import { ComandaWithItems } from '../../../types/bar-attendance';
 import { BalcaoOrderWithDetails } from '../../../types/balcao-orders';
@@ -68,6 +69,8 @@ export const DashboardOverview: React.FC = () => {
   const [showTreasuryReceiptModal, setShowTreasuryReceiptModal] = useState(false);
   const [showCashWithdrawalReceiptModal, setShowCashWithdrawalReceiptModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<BalcaoOrderWithDetails | null>(null);
+  const [selectedComanda, setSelectedComanda] = useState<ComandaWithItems | null>(null);
+  const [showComandaPaymentModal, setShowComandaPaymentModal] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'dinheiro' | 'cartao_debito' | 'cartao_credito' | 'pix' | 'transferencia'>('dinheiro');
   const [processing, setProcessing] = useState(false);
   const [lastPaymentData, setLastPaymentData] = useState<any>(null);
@@ -88,22 +91,33 @@ export const DashboardOverview: React.FC = () => {
     setShowPaymentModal(true);
   };
 
-  // Função para processar pagamento de comanda
-  const handleComandaPayment = async (comanda: ComandaWithItems) => {
+  // Função para abrir modal de pagamento de comanda
+  const handleComandaPayment = (comanda: ComandaWithItems) => {
     if (!currentSession) {
       alert('É necessário ter uma sessão de caixa aberta para processar pagamentos.');
       return;
     }
     
+    setSelectedComanda(comanda);
+    setShowComandaPaymentModal(true);
+  };
+
+  // Função para processar pagamento de comanda
+  const processComandaPaymentWithMethod = async (paymentMethod: string, observations?: string) => {
+    if (!selectedComanda || !currentSession) return;
+    
     try {
       setProcessing(true);
       await processComandaPayment({
-        comanda_id: comanda.id,
-        payment_method: comanda.payment_method || 'dinheiro',
-        amount: comanda.total
+        comanda_id: selectedComanda.id,
+        payment_method: paymentMethod,
+        amount: selectedComanda.total || 0,
+        notes: observations
       });
       
       console.log('✅ Pagamento da comanda processado com sucesso');
+      setShowComandaPaymentModal(false);
+      setSelectedComanda(null);
     } catch (error) {
       console.error('❌ Erro ao processar pagamento da comanda:', error);
       alert('Erro ao processar pagamento da comanda');
@@ -836,6 +850,18 @@ export const DashboardOverview: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal de Processamento de Pagamento de Comanda */}
+      <ProcessComandaPaymentModal
+        isOpen={showComandaPaymentModal}
+        comanda={selectedComanda}
+        onClose={() => {
+          setShowComandaPaymentModal(false);
+          setSelectedComanda(null);
+        }}
+        onConfirm={processComandaPaymentWithMethod}
+        loading={processing}
+      />
 
       {/* Modal de Comprovante de Pagamento */}
       {showReceiptModal && lastPaymentData && (

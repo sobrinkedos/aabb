@@ -1,0 +1,81 @@
+/**
+ * Utilitários para formatação de comandas
+ */
+
+/**
+ * Gera um número mais amigável para exibição da comanda
+ * @param id ID da comanda
+ * @returns Número formatado para exibição
+ */
+export const getComandaNumber = (id: string): string => {
+  if (!id) return '000';
+  
+  // Se o ID tem um padrão específico com hífen, extrair o número
+  if (id.includes('-')) {
+    const parts = id.split('-');
+    const lastPart = parts[parts.length - 1];
+    
+    // Se a última parte é um número, usar ela
+    if (/^\d+$/.test(lastPart)) {
+      return lastPart.padStart(3, '0'); // Garantir pelo menos 3 dígitos
+    }
+    
+    // Se tem uma parte que parece ser um número sequencial
+    for (const part of parts.reverse()) {
+      if (/^\d+$/.test(part) && part.length >= 3) {
+        return part;
+      }
+    }
+  }
+  
+  // Se é um UUID ou ID longo, usar os últimos 6 caracteres
+  if (id.length > 10) {
+    return id.slice(-6).toUpperCase();
+  }
+  
+  // Caso contrário, usar o ID como está
+  return id.toUpperCase();
+};
+
+/**
+ * Gera um número de referência curto para pendências
+ * @param id ID da pendência
+ * @returns Número de referência formatado
+ */
+export const getPendingReference = (id: string): string => {
+  if (!id) return '000';
+  
+  // Para pendências, usar os primeiros 6 caracteres
+  if (id.length > 6) {
+    return id.slice(0, 6).toUpperCase();
+  }
+  
+  return id.toUpperCase();
+};
+
+/**
+ * Formata o nome da mesa de forma amigável
+ * @param tableNumber Número da mesa
+ * @returns Nome formatado da mesa
+ */
+export const formatTableName = (tableNumber?: number | string): string => {
+  if (!tableNumber) return 'Mesa';
+  return `Mesa ${tableNumber}`;
+};
+
+/**
+ * Formata informações da comanda para exibição
+ * @param comanda Dados da comanda
+ * @returns Objeto com informações formatadas
+ */
+export const formatComandaInfo = (comanda: any) => {
+  return {
+    number: getComandaNumber(comanda.id),
+    tableName: formatTableName(comanda.mesa?.numero || comanda.table?.number),
+    customerName: comanda.nome_cliente || comanda.customer_name || 'Cliente',
+    totalFormatted: new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(comanda.total || 0)
+  };
+};

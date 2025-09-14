@@ -16,10 +16,40 @@ import {
   CommandItemUpdate,
   CartItem
 } from '../types/sales-management';
+import { SupabaseIntegration } from './supabase-integration';
 
 export class CommandManager {
+  private static instance: CommandManager;
+  private supabaseIntegration: SupabaseIntegration;
   private comandasAbertas: Map<string, Command> = new Map();
   private proximoNumero: number = 1;
+
+  private constructor() {
+    this.supabaseIntegration = SupabaseIntegration.getInstance();
+    this.loadComandasAbertas();
+  }
+
+  static getInstance(): CommandManager {
+    if (!CommandManager.instance) {
+      CommandManager.instance = new CommandManager();
+    }
+    return CommandManager.instance;
+  }
+
+  /**
+   * Carrega comandas abertas do banco de dados
+   */
+  private async loadComandasAbertas(): Promise<void> {
+    try {
+      const comandas = await this.supabaseIntegration.getComandasAbertas();
+      this.comandasAbertas.clear();
+      comandas.forEach(comanda => {
+        this.comandasAbertas.set(comanda.id, comanda);
+      });
+    } catch (error) {
+      console.error('Erro ao carregar comandas abertas:', error);
+    }
+  }
 
   /**
    * Cria uma nova comanda
@@ -75,9 +105,16 @@ export class CommandManager {
       return comandaLocal;
     }
 
-    // Aqui seria feita a busca no banco de dados
-    // const comandaBanco = await this.buscarComandaNoBanco(comandaId);
-    // return comandaBanco;
+    // Buscar no banco de dados
+    try {
+      const comandaBanco = await this.supabaseIntegration.getComanda(comandaId);
+      if (comandaBanco) {
+        this.comandasAbertas.set(comandaId, comandaBanco);
+        return comandaBanco;
+      }
+    } catch (error) {
+      console.error('Erro ao buscar comanda no banco:', error);
+    }
 
     return undefined;
   }
@@ -87,13 +124,24 @@ export class CommandManager {
    * @returns Array de comandas abertas
    */
   async listarComandasAbertas(): Promise<Command[]> {
-    const comandasLocais = Array.from(this.comandasAbertas.values())
-      .filter(comanda => comanda.status === ComandaStatus.ABERTA);
-
-    // Aqui seria feita a busca no banco de dados para sincronizar
-    // const comandasBanco = await this.buscarComandasAbertasNoBanco();
-    
-    return comandasLocais;
+    try {
+      // Buscar comandas atualizadas do banco
+      await this.loadComandasAbertas();
+      
+      return Array.from(this.comandasAbertas.values())
+        .filter(comanda => 
+          comanda.status === ComandaStatus.ABERTA || 
+          comanda.status === ComandaStatus.PENDENTE_PAGAMENTO
+        );
+    } catch (error) {
+      console.error('Erro ao listar comandas abertas:', error);
+      // Retornar cache local em caso de erro
+      return Array.from(this.comandasAbertas.values())
+        .filter(comanda => 
+          comanda.status === ComandaStatus.ABERTA || 
+          comanda.status === ComandaStatus.PENDENTE_PAGAMENTO
+        );
+    }
   }
 
   /**
@@ -308,6 +356,38 @@ export class CommandManager {
       cliente_id: clienteId,
       nome_cliente: nomeCliente 
     });
+  }
+
+  /**
+   * Marca uma comanda como pendente de pagamento
+   * @param comandaId ID da comanda
+   * @returns Promise com a comanda atualizada
+   */
+  async marcarComoPendentePagamento(comandaId: string): Promise<Command> {
+    const comanda = await this.buscarComanda(comandaId);
+    
+    if (!comanda) {
+      throw new Error(`Comanda ${comandaId} não encontrada`);
+    }
+
+    if (comanda.status === ComandaStatus.FECHADA) {
+      throw new Error('Comanda já está fechada');
+    }
+
+    // Atualizar status no banco
+    const success = await this.supabaseIntegration.updateComandaStatus(comandaId, ComandaStatus.PENDENTE_PAGAMENTO);
+    if (!success) {
+      throw new Error('Erro ao atualizar status da comanda no banco');
+    }
+
+    // Atualizar status local
+    comanda.status = ComandaStatus.PENDENTE_PAGAMENTO;
+    comanda.updated_at = new Date().toISOString();
+
+    // Atualizar no cache
+    this.comandasAbertas.set(comandaId, comanda);
+
+    return comanda;
   }
 
   /**

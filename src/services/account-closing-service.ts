@@ -7,23 +7,23 @@
 
 import { PaymentProcessor } from './payment-processor';
 import { CashManager } from './cash-manager';
+import { CommandManager } from './command-manager';
 import { 
   CloseAccountData, 
   PaymentData, 
-  PaymentResult, 
-  Transaction,
-  AccountClosingResult,
-  AccountClosingError
+  AccountClosingResult
 } from '../types/sales-management';
 
 export class AccountClosingService {
   private static instance: AccountClosingService;
   private paymentProcessor: PaymentProcessor;
   private cashManager: CashManager;
+  private commandManager: CommandManager;
 
   private constructor() {
     this.paymentProcessor = PaymentProcessor.getInstance();
     this.cashManager = CashManager.getInstance();
+    this.commandManager = CommandManager.getInstance();
   }
 
   static getInstance(): AccountClosingService {
@@ -80,42 +80,34 @@ export class AccountClosingService {
         observacoes: closeAccountData.observacoes
       };
 
-      // 4. Criar pendência de pagamento no caixa
+      // 4. Marcar comanda como pendente de pagamento (usando sistema do bar)
+      // Nota: Esta funcionalidade será implementada diretamente no sistema de bar
+
+      // 5. Criar pendência de pagamento no caixa
       const paymentPending = await this.cashManager.createPaymentPending(paymentData);
 
-      // 5. Processar pagamento
+      // 6. Processar pagamento (simulado - será processado pelo operador do caixa)
       const paymentResult = await this.paymentProcessor.processPayment(paymentData);
 
-      if (!paymentResult.sucesso) {
-        // Cancelar pendência se pagamento falhou
-        await this.cancelPaymentPending(paymentPending.id);
-        
-        return {
-          success: false,
-          error: {
-            type: 'payment',
-            message: paymentResult.erro || 'Falha no processamento do pagamento',
-            details: { payment_method: closeAccountData.metodo_pagamento }
-          }
-        };
-      }
-
-      // 6. Processar pendência no caixa (registrar transação)
-      await this.cashManager.processPendingPayment(paymentPending.id, operatorId);
+      // Nota: O pagamento será processado posteriormente pelo operador do caixa
+      // Por enquanto, apenas criamos a pendência
 
       // 7. Gerar resultado de sucesso
       const result: AccountClosingResult = {
         success: true,
         data: {
-          transaction_id: paymentResult.transacao_id!,
-          reference_number: paymentResult.numero_referencia!,
+          transaction_id: `PENDING-${paymentPending.id}`,
+          reference_number: paymentPending.id,
           pending_id: paymentPending.id,
           total_amount: closeAccountData.valor_total,
           commission_amount: closeAccountData.valor_comissao,
           payment_method: closeAccountData.metodo_pagamento,
-          receipt: paymentResult.comprovante,
+          receipt: undefined, // Será gerado quando processado no caixa
           processed_at: new Date().toISOString(),
-          additional_data: paymentResult.dados_adicionais
+          additional_data: {
+            status: 'pending_payment',
+            message: 'Comanda enviada para processamento no caixa'
+          }
         }
       };
 

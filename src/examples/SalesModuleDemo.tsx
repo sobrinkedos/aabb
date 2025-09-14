@@ -496,3 +496,7 @@ const SalesModuleDemo: React.FC = () => {
 };
 
 export { SalesModuleDemo };
+// Expo
+rtar os novos componentes de demonstração
+export { TestImprovedCloseAccountModal } from './TestImprovedCloseAccountModal';
+export { CashPendingDemo } from './CashPendingDemo';

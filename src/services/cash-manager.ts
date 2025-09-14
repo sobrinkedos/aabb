@@ -3,6 +3,8 @@
  * 
  * Esta classe é responsável por controlar sessões de caixa, registrar transações,
  * gerenciar sangrias/suprimentos e calcular divergências no fechamento
+ * 
+ * VERSÃO REAL - Integrada com Supabase
  */
 
 import { 
@@ -15,15 +17,20 @@ import {
   PaymentMethod,
   CashSessionStatus
 } from '../types/sales-management';
+import { SupabaseIntegration } from './supabase-integration';
 
 export class CashManager {
   private static instance: CashManager;
+  private supabaseIntegration: SupabaseIntegration;
   private currentSession: CashSession | null = null;
   private transactions: Transaction[] = [];
   private pendingPayments: PaymentPending[] = [];
   private cashMovements: CashMovement[] = [];
 
-  private constructor() {}
+  private constructor() {
+    this.supabaseIntegration = SupabaseIntegration.getInstance();
+    this.loadCurrentSession();
+  }
 
   static getInstance(): CashManager {
     if (!CashManager.instance) {
@@ -33,30 +40,64 @@ export class CashManager {
   }
 
   /**
+   * Carrega a sessão atual do banco de dados
+   */
+  private async loadCurrentSession(): Promise<void> {
+    try {
+      this.currentSession = await this.supabaseIntegration.getCurrentCashSession();
+      if (this.currentSession) {
+        // Carregar transações e pendências da sessão atual
+        await this.loadSessionData();
+      }
+    } catch (error) {
+      console.error('Erro ao carregar sessão atual:', error);
+    }
+  }
+
+  /**
+   * Carrega dados da sessão atual (transações e pendências)
+   */
+  private async loadSessionData(): Promise<void> {
+    if (!this.currentSession) return;
+
+    try {
+      // Carregar transações
+      this.transactions = await this.supabaseIntegration.getSessionTransactions(this.currentSession.id);
+      
+      // Carregar pendências
+      this.pendingPayments = await this.supabaseIntegration.getPendingPayments(this.currentSession.id);
+      
+      // Atualizar dados da sessão
+      this.currentSession.transactions = this.transactions;
+      this.currentSession.expected_amount = this.calculateExpectedAmount();
+    } catch (error) {
+      console.error('Erro ao carregar dados da sessão:', error);
+    }
+  }
+
+  /**
    * Abre uma nova sessão de caixa
    * @param initialAmount Valor inicial do caixa
    * @param operatorId ID do operador responsável
    * @returns Sessão de caixa criada
    */
   async openCash(initialAmount: number, operatorId: string): Promise<CashSession> {
-    if (this.currentSession && this.currentSession.status === 'open') {
+    // Verificar se já existe uma sessão aberta
+    const existingSession = await this.supabaseIntegration.getCurrentCashSession();
+    if (existingSession) {
       throw new Error('Já existe uma sessão de caixa aberta. Feche a sessão atual antes de abrir uma nova.');
     }
 
-    const session: CashSession = {
-      id: this.generateSessionId(),
-      operator_id: operatorId,
-      opened_at: new Date().toISOString(),
-      initial_amount: initialAmount,
-      status: 'open',
-      transactions: [],
-      cash_movements: [],
-      expected_amount: initialAmount,
-      actual_amount: 0,
-      discrepancy: 0
-    };
+    // Criar nova sessão no banco
+    const session = await this.supabaseIntegration.openCashSession(initialAmount, operatorId);
+    if (!session) {
+      throw new Error('Erro ao criar sessão de caixa no banco de dados');
+    }
 
     this.currentSession = session;
+    this.transactions = [];
+    this.pendingPayments = [];
+    this.cashMovements = [];
     
     // Registrar movimento de abertura
     await this.registerCashMovement({
@@ -80,10 +121,19 @@ export class CashManager {
       throw new Error('Não há sessão de caixa aberta para fechar.');
     }
 
+    // Recarregar dados mais recentes
+    await this.loadSessionData();
+
     const expectedAmount = this.calculateExpectedAmount();
     const discrepancy = actualAmount - expectedAmount;
 
-    // Atualizar sessão atual
+    // Fechar sessão no banco
+    const success = await this.supabaseIntegration.closeCashSession(this.currentSession.id, actualAmount);
+    if (!success) {
+      throw new Error('Erro ao fechar sessão no banco de dados');
+    }
+
+    // Atualizar sessão local
     this.currentSession.status = 'closed';
     this.currentSession.closed_at = new Date().toISOString();
     this.currentSession.actual_amount = actualAmount;
@@ -160,8 +210,23 @@ export class CashManager {
       throw new Error('Não há sessão de caixa aberta para criar pendência.');
     }
 
+    // Criar pendência no banco
+    const pendingId = await this.supabaseIntegration.createPaymentPending(
+      paymentData.command_id || `CMD-${Date.now()}`,
+      paymentData.valor_total,
+      paymentData.percentual_comissao,
+      paymentData.valor_comissao,
+      paymentData.metodo_pagamento,
+      this.currentSession.id,
+      paymentData.observacoes
+    );
+
+    if (!pendingId) {
+      throw new Error('Erro ao criar pendência no banco de dados');
+    }
+
     const pending: PaymentPending = {
-      id: this.generatePendingId(),
+      id: pendingId,
       command_id: paymentData.command_id || `CMD-${Date.now()}`,
       amount: paymentData.valor_total,
       commission_percentage: paymentData.percentual_comissao,
@@ -183,6 +248,10 @@ export class CashManager {
    * @param operatorId ID do operador
    */
   async processPendingPayment(pendingId: string, operatorId: string): Promise<void> {
+    if (!this.currentSession) {
+      throw new Error('Não há sessão de caixa aberta.');
+    }
+
     const pending = this.pendingPayments.find(p => p.id === pendingId);
     if (!pending) {
       throw new Error('Pendência de pagamento não encontrada.');
@@ -192,26 +261,47 @@ export class CashManager {
       throw new Error('Pendência já foi processada.');
     }
 
-    // Criar transação
+    // Criar transação no banco
+    const transactionId = await this.supabaseIntegration.createPaymentTransaction(
+      this.currentSession.id,
+      pending.command_id,
+      pending.amount,
+      pending.payment_method,
+      operatorId,
+      pending.observations
+    );
+
+    if (!transactionId) {
+      throw new Error('Erro ao criar transação no banco de dados');
+    }
+
+    // Processar pendência no banco
+    const success = await this.supabaseIntegration.processPendingPayment(pendingId, transactionId);
+    if (!success) {
+      throw new Error('Erro ao processar pendência no banco de dados');
+    }
+
+    // Criar transação local
     const transaction: Transaction = {
-      id: this.generateTransactionId(),
-      type: 'sale',
+      id: transactionId,
+      type: 'venda',
       amount: pending.amount,
       payment_method: pending.payment_method,
       command_id: pending.command_id,
-      cash_session_id: this.currentSession?.id || '',
+      cash_session_id: this.currentSession.id,
       processed_at: new Date().toISOString(),
       processed_by: operatorId,
       observations: pending.observations
     };
 
-    // Registrar transação
-    await this.registerTransaction(transaction);
-
-    // Atualizar status da pendência
+    // Atualizar dados locais
+    this.transactions.push(transaction);
     pending.status = 'paid';
     pending.paid_at = new Date().toISOString();
     pending.transaction_id = transaction.id;
+
+    // Atualizar valor esperado da sessão
+    this.currentSession.expected_amount = this.calculateExpectedAmount();
   }
 
   /**
@@ -262,7 +352,7 @@ export class CashManager {
 
     // Somar vendas em dinheiro
     const cashSales = this.transactions
-      .filter(t => t.type === 'sale' && t.payment_method === 'dinheiro')
+      .filter(t => t.type === 'venda' && t.payment_method === 'dinheiro')
       .reduce((sum, t) => sum + t.amount, 0);
 
     expected += cashSales;
@@ -294,8 +384,19 @@ export class CashManager {
   /**
    * Obtém todas as pendências de pagamento
    */
-  getPendingPayments(): PaymentPending[] {
-    return this.pendingPayments.filter(p => p.status === 'pending');
+  async getPendingPayments(): Promise<PaymentPending[]> {
+    if (!this.currentSession) {
+      return [];
+    }
+
+    try {
+      // Buscar pendências atualizadas do banco
+      this.pendingPayments = await this.supabaseIntegration.getPendingPayments(this.currentSession.id);
+      return this.pendingPayments.filter(p => p.status === 'pending');
+    } catch (error) {
+      console.error('Erro ao buscar pendências:', error);
+      return this.pendingPayments.filter(p => p.status === 'pending');
+    }
   }
 
   /**
@@ -317,7 +418,7 @@ export class CashManager {
    */
   private calculateTotalSales(): number {
     return this.transactions
-      .filter(t => t.type === 'sale')
+      .filter(t => t.type === 'venda')
       .reduce((sum, t) => sum + t.amount, 0);
   }
 
@@ -353,7 +454,7 @@ export class CashManager {
     };
 
     this.transactions
-      .filter(t => t.type === 'sale')
+      .filter(t => t.type === 'venda')
       .forEach(t => {
         summary[t.payment_method] += t.amount;
       });
@@ -419,7 +520,7 @@ export class CashManager {
 
     // Calcular estatísticas por método de pagamento
     this.transactions
-      .filter(t => t.type === 'sale')
+      .filter(t => t.type === 'venda')
       .forEach(t => {
         paymentMethods[t.payment_method].count++;
         paymentMethods[t.payment_method].amount += t.amount;
@@ -455,7 +556,7 @@ export class CashManager {
 
     const expectedAmount = this.calculateExpectedAmount();
     const cashAmount = this.transactions
-      .filter(t => t.type === 'sale' && t.payment_method === 'dinheiro')
+      .filter(t => t.type === 'venda' && t.payment_method === 'dinheiro')
       .reduce((sum, t) => sum + t.amount, 0) + this.currentSession.initial_amount;
 
     if (amount > cashAmount) {

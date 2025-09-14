@@ -15,6 +15,7 @@ import AtualizacaoMassiva from './pages/Inventory/AtualizacaoMassiva';
 import MembersModule from './pages/Members';
 import BarAttendance from './pages/BarAttendance';
 import CashManagement from './pages/CashManagement';
+import TestNewModal from './components/debug/TestNewModal';
 
 
 // Componente que envolve as rotas protegidas, fornecendo o layout e o contexto.
@@ -65,6 +66,7 @@ function App() {
             <Route path="bar/attendance" element={<BarAttendance />} />
 
             <Route path="settings" element={<div className="p-6"><h1 className="text-2xl font-bold">Configurações (Em Desenvolvimento)</h1></div>} />
+            <Route path="test-modal" element={<TestNewModal />} />
           </Route>
           
           {/* Redireciona qualquer rota não encontrada para a página inicial */}

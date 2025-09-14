@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, DollarSign, Users, TrendingUp, Clock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useCashManagement } from '../../../hooks/useCashManagement';
 import { CashSessionWithEmployee, CashTransactionWithDetails, formatCurrency, PAYMENT_METHOD_LABELS, TRANSACTION_TYPE_LABELS } from '../../../types/cash-management';
+import { getComandaNumber } from '../../../utils/comanda-formatter';
 
 export const DailyCashMovement: React.FC = () => {
   const { getDailyCashMovement, loading: hookLoading } = useCashManagement();
@@ -367,7 +368,25 @@ export const DailyCashMovement: React.FC = () => {
                               {formatCurrency(transaction.amount)}
                             </td>
                             <td className="py-3 px-4 text-sm text-gray-600">
-                              {transaction.customer_name || transaction.notes || '-'}
+                              {transaction.comanda ? (
+                                <div>
+                                  <span className="font-medium text-blue-600">
+                                    Comanda #{getComandaNumber(transaction.comanda.id)}
+                                  </span>
+                                  {transaction.comanda.customer_name && (
+                                    <div className="text-xs text-gray-500">
+                                      {transaction.comanda.customer_name}
+                                    </div>
+                                  )}
+                                  {transaction.comanda.table_number && (
+                                    <div className="text-xs text-gray-500">
+                                      Mesa {transaction.comanda.table_number}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                transaction.customer_name || transaction.notes || '-'
+                              )}
                             </td>
                             <td className="py-3 px-4 text-sm text-gray-600">
                               {transaction.processed_by_employee?.name || 'Funcionário'}

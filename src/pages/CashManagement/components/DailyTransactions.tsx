@@ -23,6 +23,7 @@ import {
 } from '../../../types/cash-management';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getComandaNumber } from '../../../utils/comanda-formatter';
 
 interface DailyTransactionsProps {
   transactions: CashTransactionWithDetails[];
@@ -247,12 +248,29 @@ const DailyTransactions: React.FC<DailyTransactionsProps> = ({
                 <div>
                   <p className="text-sm font-medium text-gray-900">
                     {TRANSACTION_TYPE_LABELS[realType] || 'Transação'}
+                    {transaction.comanda && (
+                      <span className="ml-2 text-blue-600">
+                        - Comanda #{getComandaNumber(transaction.comanda.id)}
+                      </span>
+                    )}
                   </p>
                   <div className="flex items-center space-x-2 text-xs text-gray-600">
                     <Clock className="h-3 w-3" />
                     <span>{format(new Date(transaction.processed_at), 'HH:mm', { locale: ptBR })}</span>
                     <span>•</span>
                     <span>{PAYMENT_METHOD_LABELS[transaction.payment_method]}</span>
+                    {transaction.comanda?.customer_name && (
+                      <>
+                        <span>•</span>
+                        <span>{transaction.comanda.customer_name}</span>
+                      </>
+                    )}
+                    {transaction.comanda?.table_number && (
+                      <>
+                        <span>•</span>
+                        <span>Mesa {transaction.comanda.table_number}</span>
+                      </>
+                    )}
                     {transaction.processed_by_employee && (
                       <>
                         <span>•</span>
