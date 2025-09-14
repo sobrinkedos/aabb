@@ -138,44 +138,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
         </span>
       </div>
 
-      {/* Botão de Debug - Sempre visível */}
-      <button
-        onClick={() => {
-          console.log('🔴 TESTE - Botão clicado!');
-          alert('Botão funcionando! Verifique o console.');
-          console.log('🔄 Dados do pedido:', {
-            orderId: order.id,
-            currentStatus: order.status,
-            nextStatus,
-            isComandaOrder: isComandaOrder(order),
-            isBalcaoOrder: isBalcaoOrder(order)
-          });
-          if (nextStatus) {
-            updateOrderStatus(order.id, nextStatus);
-          }
-        }}
-        className="w-full py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-colors"
-        style={{ zIndex: 1000 }}
-      >
-        🔴 TESTE - {nextStatus === 'preparing' && 'Iniciar Preparo'}
-        {nextStatus === 'ready' && 'Marcar como Pronto'}
-        {nextStatus === 'delivered' && 'Marcar como Entregue'}
-        {!nextStatus && 'Sem próximo status'}
-      </button>
-
-      {/* Botão Original (comentado) */}
-      {false && nextStatus && (
+      {/* Botão de Ação Principal */}
+      {nextStatus && (
         <button
-          onClick={() => {
-            console.log('🔄 Clicando para atualizar status:', {
-              orderId: order.id,
-              currentStatus: order.status,
-              nextStatus,
-              isComandaOrder: isComandaOrder(order),
-              isBalcaoOrder: isBalcaoOrder(order)
-            });
-            updateOrderStatus(order.id, nextStatus);
-          }}
+          onClick={() => updateOrderStatus(order.id, nextStatus)}
           className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
             isBalcaoOrder(order)
               ? order.status === 'pending'

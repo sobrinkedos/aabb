@@ -16,6 +16,7 @@ import MembersModule from './pages/Members';
 import BarAttendance from './pages/BarAttendance';
 import CashManagement from './pages/CashManagement';
 
+
 // Componente que envolve as rotas protegidas, fornecendo o layout e o contexto.
 const ProtectedRoutesWrapper: React.FC = () => {
   const { user } = useAuth();
@@ -62,6 +63,7 @@ function App() {
             <Route path="inventory/atualizacao-massiva" element={<AtualizacaoMassiva />} />
             <Route path="members" element={<MembersModule />} />
             <Route path="bar/attendance" element={<BarAttendance />} />
+
             <Route path="settings" element={<div className="p-6"><h1 className="text-2xl font-bold">Configurações (Em Desenvolvimento)</h1></div>} />
           </Route>
           

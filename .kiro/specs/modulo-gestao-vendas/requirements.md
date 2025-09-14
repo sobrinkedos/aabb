@@ -96,3 +96,18 @@ O módulo de gestão de vendas é o núcleo operacional do ClubManager Pro, resp
 2. QUANDO há promoção ativa ENTÃO o sistema DEVE aplicar automaticamente quando condições são atendidas
 3. QUANDO membro tem desconto ENTÃO o sistema DEVE aplicar percentual baseado no tipo de associação
 4. QUANDO há cupom ENTÃO o sistema DEVE validar código e aplicar desconto correspondente
+
+### Requisito 9
+
+**História do Usuário:** Como um funcionário do bar, eu quero fechar contas com controle de comissão de garçom, para que eu possa processar o fechamento completo incluindo a taxa de serviço.
+
+#### Critérios de Aceitação
+
+1. QUANDO clico no botão "Fechar Conta" ENTÃO o sistema DEVE abrir modal com lista completa dos produtos consumidos
+2. QUANDO o modal é exibido ENTÃO o sistema DEVE mostrar totalizador geral da conta
+3. QUANDO o modal é exibido ENTÃO o sistema DEVE apresentar campo para percentual de comissão com valor padrão de 10%
+4. QUANDO modifico o percentual de comissão ENTÃO o sistema DEVE permitir valores de 0% a 30%
+5. QUANDO o percentual é zerado ENTÃO o sistema DEVE aceitar 0% como valor válido
+6. QUANDO confirmo o fechamento ENTÃO o sistema DEVE calcular valor total incluindo comissão
+7. QUANDO a conta é fechada ENTÃO o sistema DEVE gerar pendência de pagamento no caixa
+8. QUANDO a pendência é criada ENTÃO o sistema DEVE registrar valor total, comissão do garçom e método de pagamento selecionado

@@ -412,3 +412,4 @@ export interface BillSplit {
 // Export all cash management types
 export * from './cash-management';
 export * from './bar-attendance';
+export * from './sales-management';
