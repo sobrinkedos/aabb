@@ -53,7 +53,7 @@ const MembersModule: React.FC = () => {
         className="flex flex-col sm:flex-row sm:items-center sm:justify-between"
       >
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Módulo Membros</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Sócios do Clube</h1>
           <p className="text-gray-600">Gestão completa de sócios do clube</p>
         </div>
         <motion.button
@@ -63,25 +63,25 @@ const MembersModule: React.FC = () => {
           className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2 mt-4 sm:mt-0"
         >
           <Plus size={20} />
-          <span>Novo Membro</span>
+          <span>Novo Sócio</span>
         </motion.button>
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard icon={Users} title="Total de Membros" value={stats.total} color="blue" />
-        <StatCard icon={UserCheck} title="Membros Ativos" value={stats.active} color="green" />
+        <StatCard icon={Users} title="Total de Sócios" value={stats.total} color="blue" />
+        <StatCard icon={UserCheck} title="Sócios Ativos" value={stats.active} color="green" />
         <StatCard icon={UserPlus} title="Novos (Último Mês)" value={stats.newThisMonth} color="purple" />
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4 sm:mb-0">Lista de Membros</h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4 sm:mb-0">Lista de Sócios</h2>
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
             <div className="relative">
               <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar membros..."
+                placeholder="Buscar sócios..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -112,7 +112,7 @@ const MembersModule: React.FC = () => {
 
         {filteredMembers.length === 0 && (
           <div className="text-center py-8">
-            <p className="text-gray-500">Nenhum membro encontrado</p>
+            <p className="text-gray-500">Nenhum sócio encontrado</p>
           </div>
         )}
       </div>

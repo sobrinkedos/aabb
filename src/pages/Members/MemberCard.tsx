@@ -55,7 +55,7 @@ const MemberCard: React.FC<MemberCardProps> = ({ member, onEdit }) => {
         </div>
         <div className="flex items-center space-x-2">
           <Calendar size={14} />
-          <span>Membro desde {format(member.joinDate, 'MMM yyyy', { locale: ptBR })}</span>
+          <span>Sócio desde {format(member.joinDate, 'MMM yyyy', { locale: ptBR })}</span>
         </div>
       </div>
 
