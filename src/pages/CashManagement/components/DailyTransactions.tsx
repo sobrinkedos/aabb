@@ -23,7 +23,7 @@ import {
 } from '../../../types/cash-management';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getComandaNumber } from '../../../utils/comanda-formatter';
+import { getComandaNumber, extractOrderNumberFromNotes } from '../../../utils/comanda-formatter';
 
 interface DailyTransactionsProps {
   transactions: CashTransactionWithDetails[];
@@ -251,6 +251,11 @@ const DailyTransactions: React.FC<DailyTransactionsProps> = ({
                     {transaction.comanda && (
                       <span className="ml-2 text-blue-600">
                         - Comanda #{getComandaNumber(transaction.comanda.id)}
+                      </span>
+                    )}
+                    {!transaction.comanda && transaction.notes && transaction.notes.includes('Pedido Balcão') && (
+                      <span className="ml-2 text-green-600">
+                        - Pedido Balcão {extractOrderNumberFromNotes(transaction.notes)}
                       </span>
                     )}
                   </p>

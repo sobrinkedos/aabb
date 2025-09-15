@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, DollarSign, Users, TrendingUp, Clock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useCashManagement } from '../../../hooks/useCashManagement';
 import { CashSessionWithEmployee, CashTransactionWithDetails, formatCurrency, PAYMENT_METHOD_LABELS, TRANSACTION_TYPE_LABELS } from '../../../types/cash-management';
-import { getComandaNumber } from '../../../utils/comanda-formatter';
+import { getComandaNumber, extractOrderNumberFromNotes } from '../../../utils/comanda-formatter';
 
 export const DailyCashMovement: React.FC = () => {
   const { getDailyCashMovement, loading: hookLoading } = useCashManagement();
@@ -383,6 +383,20 @@ export const DailyCashMovement: React.FC = () => {
                                       Mesa {transaction.comanda.table_number}
                                     </div>
                                   )}
+                                </div>
+                              ) : transaction.notes && transaction.notes.includes('Pedido Balcão') ? (
+                                <div>
+                                  <span className="font-medium text-green-600">
+                                    Pedido Balcão {extractOrderNumberFromNotes(transaction.notes)}
+                                  </span>
+                                  {transaction.customer_name && (
+                                    <div className="text-xs text-gray-500">
+                                      {transaction.customer_name}
+                                    </div>
+                                  )}
+                                  <div className="text-xs text-gray-500">
+                                    Balcão
+                                  </div>
                                 </div>
                               ) : (
                                 transaction.customer_name || transaction.notes || '-'

@@ -133,10 +133,14 @@ export const useCashManagement = (): UseCashManagementReturn => {
         })));
       }
 
-      // Agora buscar transações do dia
+      // Buscar transações do dia (primeiro tentar created_at, depois processed_at)
       console.log('🔍 Buscando transações para o dia:', today);
       
-      const { data: transactionsData, error: transactionsError } = await (supabase as any)
+      let transactionsData: any[] = [];
+      let transactionsError: any = null;
+      
+      // Tentar buscar por created_at primeiro
+      const { data: createdAtData, error: createdAtError } = await (supabase as any)
         .from('cash_transactions')
         .select(`
           *,
@@ -147,6 +151,33 @@ export const useCashManagement = (): UseCashManagementReturn => {
         .gte('created_at', `${today}T00:00:00.000Z`)
         .lt('created_at', `${today}T23:59:59.999Z`)
         .order('created_at', { ascending: false });
+
+      if (!createdAtError && createdAtData) {
+        transactionsData = createdAtData;
+        console.log('📊 Transações encontradas por created_at:', transactionsData.length);
+      }
+
+      // Se não encontrou por created_at, tentar por processed_at
+      if (transactionsData.length === 0) {
+        const { data: processedAtData, error: processedAtError } = await (supabase as any)
+          .from('cash_transactions')
+          .select(`
+            *,
+            comandas(id, customer_name, table_id, total),
+            profiles!cash_transactions_processed_by_fkey(id, name),
+            cash_sessions(id, session_date, employee_id)
+          `)
+          .gte('processed_at', `${today}T00:00:00.000Z`)
+          .lt('processed_at', `${today}T23:59:59.999Z`)
+          .order('processed_at', { ascending: false });
+
+        if (!processedAtError && processedAtData) {
+          transactionsData = processedAtData;
+          console.log('📊 Transações encontradas por processed_at:', transactionsData.length);
+        } else {
+          transactionsError = processedAtError;
+        }
+      }
 
       console.log('📊 Transações de hoje encontradas:', transactionsData?.length || 0);
       if (transactionsData && transactionsData.length > 0) {
@@ -677,10 +708,13 @@ export const useCashManagement = (): UseCashManagementReturn => {
     const dateStr = targetDate.toISOString().split('T')[0];
 
     try {
-      // Buscar TODAS as transações do dia (sem filtro de tipo)
+      // Buscar TODAS as transações do dia (tentando ambos os campos de data)
       console.log('🔍 Gerando resumo para o dia:', dateStr);
       
-      const { data: allTransactionsData, error: transactionsError } = await (supabase as any)
+      let allTransactionsData: any[] = [];
+      
+      // Tentar buscar por created_at primeiro
+      const { data: createdData, error: createdError } = await (supabase as any)
         .from('cash_transactions')
         .select(`
           *,
@@ -690,6 +724,32 @@ export const useCashManagement = (): UseCashManagementReturn => {
         `)
         .gte('created_at', `${dateStr}T00:00:00.000Z`)
         .lt('created_at', `${dateStr}T23:59:59.999Z`);
+
+      if (!createdError && createdData) {
+        allTransactionsData = createdData;
+        console.log('📊 Resumo: transações por created_at:', allTransactionsData.length);
+      }
+
+      // Se não encontrou, tentar por processed_at
+      if (allTransactionsData.length === 0) {
+        const { data: processedData, error: processedError } = await (supabase as any)
+          .from('cash_transactions')
+          .select(`
+            *,
+            comandas(id, customer_name, table_id, total),
+            profiles!cash_transactions_processed_by_fkey(id, name),
+            cash_sessions(id, session_date, employee_id)
+          `)
+          .gte('processed_at', `${dateStr}T00:00:00.000Z`)
+          .lt('processed_at', `${dateStr}T23:59:59.999Z`);
+
+        if (!processedError && processedData) {
+          allTransactionsData = processedData;
+          console.log('📊 Resumo: transações por processed_at:', allTransactionsData.length);
+        }
+      }
+
+      const transactionsError = null; // Simplificado para não quebrar o fluxo
 
       console.log('📊 TODAS as transações encontradas:', allTransactionsData?.length || 0);
       

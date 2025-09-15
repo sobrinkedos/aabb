@@ -76,6 +76,26 @@ export const formatTableDisplay = (tableNumber?: string | number | null): string
 };
 
 /**
+ * Formata o número do pedido de balcão para exibição amigável
+ * @param orderNumber - Número do pedido de balcão
+ * @returns Número formatado (ex: #0001, #0123)
+ */
+export const formatBalcaoOrderNumber = (orderNumber: number | string): string => {
+  const num = typeof orderNumber === 'string' ? parseInt(orderNumber) : orderNumber;
+  return `#${num.toString().padStart(4, '0')}`;
+};
+
+/**
+ * Extrai o número do pedido de uma nota de transação
+ * @param notes - Nota da transação (ex: "Pedido Balcão #0123 - Cliente")
+ * @returns Número extraído ou null se não encontrar
+ */
+export const extractOrderNumberFromNotes = (notes: string): string | null => {
+  const match = notes.match(/Pedido Balcão #(\d+)/);
+  return match ? `#${match[1]}` : null;
+};
+
+/**
  * Formata informações da comanda para exibição
  * @param comanda Dados da comanda
  * @returns Objeto com informações formatadas
