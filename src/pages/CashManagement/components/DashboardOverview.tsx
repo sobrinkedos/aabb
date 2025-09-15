@@ -649,6 +649,7 @@ export const DashboardOverview: React.FC = () => {
         transactions={todaysTransactions}
         onAddWithdrawal={handleAddWithdrawal}
         onExportReport={handleExportReport}
+        isCashSessionOpen={currentSession?.status === 'open'}
       />
 
       {/* Comandas Pendentes */}

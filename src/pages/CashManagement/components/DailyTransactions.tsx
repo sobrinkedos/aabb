@@ -29,12 +29,14 @@ interface DailyTransactionsProps {
   transactions: CashTransactionWithDetails[];
   onAddWithdrawal: () => void;
   onExportReport: () => void;
+  isCashSessionOpen?: boolean;
 }
 
 const DailyTransactions: React.FC<DailyTransactionsProps> = ({
   transactions,
   onAddWithdrawal,
-  onExportReport
+  onExportReport,
+  isCashSessionOpen = false
 }) => {
   const [filterType, setFilterType] = useState<TransactionType | 'all'>('all');
   const [filterPayment, setFilterPayment] = useState<PaymentMethod | 'all'>('all');
@@ -112,7 +114,13 @@ const DailyTransactions: React.FC<DailyTransactionsProps> = ({
         <div className="flex items-center space-x-3">
           <button
             onClick={onAddWithdrawal}
-            className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center space-x-2 text-sm"
+            disabled={!isCashSessionOpen}
+            className={`px-4 py-2 rounded-lg flex items-center space-x-2 text-sm transition-colors ${
+              isCashSessionOpen 
+                ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+            title={!isCashSessionOpen ? 'Caixa deve estar aberto para realizar saídas de dinheiro' : 'Registrar saída de dinheiro'}
           >
             <Minus className="h-4 w-4" />
             <span>Saída de Dinheiro</span>
