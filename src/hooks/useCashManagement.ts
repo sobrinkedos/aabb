@@ -113,7 +113,27 @@ export const useCashManagement = (): UseCashManagementReturn => {
 
       if (comandasError) throw comandasError;
 
-      // Carregar transações do dia
+      // Carregar TODAS as transações (sem filtro de data primeiro para testar)
+      console.log('🔍 Buscando TODAS as transações...');
+      
+      const { data: allTransactionsEver, error: allError } = await (supabase as any)
+        .from('cash_transactions')
+        .select('id, transaction_type, payment_method, amount, created_at')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      console.log('📊 Últimas 10 transações no banco:', allTransactionsEver?.length || 0);
+      if (allTransactionsEver && allTransactionsEver.length > 0) {
+        console.table(allTransactionsEver.map(t => ({
+          id: t.id.slice(-8),
+          tipo: t.transaction_type,
+          metodo: t.payment_method,
+          valor: t.amount,
+          data: new Date(t.created_at).toLocaleDateString('pt-BR')
+        })));
+      }
+
+      // Agora buscar transações do dia
       console.log('🔍 Buscando transações para o dia:', today);
       
       const { data: transactionsData, error: transactionsError } = await (supabase as any)
@@ -128,10 +148,10 @@ export const useCashManagement = (): UseCashManagementReturn => {
         .lt('created_at', `${today}T23:59:59.999Z`)
         .order('created_at', { ascending: false });
 
-      console.log('📊 Transações encontradas:', transactionsData?.length || 0);
+      console.log('📊 Transações de hoje encontradas:', transactionsData?.length || 0);
       if (transactionsData && transactionsData.length > 0) {
-        console.log('📋 Primeira transação:', transactionsData[0]);
-        console.log('💰 Métodos de pagamento encontrados:', [...new Set(transactionsData.map((t: any) => t.payment_method))]);
+        console.log('📋 Primeira transação de hoje:', transactionsData[0]);
+        console.log('💰 Métodos de pagamento de hoje:', [...new Set(transactionsData.map((t: any) => t.payment_method))]);
       }
 
       if (transactionsError) {
@@ -640,10 +660,10 @@ export const useCashManagement = (): UseCashManagementReturn => {
     const dateStr = targetDate.toISOString().split('T')[0];
 
     try {
-      // Buscar transações do dia diretamente
+      // Buscar TODAS as transações do dia (sem filtro de tipo)
       console.log('🔍 Gerando resumo para o dia:', dateStr);
       
-      const { data: transactionsData, error: transactionsError } = await (supabase as any)
+      const { data: allTransactionsData, error: transactionsError } = await (supabase as any)
         .from('cash_transactions')
         .select(`
           *,
@@ -652,13 +672,18 @@ export const useCashManagement = (): UseCashManagementReturn => {
           cash_sessions(id, session_date, employee_id)
         `)
         .gte('created_at', `${dateStr}T00:00:00.000Z`)
-        .lt('created_at', `${dateStr}T23:59:59.999Z`)
-        .eq('transaction_type', 'sale');
+        .lt('created_at', `${dateStr}T23:59:59.999Z`);
 
-      console.log('📊 Transações para resumo:', transactionsData?.length || 0);
-      if (transactionsData && transactionsData.length > 0) {
-        console.log('💰 Primeira transação do resumo:', transactionsData[0]);
-        console.log('🔢 Métodos encontrados:', [...new Set(transactionsData.map((t: any) => t.payment_method))]);
+      console.log('📊 TODAS as transações encontradas:', allTransactionsData?.length || 0);
+      
+      // Filtrar apenas vendas para o resumo
+      const transactionsData = allTransactionsData?.filter((t: any) => t.transaction_type === 'sale') || [];
+      console.log('💰 Transações de venda:', transactionsData.length);
+      
+      if (allTransactionsData && allTransactionsData.length > 0) {
+        console.log('📋 Tipos de transação encontrados:', [...new Set(allTransactionsData.map((t: any) => t.transaction_type))]);
+        console.log('💳 Métodos de pagamento encontrados:', [...new Set(allTransactionsData.map((t: any) => t.payment_method))]);
+        console.log('🔍 Primeira transação:', allTransactionsData[0]);
       }
 
       if (transactionsError) {
@@ -683,43 +708,53 @@ export const useCashManagement = (): UseCashManagementReturn => {
       const transactions = transactionsData || [];
       const sessions = sessionsData || [];
 
-      // Calcular totais por método de pagamento
-      console.log('🧮 Calculando totais por método de pagamento...');
-      const paymentMethodTotals = transactions.reduce((acc: any, transaction: any) => {
-        const method = transaction.payment_method;
-        console.log(`💳 Processando transação: ${method} - R$ ${transaction.amount}`);
-        if (!acc[method]) {
-          acc[method] = { amount: 0, count: 0 };
-        }
-        acc[method].amount += transaction.amount;
-        acc[method].count += 1;
-        return acc;
-      }, {});
+      console.log('🧮 Iniciando cálculo de totais...');
+      console.log('📊 Transações para calcular:', transactions.length);
 
-      console.log('📊 Totais calculados por método:', paymentMethodTotals);
+      // Calcular totais por método de pagamento de forma mais simples
+      const paymentMethodTotals: any = {};
+      
+      transactions.forEach((transaction: any, index: number) => {
+        const method = transaction.payment_method || 'desconhecido';
+        const amount = Number(transaction.amount) || 0;
+        
+        console.log(`💳 [${index + 1}] ${method}: R$ ${amount}`);
+        
+        if (!paymentMethodTotals[method]) {
+          paymentMethodTotals[method] = { amount: 0, count: 0 };
+        }
+        
+        paymentMethodTotals[method].amount += amount;
+        paymentMethodTotals[method].count += 1;
+      });
+
+      console.log('📊 Totais finais por método:', paymentMethodTotals);
 
       const totalSales = transactions.reduce((sum: number, t: any) => sum + t.amount, 0);
       const totalTransactions = transactions.length;
 
       // Criar array de métodos de pagamento com dados reais
-      const byPaymentMethod = [
-        'dinheiro',
-        'cartao_debito', 
-        'cartao_credito',
-        'pix',
-        'transferencia'
-      ].map(method => {
+      console.log('🏗️ Criando array de métodos de pagamento...');
+      
+      const allMethods = ['dinheiro', 'cartao_debito', 'cartao_credito', 'pix', 'transferencia'];
+      const byPaymentMethod = allMethods.map(method => {
         const methodData = paymentMethodTotals[method] || { amount: 0, count: 0 };
+        const percentage = totalSales > 0 ? (methodData.amount / totalSales) * 100 : 0;
+        
+        console.log(`📋 ${method}: R$ ${methodData.amount} (${methodData.count} transações) - ${percentage.toFixed(1)}%`);
+        
         return {
           payment_method: method as PaymentMethod,
           amount: methodData.amount,
           transaction_count: methodData.count,
-          percentage: totalSales > 0 ? (methodData.amount / totalSales) * 100 : 0,
+          percentage: percentage,
           expected_amount: methodData.amount,
           actual_amount: methodData.amount,
           discrepancy: 0
         };
       });
+
+      console.log('✅ Array de métodos criado:', byPaymentMethod);
 
       // Calcular performance por funcionário
       const employeePerformance = transactions.reduce((acc: any, transaction: any) => {
