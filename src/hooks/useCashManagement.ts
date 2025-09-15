@@ -114,6 +114,8 @@ export const useCashManagement = (): UseCashManagementReturn => {
       if (comandasError) throw comandasError;
 
       // Carregar transações do dia
+      console.log('🔍 Buscando transações para o dia:', today);
+      
       const { data: transactionsData, error: transactionsError } = await (supabase as any)
         .from('cash_transactions')
         .select(`
@@ -122,11 +124,20 @@ export const useCashManagement = (): UseCashManagementReturn => {
           profiles!cash_transactions_processed_by_fkey(id, name),
           cash_sessions(id, session_date, employee_id)
         `)
-        .gte('processed_at', `${today}T00:00:00.000Z`)
-        .lt('processed_at', `${today}T23:59:59.999Z`)
-        .order('processed_at', { ascending: false });
+        .gte('created_at', `${today}T00:00:00.000Z`)
+        .lt('created_at', `${today}T23:59:59.999Z`)
+        .order('created_at', { ascending: false });
 
-      if (transactionsError) throw transactionsError;
+      console.log('📊 Transações encontradas:', transactionsData?.length || 0);
+      if (transactionsData && transactionsData.length > 0) {
+        console.log('📋 Primeira transação:', transactionsData[0]);
+        console.log('💰 Métodos de pagamento encontrados:', [...new Set(transactionsData.map((t: any) => t.payment_method))]);
+      }
+
+      if (transactionsError) {
+        console.error('❌ Erro ao buscar transações:', transactionsError);
+        throw transactionsError;
+      }
 
       // Carregar todas as sessões do dia
       const { data: sessionsData, error: sessionsDataError } = await (supabase as any)
@@ -248,6 +259,8 @@ export const useCashManagement = (): UseCashManagementReturn => {
       if (sessionsError) throw sessionsError;
 
       // Buscar todas as transações do dia
+      console.log('🔍 Buscando transações para movimento do dia:', date);
+      
       const { data: transactionsData, error: transactionsError } = await (supabase as any)
         .from('cash_transactions')
         .select(`
@@ -256,9 +269,11 @@ export const useCashManagement = (): UseCashManagementReturn => {
           profiles!cash_transactions_processed_by_fkey(id, name),
           cash_sessions(id, session_date, employee_id)
         `)
-        .gte('processed_at', `${date}T00:00:00.000Z`)
-        .lt('processed_at', `${date}T23:59:59.999Z`)
-        .order('processed_at', { ascending: true });
+        .gte('created_at', `${date}T00:00:00.000Z`)
+        .lt('created_at', `${date}T23:59:59.999Z`)
+        .order('created_at', { ascending: true });
+
+      console.log('📊 Transações encontradas para movimento:', transactionsData?.length || 0);
 
       if (transactionsError) throw transactionsError;
 
@@ -625,76 +640,152 @@ export const useCashManagement = (): UseCashManagementReturn => {
     const dateStr = targetDate.toISOString().split('T')[0];
 
     try {
-      // Usar a view criada na migration
-      const { data, error } = await (supabase as any)
-        .from('daily_cash_summary')
-        .select('*')
-        .eq('session_date', dateStr);
+      // Buscar transações do dia diretamente
+      console.log('🔍 Gerando resumo para o dia:', dateStr);
+      
+      const { data: transactionsData, error: transactionsError } = await (supabase as any)
+        .from('cash_transactions')
+        .select(`
+          *,
+          comandas(id, customer_name, table_id, total),
+          profiles!cash_transactions_processed_by_fkey(id, name),
+          cash_sessions(id, session_date, employee_id)
+        `)
+        .gte('created_at', `${dateStr}T00:00:00.000Z`)
+        .lt('created_at', `${dateStr}T23:59:59.999Z`)
+        .eq('transaction_type', 'sale');
 
-      if (error) {
-        console.warn('Erro ao buscar view daily_cash_summary, usando dados padrão:', error);
-        // Retornar dados padrão se a view não existir ainda
-        return {
-          session_date: dateStr,
-          total_sessions: 0,
-          total_sales: 0,
-          total_transactions: 0,
-          total_cash_withdrawals: 0,
-          total_treasury_transfers: 0,
-          cash_balance: 0,
-          by_payment_method: [],
-          by_employee: [],
-          discrepancies: [],
-          avg_ticket: 0,
-          peak_hours: []
-        };
+      console.log('📊 Transações para resumo:', transactionsData?.length || 0);
+      if (transactionsData && transactionsData.length > 0) {
+        console.log('💰 Primeira transação do resumo:', transactionsData[0]);
+        console.log('🔢 Métodos encontrados:', [...new Set(transactionsData.map((t: any) => t.payment_method))]);
       }
 
-      // Processar dados para o formato esperado
-      const sessions = data || [];
-      
-      const totalSales = sessions.reduce((sum: number, s: any) => sum + (s.cash_sales + s.debit_sales + s.credit_sales + s.pix_sales), 0);
-      const totalTransactions = sessions.reduce((sum: number, s: any) => sum + s.total_transactions, 0);
+      if (transactionsError) {
+        console.error('Erro ao buscar transações para resumo:', transactionsError);
+        throw transactionsError;
+      }
 
+      // Buscar sessões do dia
+      const { data: sessionsData, error: sessionsError } = await (supabase as any)
+        .from('cash_sessions')
+        .select(`
+          *,
+          profiles!cash_sessions_employee_id_fkey(id, name, role)
+        `)
+        .eq('session_date', dateStr);
+
+      if (sessionsError) {
+        console.error('Erro ao buscar sessões para resumo:', sessionsError);
+        throw sessionsError;
+      }
+
+      const transactions = transactionsData || [];
+      const sessions = sessionsData || [];
+
+      // Calcular totais por método de pagamento
+      console.log('🧮 Calculando totais por método de pagamento...');
+      const paymentMethodTotals = transactions.reduce((acc: any, transaction: any) => {
+        const method = transaction.payment_method;
+        console.log(`💳 Processando transação: ${method} - R$ ${transaction.amount}`);
+        if (!acc[method]) {
+          acc[method] = { amount: 0, count: 0 };
+        }
+        acc[method].amount += transaction.amount;
+        acc[method].count += 1;
+        return acc;
+      }, {});
+
+      console.log('📊 Totais calculados por método:', paymentMethodTotals);
+
+      const totalSales = transactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+      const totalTransactions = transactions.length;
+
+      // Criar array de métodos de pagamento com dados reais
       const byPaymentMethod = [
-        { payment_method: 'dinheiro' as PaymentMethod, amount: sessions.reduce((sum: number, s: any) => sum + s.cash_sales, 0), transaction_count: 0, percentage: 0, expected_amount: 0, actual_amount: 0, discrepancy: 0 },
-        { payment_method: 'cartao_debito' as PaymentMethod, amount: sessions.reduce((sum: number, s: any) => sum + s.debit_sales, 0), transaction_count: 0, percentage: 0, expected_amount: 0, actual_amount: 0, discrepancy: 0 },
-        { payment_method: 'cartao_credito' as PaymentMethod, amount: sessions.reduce((sum: number, s: any) => sum + s.credit_sales, 0), transaction_count: 0, percentage: 0, expected_amount: 0, actual_amount: 0, discrepancy: 0 },
-        { payment_method: 'pix' as PaymentMethod, amount: sessions.reduce((sum: number, s: any) => sum + s.pix_sales, 0), transaction_count: 0, percentage: 0, expected_amount: 0, actual_amount: 0, discrepancy: 0 }
-      ];
-
-      // Calcular percentuais
-      byPaymentMethod.forEach(method => {
-        method.percentage = totalSales > 0 ? (method.amount / totalSales) * 100 : 0;
+        'dinheiro',
+        'cartao_debito', 
+        'cartao_credito',
+        'pix',
+        'transferencia'
+      ].map(method => {
+        const methodData = paymentMethodTotals[method] || { amount: 0, count: 0 };
+        return {
+          payment_method: method as PaymentMethod,
+          amount: methodData.amount,
+          transaction_count: methodData.count,
+          percentage: totalSales > 0 ? (methodData.amount / totalSales) * 100 : 0,
+          expected_amount: methodData.amount,
+          actual_amount: methodData.amount,
+          discrepancy: 0
+        };
       });
+
+      // Calcular performance por funcionário
+      const employeePerformance = transactions.reduce((acc: any, transaction: any) => {
+        const employeeId = transaction.processed_by;
+        const employeeName = transaction.profiles?.name || 'Funcionário';
+        
+        if (!acc[employeeId]) {
+          acc[employeeId] = {
+            employee_id: employeeId,
+            employee_name: employeeName,
+            session_count: 0,
+            total_sales: 0,
+            transaction_count: 0,
+            avg_ticket: 0,
+            cash_discrepancy: 0,
+            session_duration: '8:00'
+          };
+        }
+        
+        acc[employeeId].total_sales += transaction.amount;
+        acc[employeeId].transaction_count += 1;
+        
+        return acc;
+      }, {});
+
+      // Calcular ticket médio para cada funcionário
+      Object.values(employeePerformance).forEach((emp: any) => {
+        emp.avg_ticket = emp.transaction_count > 0 ? emp.total_sales / emp.transaction_count : 0;
+      });
+
+      // Calcular saídas de dinheiro e transferências
+      const { data: withdrawalsData } = await (supabase as any)
+        .from('cash_transactions')
+        .select('amount, notes, transaction_type')
+        .gte('created_at', `${dateStr}T00:00:00.000Z`)
+        .lt('created_at', `${dateStr}T23:59:59.999Z`)
+        .in('transaction_type', ['adjustment', 'refund']);
+
+      const totalWithdrawals = (withdrawalsData || [])
+        .filter((t: any) => t.notes?.includes('[SAÍDA]'))
+        .reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0);
+
+      const totalTransfers = (withdrawalsData || [])
+        .filter((t: any) => t.notes?.includes('[TRANSFERÊNCIA TESOURARIA]'))
+        .reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0);
 
       return {
         session_date: dateStr,
         total_sessions: sessions.length,
         total_sales: totalSales,
         total_transactions: totalTransactions,
-        total_cash_withdrawals: 0, // TODO: Calcular saídas de dinheiro
-        total_treasury_transfers: 0, // TODO: Calcular transferências
-        cash_balance: totalSales, // TODO: Calcular saldo real
+        total_cash_withdrawals: totalWithdrawals,
+        total_treasury_transfers: totalTransfers,
+        cash_balance: totalSales - totalWithdrawals - totalTransfers,
         by_payment_method: byPaymentMethod,
-        by_employee: sessions.map((s: any) => ({
-          employee_id: s.employee_id,
-          employee_name: s.employee_name,
-          session_count: 1,
-          total_sales: s.cash_sales + s.debit_sales + s.credit_sales + s.pix_sales,
-          transaction_count: s.total_transactions,
-          avg_ticket: s.total_transactions > 0 ? (s.cash_sales + s.debit_sales + s.credit_sales + s.pix_sales) / s.total_transactions : 0,
-          cash_discrepancy: s.cash_discrepancy || 0,
-          session_duration: '8:00' // Placeholder
-        })),
-        discrepancies: sessions.filter((s: any) => Math.abs(s.cash_discrepancy || 0) > 0).map((s: any) => ({
-          employee_id: s.employee_id,
-          employee_name: s.employee_name,
-          session_id: s.employee_id, // Usando employee_id como placeholder
-          cash_discrepancy: s.cash_discrepancy || 0,
-          payment_discrepancies: [],
-          total_discrepancy: s.cash_discrepancy || 0
-        })),
+        by_employee: Object.values(employeePerformance),
+        discrepancies: sessions
+          .filter((s: any) => Math.abs(s.cash_discrepancy || 0) > 0)
+          .map((s: any) => ({
+            employee_id: s.employee_id,
+            employee_name: s.profiles?.name || 'Funcionário',
+            session_id: s.id,
+            cash_discrepancy: s.cash_discrepancy || 0,
+            payment_discrepancies: [],
+            total_discrepancy: s.cash_discrepancy || 0
+          })),
         avg_ticket: totalTransactions > 0 ? totalSales / totalTransactions : 0,
         peak_hours: [] // TODO: Implementar análise de horários de pico
       };
