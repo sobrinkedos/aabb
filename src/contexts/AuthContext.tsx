@@ -6,6 +6,7 @@ import { Session } from '@supabase/supabase-js';
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error: string | null }>;
+  register: (name: string, email: string, password: string) => Promise<{ success: boolean; error: string | null }>;
   loginAsDemo: () => Promise<{ success: boolean; error: string | null }>;
   logout: () => void;
   isLoading: boolean; // Apenas para o carregamento inicial da sessão
@@ -132,6 +133,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const register = async (name: string, email: string, password: string) => {
+    if (!isSupabaseConfigured) {
+      return { success: false, error: 'Cadastro não disponível no modo demonstração' };
+    }
+
+    try {
+      const { data, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name }
+        }
+      });
+
+      if (authError) {
+        return { success: false, error: authError.message };
+      }
+
+      if (data.user) {
+        // Criar perfil na tabela profiles
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: data.user.id,
+              name,
+              email,
+              role: 'user',
+              avatar_url: `https://api.dicebear.com/8.x/initials/svg?seed=${name}`
+            }
+          ]);
+
+        if (profileError) {
+          console.error('Erro ao criar perfil:', profileError);
+          return { success: false, error: 'Erro ao criar perfil do usuário' };
+        }
+
+        return { success: true, error: null };
+      }
+
+      return { success: false, error: 'Erro desconhecido no cadastro' };
+    } catch (err) {
+      console.error('Erro no cadastro:', err);
+      return { success: false, error: 'Erro de conexão. Verifique a configuração do Supabase.' };
+    }
+  };
+
   const loginAsDemo = async () => {
     return login('demo@clubmanager.com', 'demo123456');
   };
@@ -147,7 +195,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, loginAsDemo, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, register, loginAsDemo, logout, isLoading }}>
       {!isSupabaseConfigured && (
         <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-black px-4 py-2 text-sm z-50">
           ⚠️ <strong>Modo Desenvolvimento:</strong> Supabase não configurado. 

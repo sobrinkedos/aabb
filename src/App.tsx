@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
 import LoginForm from './components/Auth/LoginForm';
+import RegisterForm from './components/Auth/RegisterForm';
 import Layout from './components/Layout/Layout';
 import Dashboard from './pages/Dashboard';
 import BarModule from './pages/Bar';
@@ -46,12 +47,24 @@ const LoginPageWrapper: React.FC = () => {
   return <LoginForm />;
 };
 
+// Componente que lida com a página de registro, redirecionando se já estiver autenticado.
+const RegisterPageWrapper: React.FC = () => {
+  const { user } = useAuth();
+
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <RegisterForm />;
+};
+
 function App() {
   return (
     <Router>
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPageWrapper />} />
+          <Route path="/register" element={<RegisterPageWrapper />} />
           
           {/* Rota pai para o layout protegido */}
           <Route element={<ProtectedRoutesWrapper />}>

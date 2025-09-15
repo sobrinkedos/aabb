@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Lock, Mail, Zap, Users } from 'lucide-react';
@@ -146,6 +147,18 @@ const LoginForm: React.FC = () => {
               💡 <strong>Dica:</strong> Use o botão verde acima para acesso instantâneo!
             </p>
           </div>
+        </div>
+
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            Não tem uma conta?{' '}
+            <Link
+              to="/register"
+              className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
+            >
+              Cadastre-se aqui
+            </Link>
+          </p>
         </div>
 
         <div className="mt-4 text-center">
