@@ -17,6 +17,7 @@ import BarAttendance from './pages/BarAttendance';
 import CashManagement from './pages/CashManagement';
 import TestNewModal from './components/debug/TestNewModal';
 import { TestTableDisplay } from './examples';
+import './utils/debug-transactions';
 
 
 // Componente que envolve as rotas protegidas, fornecendo o layout e o contexto.
