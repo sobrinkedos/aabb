@@ -253,7 +253,7 @@ const DailyTransactions: React.FC<DailyTransactionsProps> = ({
                         - Comanda #{getComandaNumber(transaction.comanda.id)}
                       </span>
                     )}
-                    {!transaction.comanda && transaction.notes && transaction.notes.includes('Pedido Balcão') && (
+                    {!transaction.comanda && transaction.notes && (transaction.notes.includes('Pedido Balcão') || transaction.notes.includes('Pedido de balcão')) && (
                       <span className="ml-2 text-green-600">
                         - Pedido Balcão {extractOrderNumberFromNotes(transaction.notes)}
                       </span>
@@ -284,9 +284,6 @@ const DailyTransactions: React.FC<DailyTransactionsProps> = ({
                       </>
                     )}
                   </div>
-                  {transaction.notes && (
-                    <p className="text-xs text-gray-500 mt-1">{transaction.notes.replace(/\[[^\]]+\]\s*/g, '')}</p>
-                  )}
                 </div>
               </div>
 

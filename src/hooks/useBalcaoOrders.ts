@@ -219,8 +219,13 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
 
       // Registrar transação no caixa com número amigável
       console.log('💰 Registrando transação no caixa...');
+      console.log('📊 Dados do pedido:', orderData);
+      
       const orderNumber = orderData.order_number.toString().padStart(4, '0');
       const customerInfo = orderData.customer_name ? ` - ${orderData.customer_name}` : '';
+      const notesText = `Pedido Balcão #${orderNumber}${customerInfo}`;
+      
+      console.log('📝 Nota que será salva:', notesText);
       
       const transactionData = {
         cash_session_id: data.cash_session_id,
@@ -228,7 +233,7 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
         payment_method: data.payment_method,
         amount: data.amount_paid,
         processed_by: user!.id,
-        notes: `Pedido Balcão #${orderNumber}${customerInfo}`
+        notes: notesText
         // Removido processed_at para usar created_at automático
       };
       

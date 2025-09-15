@@ -384,7 +384,7 @@ export const DailyCashMovement: React.FC = () => {
                                     </div>
                                   )}
                                 </div>
-                              ) : transaction.notes && transaction.notes.includes('Pedido Balcão') ? (
+                              ) : transaction.notes && (transaction.notes.includes('Pedido Balcão') || transaction.notes.includes('Pedido de balcão')) ? (
                                 <div>
                                   <span className="font-medium text-green-600">
                                     Pedido Balcão {extractOrderNumberFromNotes(transaction.notes)}

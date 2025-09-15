@@ -137,6 +137,32 @@ export const createTestTransaction = async () => {
   }
 };
 
+// Função para verificar notas das transações
+export const checkTransactionNotes = async () => {
+  console.log('🔍 Verificando notas das transações...');
+
+  try {
+    const { data: transactions, error } = await supabase
+      .from('cash_transactions')
+      .select('id, notes, created_at, amount, payment_method')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error) throw error;
+
+    console.log('📋 Últimas transações com notas:');
+    transactions?.forEach((t, index) => {
+      console.log(`${index + 1}. ${t.notes} (R$ ${t.amount} - ${t.payment_method})`);
+    });
+
+    return transactions;
+
+  } catch (error) {
+    console.error('❌ Erro ao verificar notas:', error);
+    return null;
+  }
+};
+
 // Função para testar inserção direta
 export const testDirectInsert = async () => {
   console.log('🧪 Testando inserção direta de transação...');
@@ -177,4 +203,5 @@ if (typeof window !== 'undefined') {
   (window as any).debugTransactions = debugTransactions;
   (window as any).createTestTransaction = createTestTransaction;
   (window as any).testDirectInsert = testDirectInsert;
+  (window as any).checkTransactionNotes = checkTransactionNotes;
 }

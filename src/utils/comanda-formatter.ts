@@ -87,12 +87,27 @@ export const formatBalcaoOrderNumber = (orderNumber: number | string): string =>
 
 /**
  * Extrai o número do pedido de uma nota de transação
- * @param notes - Nota da transação (ex: "Pedido Balcão #0123 - Cliente")
- * @returns Número extraído ou null se não encontrar
+ * @param notes - Nota da transação (ex: "Pedido Balcão #0123 - Cliente" ou "Pedido de balcão #uuid")
+ * @returns Número extraído ou formatado
  */
 export const extractOrderNumberFromNotes = (notes: string): string | null => {
-  const match = notes.match(/Pedido Balcão #(\d+)/);
-  return match ? `#${match[1]}` : null;
+  // Tentar formato novo primeiro: "Pedido Balcão #0123"
+  let match = notes.match(/Pedido Balcão #(\d+)/);
+  if (match) {
+    return `#${match[1]}`;
+  }
+  
+  // Tentar formato antigo: "Pedido de balcão #uuid"
+  match = notes.match(/Pedido de balcão #([a-f0-9-]+)/);
+  if (match) {
+    // Converter UUID para número amigável usando os últimos 4 caracteres
+    const uuid = match[1];
+    const lastFour = uuid.replace(/-/g, '').slice(-4);
+    const number = parseInt(lastFour, 16) % 10000;
+    return `#${number.toString().padStart(4, '0')}`;
+  }
+  
+  return null;
 };
 
 /**
