@@ -432,7 +432,7 @@ const CloseComandaModal: React.FC<CloseComandaModalProps> = ({
           
           <div className="mb-6 p-4 bg-gray-50 rounded-lg">
             <h3 className="font-semibold text-gray-900 mb-2">
-              Mesa {comanda.table?.number || 'N/A'} - {comanda.customer_name || 'Cliente'}
+              {comanda.table?.number ? `Mesa ${comanda.table.number}` : 'Balcão'} - {comanda.customer_name || 'Cliente'}
             </h3>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Total da conta:</span>

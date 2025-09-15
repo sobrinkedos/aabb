@@ -329,7 +329,7 @@ const SalesModuleDemo: React.FC = () => {
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <h3 className="font-semibold text-gray-900">
-                            Mesa {command.mesa?.numero || 'N/A'}
+                            {command.mesa?.numero ? `Mesa ${command.mesa.numero}` : 'Balcão'}
                           </h3>
                           <p className="text-sm text-gray-500">
                             Comanda #{command.id.slice(-6)}
@@ -496,7 +496,3 @@ const SalesModuleDemo: React.FC = () => {
 };
 
 export { SalesModuleDemo };
-// Expo
-rtar os novos componentes de demonstração
-export { TestImprovedCloseAccountModal } from './TestImprovedCloseAccountModal';
-export { CashPendingDemo } from './CashPendingDemo';

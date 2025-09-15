@@ -412,7 +412,7 @@ const ComandasView: React.FC = () => {
             </button>
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
-                Mesa {selectedComanda.table?.number || 'N/A'} - {selectedComanda.customer_name || 'Cliente'}
+                {selectedComanda.table?.number ? `Mesa ${selectedComanda.table.number}` : 'Balcão'} - {selectedComanda.customer_name || 'Cliente'}
               </h2>
               <div className="flex items-center space-x-4 mt-2">
                 <p className="text-sm text-gray-600">

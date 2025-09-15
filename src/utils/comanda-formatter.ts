@@ -64,6 +64,18 @@ export const formatTableName = (tableNumber?: number | string): string => {
 };
 
 /**
+ * Formata a exibição de mesa ou balcão
+ * @param tableNumber - Número da mesa (pode ser null/undefined)
+ * @returns String formatada ("Mesa X" ou "Balcão")
+ */
+export const formatTableDisplay = (tableNumber?: string | number | null): string => {
+  if (tableNumber) {
+    return `Mesa ${tableNumber}`;
+  }
+  return 'Balcão';
+};
+
+/**
  * Formata informações da comanda para exibição
  * @param comanda Dados da comanda
  * @returns Objeto com informações formatadas

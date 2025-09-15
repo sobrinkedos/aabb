@@ -116,7 +116,12 @@ export const useCashManagement = (): UseCashManagementReturn => {
       // Carregar transações do dia
       const { data: transactionsData, error: transactionsError } = await (supabase as any)
         .from('cash_transactions')
-        .select('*')
+        .select(`
+          *,
+          comandas(id, customer_name, table_id, total),
+          profiles!cash_transactions_processed_by_fkey(id, name),
+          cash_sessions(id, session_date, employee_id)
+        `)
         .gte('processed_at', `${today}T00:00:00.000Z`)
         .lt('processed_at', `${today}T23:59:59.999Z`)
         .order('processed_at', { ascending: false });
@@ -157,9 +162,9 @@ export const useCashManagement = (): UseCashManagementReturn => {
 
       const todaysTransactions: CashTransactionWithDetails[] = transactionsData?.map((transaction: any) => ({
         ...transaction,
-        comanda: undefined,
-        processed_by_employee: { id: user.id, name: user.email || 'Usuário' },
-        session: undefined
+        comanda: transaction.comandas || undefined,
+        processed_by_employee: transaction.profiles || { id: user.id, name: user.email || 'Usuário' },
+        session: transaction.cash_sessions || undefined
       })) || [];
 
       const todaysSessions: CashSessionWithEmployee[] = sessionsData?.map((session: any) => ({

@@ -7,4 +7,4 @@ export { TestCloseAccountModal } from './TestCloseAccountModal';
 export { TestImprovedCloseAccountModal } from './TestImprovedCloseAccountModal';
 export { CashPendingDemo } from './CashPendingDemo';
 export { RealIntegrationDemo } from './RealIntegrationDemo';
-export { testSalesModule } from './test-sales-module';
+export { default as TestTableDisplay } from './TestTableDisplay';

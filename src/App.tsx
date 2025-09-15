@@ -16,6 +16,7 @@ import MembersModule from './pages/Members';
 import BarAttendance from './pages/BarAttendance';
 import CashManagement from './pages/CashManagement';
 import TestNewModal from './components/debug/TestNewModal';
+import { TestTableDisplay } from './examples';
 
 
 // Componente que envolve as rotas protegidas, fornecendo o layout e o contexto.
@@ -67,6 +68,7 @@ function App() {
 
             <Route path="settings" element={<div className="p-6"><h1 className="text-2xl font-bold">Configurações (Em Desenvolvimento)</h1></div>} />
             <Route path="test-modal" element={<TestNewModal />} />
+            <Route path="test-table-display" element={<TestTableDisplay />} />
           </Route>
           
           {/* Redireciona qualquer rota não encontrada para a página inicial */}
