@@ -137,8 +137,44 @@ export const createTestTransaction = async () => {
   }
 };
 
+// Função para testar inserção direta
+export const testDirectInsert = async () => {
+  console.log('🧪 Testando inserção direta de transação...');
+
+  try {
+    const testData = {
+      transaction_type: 'sale',
+      payment_method: 'dinheiro',
+      amount: 25.50,
+      processed_by: 'test-user-123',
+      notes: 'Teste direto de inserção'
+    };
+
+    console.log('📋 Dados para inserir:', testData);
+
+    const { data, error } = await supabase
+      .from('cash_transactions')
+      .insert(testData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Erro na inserção:', error);
+      return { success: false, error };
+    }
+
+    console.log('✅ Transação inserida com sucesso:', data);
+    return { success: true, data };
+
+  } catch (error) {
+    console.error('❌ Erro geral:', error);
+    return { success: false, error };
+  }
+};
+
 // Disponibilizar no window para uso no console
 if (typeof window !== 'undefined') {
   (window as any).debugTransactions = debugTransactions;
   (window as any).createTestTransaction = createTestTransaction;
+  (window as any).testDirectInsert = testDirectInsert;
 }

@@ -449,7 +449,14 @@ export const useCashManagement = (): UseCashManagementReturn => {
   // ===== FUNÇÕES DE TRANSAÇÃO =====
 
   const processComandaPayment = useCallback(async (data: ProcessComandaPaymentData): Promise<void> => {
-    if (!state.currentSession) throw new Error('Nenhuma sessão de caixa aberta');
+    console.log('🏦 Processando pagamento de comanda...');
+    console.log('📊 Sessão atual:', state.currentSession);
+    console.log('💳 Dados do pagamento:', data);
+
+    if (!state.currentSession) {
+      console.error('❌ Nenhuma sessão de caixa aberta!');
+      throw new Error('Nenhuma sessão de caixa aberta');
+    }
 
     try {
       updateState({ loading: true, error: null });
@@ -458,6 +465,7 @@ export const useCashManagement = (): UseCashManagementReturn => {
       await fecharComanda(data.comanda_id, data.payment_method, data.notes);
 
       // Registrar transação no caixa
+      console.log('💰 Criando transação de pagamento...');
       const transactionData = {
         cash_session_id: state.currentSession.id,
         comanda_id: data.comanda_id,
@@ -470,11 +478,20 @@ export const useCashManagement = (): UseCashManagementReturn => {
         notes: data.notes
       };
 
-      const { error: transactionError } = await (supabase as any)
-        .from('cash_transactions')
-        .insert(transactionData);
+      console.log('📋 Dados da transação:', transactionData);
 
-      if (transactionError) throw transactionError;
+      const { data: insertedTransaction, error: transactionError } = await (supabase as any)
+        .from('cash_transactions')
+        .insert(transactionData)
+        .select()
+        .single();
+
+      if (transactionError) {
+        console.error('❌ Erro ao inserir transação:', transactionError);
+        throw transactionError;
+      }
+
+      console.log('✅ Transação criada com sucesso:', insertedTransaction);
 
       // Atualizar métricas do funcionário
       await atualizarMetricasVenda(data.amount);
