@@ -616,15 +616,5 @@ export class CommandManager {
     return await this.fecharComanda(comandaId);
   }
 
-  /**
-   * Singleton instance
-   */
-  private static instance: CommandManager;
 
-  static getInstance(): CommandManager {
-    if (!CommandManager.instance) {
-      CommandManager.instance = new CommandManager();
-    }
-    return CommandManager.instance;
-  }
 }

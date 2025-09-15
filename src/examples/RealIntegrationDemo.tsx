@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { CloseCommandButton } from '../components/bar/CloseCommandButton';
+import { CloseCommandButton } from '../components/Bar/CloseCommandButton';
 import { CashPendingPanel } from '../components/cash/CashPendingPanel';
 import { CashManager } from '../services/cash-manager';
 import { CommandManager } from '../services/command-manager';
