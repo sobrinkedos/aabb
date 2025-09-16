@@ -268,29 +268,29 @@
   - _Requirements: 7.5_
 
 -
-  9. [ ] Implementar obrigatoriedade de troca de senha provisória
-  - Criar middleware para detectar senha provisória
-  - Implementar página de alteração obrigatória
-  - Configurar validação de nova senha
-  - Adicionar bloqueio até troca de senha
+  9. [x] Implementar obrigatoriedade de troca de senha provisória
+  - ✅ Criar middleware para detectar senha provisória
+  - ✅ Implementar página de alteração obrigatória
+  - ✅ Configurar validação de nova senha
+  - ✅ Adicionar bloqueio até troca de senha
   - _Requirements: 3.5, 5.6_
 
-- [ ] 9.1 Criar middleware de senha provisória
-  - Implementar verificação de senha provisória no login
-  - Configurar redirecionamento forçado
-  - Criar bloqueio de acesso até alteração
+- [x] 9.1 Criar middleware de senha provisória
+  - ✅ Implementar verificação de senha provisória no login
+  - ✅ Configurar redirecionamento forçado
+  - ✅ Criar bloqueio de acesso até alteração
   - _Requirements: 3.5_
 
-- [ ] 9.2 Desenvolver página de alteração de senha
-  - Criar formulário de alteração de senha
-  - Implementar validação de força da senha
-  - Configurar confirmação de senha
+- [x] 9.2 Desenvolver página de alteração de senha
+  - ✅ Criar formulário de alteração de senha
+  - ✅ Implementar validação de força da senha
+  - ✅ Configurar confirmação de senha
   - _Requirements: 3.5, 5.6_
 
-- [ ] 9.3 Implementar atualização de status
-  - Configurar remoção do flag de senha provisória
-  - Implementar invalidação de sessões antigas
-  - Adicionar log da alteração de senha
+- [x] 9.3 Implementar atualização de status
+  - ✅ Configurar remoção do flag de senha provisória
+  - ✅ Implementar invalidação de sessões antigas
+  - ✅ Adicionar log da alteração de senha
   - _Requirements: 3.5, 5.6_
 
 -
