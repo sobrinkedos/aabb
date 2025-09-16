@@ -1,4 +1,4 @@
-{
+	{
   "mcpServers": {
     "supabase": {
       "command": "npx",
@@ -8,12 +8,13 @@
         "wznycskqsavpmejwpksp"
       ],
       "env": {
-        "SUPABASE_ACCESS_TOKEN": "sbp_1a0bb2d152e4e357386b17af2cc583603b1de6e1",
-        "SUPABASE_URL": "https://wznycskqsavpmejwpksp.supabase.co",
-        "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8"
+        "SUPABASE_ACCESS_TOKEN": "sbp_1a0bb2d152e4e357386b17af2cc583603b1de6e1"
       },
       "disabled": false,
-      "autoApprove": ["list_tables", "describe_table", "run_query"]
+      "autoApprove": [
+        "list_tables",
+        "describe_table"
+      ]
     }
   }
 }

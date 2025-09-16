@@ -23,21 +23,21 @@ const ComandasView: React.FC = () => {
   const [selectedComanda, setSelectedComanda] = useState<Comanda | null>(null);
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'list' | 'details'>('list');
-  
+
   // Estados para o carrinho de itens (modo detalhes)
-  const [cart, setCart] = useState<Array<{menu_item_id: string; name: string; price: number; quantity: number; notes?: string}>>([]);
+  const [cart, setCart] = useState<Array<{ menu_item_id: string; name: string; price: number; quantity: number; notes?: string }>>([]);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [searchTermItems, setSearchTermItems] = useState('');
-  
+
   // Estados para feedback visual
   const [isAddingItems, setIsAddingItems] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  
+
   // Estados para fechamento de conta
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [isClosingComanda, setIsClosingComanda] = useState(false);
-  
+
   // Hook para menu items
   const { menuItems, loading: menuLoading } = useMenuItems(true);
   const { adicionarItemComanda, fecharComanda } = useBarAttendance();
@@ -73,7 +73,7 @@ const ComandasView: React.FC = () => {
   const addToCart = (item: MenuItem) => {
     console.log('Adicionando item ao carrinho:', item);
     const existingIndex = cart.findIndex(cartItem => cartItem.menu_item_id === item.id);
-    
+
     if (existingIndex >= 0) {
       const newCart = [...cart];
       newCart[existingIndex].quantity += 1;
@@ -97,8 +97,8 @@ const ComandasView: React.FC = () => {
     if (newQuantity <= 0) {
       setCart(cart.filter(item => item.menu_item_id !== menuItemId));
     } else {
-      setCart(cart.map(item => 
-        item.menu_item_id === menuItemId 
+      setCart(cart.map(item =>
+        item.menu_item_id === menuItemId
           ? { ...item, quantity: newQuantity }
           : item
       ));
@@ -113,22 +113,22 @@ const ComandasView: React.FC = () => {
     console.log('🔥 Botão clicado! Iniciando adição de itens à comanda');
     console.log('Comanda selecionada:', selectedComanda);
     console.log('Itens no carrinho:', cart);
-    
+
     if (!selectedComanda) {
       console.error('❌ Nenhuma comanda selecionada');
       return;
     }
-    
+
     if (cart.length === 0) {
       console.error('❌ Carrinho vazio');
       return;
     }
-    
+
     setIsAddingItems(true);
-    
+
     try {
       console.log('📦 Adicionando', cart.length, 'itens à comanda', selectedComanda.id);
-      
+
       for (const item of cart) {
         console.log('➕ Adicionando item:', item);
         await adicionarItemComanda(
@@ -139,30 +139,30 @@ const ComandasView: React.FC = () => {
         );
         console.log('✅ Item adicionado com sucesso');
       }
-      
+
       console.log('🧹 Limpando carrinho');
       const itemCount = cart.length;
       setCart([]);
-      
+
       console.log('🔄 Atualizando dados');
       await refetch();
       console.log('📋 Dados atualizados, comanda selecionada será atualizada automaticamente');
-      
+
       // Forçar atualização dos pedidos do bar e cozinha
       console.log('🍺 Forçando atualização dos pedidos do bar e cozinha...');
       await refreshBarOrders();
       await refreshKitchenOrders();
       console.log('✅ Pedidos do bar e cozinha atualizados');
-      
+
       // Mostrar mensagem de sucesso
       setSuccessMessage(`✅ ${itemCount} ${itemCount === 1 ? 'item adicionado' : 'itens adicionados'} com sucesso!`);
       setShowSuccessMessage(true);
-      
+
       // Esconder mensagem após 3 segundos
       setTimeout(() => {
         setShowSuccessMessage(false);
       }, 3000);
-      
+
       console.log('🎉 Processo concluído com sucesso!');
     } catch (error) {
       console.error('❌ Erro ao adicionar itens à comanda:', error);
@@ -178,34 +178,34 @@ const ComandasView: React.FC = () => {
 
   const handleCloseComanda = async (metodoPagamento: string, observacoes?: string) => {
     if (!selectedComanda) return;
-    
+
     setIsClosingComanda(true);
-    
+
     try {
       console.log('💳 Fechando comanda:', selectedComanda.id, 'Método:', metodoPagamento);
-      
+
       await fecharComanda(selectedComanda.id, metodoPagamento, observacoes);
-      
+
       console.log('✅ Comanda fechada com sucesso');
-      
+
       // Atualizar dados
       await refetch();
       await refreshBarOrders();
       await refreshKitchenOrders();
-      
+
       // Voltar para a lista
       setViewMode('list');
       setSelectedComanda(null);
       setCart([]);
       setShowCloseModal(false);
-      
+
       // Mostrar mensagem de sucesso
       setSuccessMessage('✅ Comanda fechada e enviada para o caixa!');
       setShowSuccessMessage(true);
       setTimeout(() => {
         setShowSuccessMessage(false);
       }, 3000);
-      
+
     } catch (error) {
       console.error('❌ Erro ao fechar comanda:', error);
       setSuccessMessage('❌ Erro ao fechar comanda');
@@ -226,7 +226,7 @@ const ComandasView: React.FC = () => {
   const filteredComandas = useMemo(() => {
     return comandas.filter(comanda => {
       // Filtro por termo de busca
-      const matchesSearch = !searchTerm || 
+      const matchesSearch = !searchTerm ||
         comanda.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         comanda.table?.number?.toString().includes(searchTerm) ||
         comanda.id.toLowerCase().includes(searchTerm.toLowerCase());
@@ -235,17 +235,17 @@ const ComandasView: React.FC = () => {
       const matchesStatus = statusFilter === 'all' || comanda.status === statusFilter;
 
       // Filtro por funcionário
-      const matchesEmployee = !employeeFilter || 
+      const matchesEmployee = !employeeFilter ||
         comanda.employee_name?.toLowerCase().includes(employeeFilter.toLowerCase());
 
       // Filtro por mesa
-      const matchesTable = !tableFilter || 
+      const matchesTable = !tableFilter ||
         comanda.table?.number?.toString().includes(tableFilter);
 
       // Filtro por tempo
       const matchesTime = (() => {
         if (timeFilter === 'all') return true;
-        
+
         const openedAt = new Date(comanda.opened_at);
         const now = new Date();
         const hoursDiff = (now.getTime() - openedAt.getTime()) / (1000 * 60 * 60);
@@ -308,11 +308,11 @@ const ComandasView: React.FC = () => {
     const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
     const matchesSearch = item.name.toLowerCase().includes(searchTermItems.toLowerCase());
     return matchesCategory && matchesSearch && item.available;
-  }); 
+  });
   // Debug: verificar estado do carrinho
   console.log('Estado atual do carrinho:', cart);
   console.log('Carrinho tem itens?', cart.length > 0);
-  
+
   // Debug: verificar se botão deve aparecer
   console.log('🔍 Debug botão Fechar Conta:', {
     selectedComanda: !!selectedComanda,
@@ -353,7 +353,7 @@ const ComandasView: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Ações */}
           <div className="flex flex-col space-y-2">
             <button
@@ -445,7 +445,7 @@ const ComandasView: React.FC = () => {
                 </div>
               )}
             </div>
-          </div> 
+          </div>
           {/* Carrinho de Pedido */}
           <div className="w-96 bg-gray-50 border-l border-gray-200 flex flex-col">
             {/* Header do Carrinho */}
@@ -477,16 +477,15 @@ const ComandasView: React.FC = () => {
                               R$ {item.price.toFixed(2)} cada
                             </p>
                           </div>
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          <span className={`text-xs px-2 py-1 rounded-full ${item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                             item.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
-                            item.status === 'ready' ? 'bg-green-100 text-green-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
+                              item.status === 'ready' ? 'bg-green-100 text-green-800' :
+                                'bg-gray-100 text-gray-800'
+                            }`}>
                             {item.status === 'pending' ? 'Pendente' :
-                             item.status === 'preparing' ? 'Preparando' :
-                             item.status === 'ready' ? 'Pronto' :
-                             item.status === 'delivered' ? 'Entregue' : item.status}
+                              item.status === 'preparing' ? 'Preparando' :
+                                item.status === 'ready' ? 'Pronto' :
+                                  item.status === 'delivered' ? 'Entregue' : item.status}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
@@ -519,7 +518,7 @@ const ComandasView: React.FC = () => {
                 )}
               </div>
             </div>
-            
+
             {/* Lista de Novos Itens - Expansível */}
             <div className="flex-1 overflow-y-auto p-4 min-h-0">
               {cart.length === 0 ? (
@@ -537,7 +536,7 @@ const ComandasView: React.FC = () => {
                           <p className="text-sm text-gray-600">R$ {item.price.toFixed(2)} cada</p>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <button
@@ -560,7 +559,7 @@ const ComandasView: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                  
+
                   {/* Botão logo após os itens */}
                   <div className="mt-6 pt-4 border-t border-gray-200">
                     <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200 mb-4">
@@ -575,11 +574,10 @@ const ComandasView: React.FC = () => {
                     <button
                       onClick={handleAddItemsToComanda}
                       disabled={isAddingItems}
-                      className={`w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${
-                        isAddingItems 
-                          ? 'bg-gray-400 cursor-not-allowed' 
-                          : 'bg-green-600 hover:bg-green-700 text-white'
-                      }`}
+                      className={`w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${isAddingItems
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-green-600 hover:bg-green-700 text-white'
+                        }`}
                     >
                       {isAddingItems ? (
                         <>
@@ -596,11 +594,10 @@ const ComandasView: React.FC = () => {
 
                     {/* Mensagem de Feedback */}
                     {showSuccessMessage && (
-                      <div className={`mt-3 p-3 rounded-lg text-sm font-medium text-center transition-all duration-300 ${
-                        successMessage.includes('❌') 
-                          ? 'bg-red-100 text-red-800 border border-red-200' 
-                          : 'bg-green-100 text-green-800 border border-green-200'
-                      }`}>
+                      <div className={`mt-3 p-3 rounded-lg text-sm font-medium text-center transition-all duration-300 ${successMessage.includes('❌')
+                        ? 'bg-red-100 text-red-800 border border-red-200'
+                        : 'bg-green-100 text-green-800 border border-green-200'
+                        }`}>
                         {successMessage}
                       </div>
                     )}
@@ -626,7 +623,7 @@ const ComandasView: React.FC = () => {
   return (
     <div className="comandas-container">
       {/* Alertas de Comandas com Tempo Excessivo */}
-      <ComandaAlerts 
+      <ComandaAlerts
         comandas={alertComandas}
         onComandaClick={handleComandaClick}
         onDismissAlert={handleDismissAlert}
@@ -671,8 +668,8 @@ const ComandasView: React.FC = () => {
             <div className="text-sm text-gray-600">Com Atraso</div>
           </div>
         </div>
-        
-        <button 
+
+        <button
           onClick={handleNewComanda}
           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
         >
@@ -715,7 +712,7 @@ const ComandasView: React.FC = () => {
                 {filteredComandas.map(comanda => {
                   const timeElapsed = getTimeElapsed(comanda.opened_at);
                   const isOverdue = new Date().getTime() - new Date(comanda.opened_at).getTime() > (2 * 60 * 60 * 1000);
-                  
+
                   return (
                     <tr key={comanda.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -726,11 +723,10 @@ const ComandasView: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col space-y-1">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            comanda.status === 'open' ? 'bg-green-100 text-green-800' :
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${comanda.status === 'open' ? 'bg-green-100 text-green-800' :
                             comanda.status === 'pending_payment' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
+                              'bg-gray-100 text-gray-800'
+                            }`}>
                             {getStatusLabel(comanda.status)}
                           </span>
                           {isOverdue && comanda.status === 'open' && (
@@ -789,11 +785,10 @@ const ComandasView: React.FC = () => {
       {/* Mensagem de Feedback Global */}
       {showSuccessMessage && viewMode === 'list' && (
         <div className="fixed top-4 right-4 z-50">
-          <div className={`p-4 rounded-lg shadow-lg ${
-            successMessage.includes('❌') 
-              ? 'bg-red-100 text-red-800 border border-red-200' 
-              : 'bg-green-100 text-green-800 border border-green-200'
-          }`}>
+          <div className={`p-4 rounded-lg shadow-lg ${successMessage.includes('❌')
+            ? 'bg-red-100 text-red-800 border border-red-200'
+            : 'bg-green-100 text-green-800 border border-green-200'
+            }`}>
             {successMessage}
           </div>
         </div>
@@ -807,7 +802,7 @@ const ComandasView: React.FC = () => {
     const diffMs = now.getTime() - opened.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (diffHours > 0) {
       return `${diffHours}h ${diffMinutes}min`;
     }
@@ -853,7 +848,7 @@ const CloseComandaModal: React.FC<CloseComandaModalProps> = ({
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
         <div className="p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Fechar Conta</h2>
-          
+
           <div className="mb-6 p-4 bg-gray-50 rounded-lg">
             <h3 className="font-semibold text-gray-900 mb-2">
               Mesa {comanda.table?.number || 'N/A'} - {comanda.customer_name || 'Cliente'}

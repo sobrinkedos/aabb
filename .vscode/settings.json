@@ -34,5 +34,8 @@
         "env": {}
       }
     }
-  }
+  },
+  "kiroAgent.agentModelSelection": "claude-sonnet-4",
+  "kiroAgent.enableDebugLogs": true,
+  "kiroAgent.enableTabAutocomplete": true
 }
