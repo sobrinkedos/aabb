@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { MultitenantAuthProvider } from './contexts/MultitenantAuthContext';
 import { AppProvider } from './contexts/AppContext';
 import LoginForm from './components/Auth/LoginForm';
 import RegisterForm from './components/Auth/RegisterForm';
@@ -17,6 +18,7 @@ import MembersModule from './pages/Members';
 import BarAttendance from './pages/BarAttendance';
 import CashManagement from './pages/CashManagement';
 import TestNewModal from './components/debug/TestNewModal';
+import { ConfiguracoesEmpresa } from './pages/Auth/ConfiguracoesEmpresa';
 import { TestTableDisplay } from './examples';
 import './utils/debug-transactions';
 
@@ -30,9 +32,11 @@ const ProtectedRoutesWrapper: React.FC = () => {
   }
 
   return (
-    <AppProvider>
-      <Layout /> {/* O Layout contém o <Outlet/> para renderizar as rotas filhas */}
-    </AppProvider>
+    <MultitenantAuthProvider>
+      <AppProvider>
+        <Layout /> {/* O Layout contém o <Outlet/> para renderizar as rotas filhas */}
+      </AppProvider>
+    </MultitenantAuthProvider>
   );
 };
 
@@ -80,7 +84,7 @@ function App() {
             <Route path="members" element={<MembersModule />} />
             <Route path="bar/attendance" element={<BarAttendance />} />
 
-            <Route path="settings" element={<div className="p-6"><h1 className="text-2xl font-bold">Configurações (Em Desenvolvimento)</h1></div>} />
+            <Route path="settings" element={<ConfiguracoesEmpresa />} />
             <Route path="test-modal" element={<TestNewModal />} />
             <Route path="test-table-display" element={<TestTableDisplay />} />
           </Route>

@@ -96,7 +96,7 @@ const CONFIGURACOES_PADRAO: TodasConfiguracoes = {
 
 export const ConfiguracoesEmpresa: React.FC = () => {
   const { user, empresa } = useMultitenantAuth();
-  const [activeTab, setActiveTab] = useState<CategoriaConfiguracao>(CategoriaConfiguracao.SISTEMA);
+  const [activeTab, setActiveTab] = useState<CategoriaConfiguracao>('empresa' as CategoriaConfiguracao);
   const [configuracoes, setConfiguracoes] = useState<TodasConfiguracoes>(CONFIGURACOES_PADRAO);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -105,11 +105,111 @@ export const ConfiguracoesEmpresa: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pendingChanges, setPendingChanges] = useState<Partial<TodasConfiguracoes>>({});
+  const [dadosEmpresa, setDadosEmpresa] = useState({
+    nome: empresa?.nome || '',
+    cnpj: '',
+    email: empresa?.email || '',
+    telefone: empresa?.telefone || '',
+    endereco: '',
+    cidade: '',
+    estado: '',
+    cep: '',
+    site: '',
+    descricao: ''
+  });
+  const [isSavingEmpresa, setIsSavingEmpresa] = useState(false);
+
+  // Carregar dados da empresa
+  const carregarDadosEmpresa = async () => {
+    if (!empresa?.id) return;
+
+    try {
+      const { data: empresaData, error } = await supabase
+        .from('empresas')
+        .select('*')
+        .eq('id', empresa.id)
+        .single();
+
+      if (error) {
+        console.error('Erro ao carregar dados da empresa:', error);
+        return;
+      }
+
+      if (empresaData) {
+        setDadosEmpresa({
+          nome: empresaData.nome || '',
+          cnpj: empresaData.cnpj || '',
+          email: empresaData.email || '',
+          telefone: empresaData.telefone || '',
+          endereco: empresaData.endereco || '',
+          cidade: empresaData.cidade || '',
+          estado: empresaData.estado || '',
+          cep: empresaData.cep || '',
+          site: empresaData.site || '',
+          descricao: empresaData.descricao || ''
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados da empresa:', error);
+    }
+  };
+
+  // Salvar dados da empresa
+  const salvarDadosEmpresa = async () => {
+    if (!empresa?.id) return;
+
+    try {
+      setIsSavingEmpresa(true);
+      setError('');
+
+      const { error: updateError } = await supabase
+        .from('empresas')
+        .update({
+          nome: dadosEmpresa.nome,
+          cnpj: dadosEmpresa.cnpj,
+          email: dadosEmpresa.email,
+          telefone: dadosEmpresa.telefone,
+          endereco: dadosEmpresa.endereco,
+          cidade: dadosEmpresa.cidade,
+          estado: dadosEmpresa.estado,
+          cep: dadosEmpresa.cep,
+          site: dadosEmpresa.site,
+          descricao: dadosEmpresa.descricao,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', empresa.id);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      setSuccessMessage('Dados da empresa salvos com sucesso!');
+      setTimeout(() => setSuccessMessage(''), 3000);
+
+      // Registrar log de auditoria
+      await supabase.rpc('registrar_log_auditoria', {
+        p_empresa_id: empresa.id,
+        p_usuario_id: user?.user_id,
+        p_acao: 'UPDATE_COMPANY_DATA',
+        p_recurso: 'empresas',
+        p_detalhes: {
+          campos_alterados: Object.keys(dadosEmpresa)
+        }
+      });
+
+    } catch (error) {
+      console.error('Erro ao salvar dados da empresa:', error);
+      setError(error instanceof Error ? error.message : 'Erro ao salvar dados da empresa');
+    } finally {
+      setIsSavingEmpresa(false);
+    }
+  };
 
   // Carregar configurações da empresa
   useEffect(() => {
     if (empresa?.id) {
       carregarConfiguracoes();
+      carregarDadosEmpresa();
     }
   }, [empresa?.id]);
 
@@ -265,6 +365,12 @@ export const ConfiguracoesEmpresa: React.FC = () => {
 
   const tabs = [
     {
+      id: 'empresa' as CategoriaConfiguracao,
+      name: 'Empresa',
+      icon: '🏢',
+      description: 'Dados e informações da empresa'
+    },
+    {
       id: CategoriaConfiguracao.SISTEMA,
       name: 'Sistema',
       icon: '⚙️',
@@ -292,7 +398,7 @@ export const ConfiguracoesEmpresa: React.FC = () => {
 
   if (isLoading) {
     return (
-      <ProtectedRoute modulo={ModuloSistema.CONFIGURACOES} acao="visualizar" requireAdmin={true}>
+      <ProtectedRoute>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -304,7 +410,7 @@ export const ConfiguracoesEmpresa: React.FC = () => {
   }
 
   return (
-    <ProtectedRoute modulo={ModuloSistema.CONFIGURACOES} acao="visualizar" requireAdmin={true}>
+    <ProtectedRoute>
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
@@ -369,6 +475,219 @@ export const ConfiguracoesEmpresa: React.FC = () => {
 
             {/* Tab Content */}
             <div className="p-6">
+              {/* Dados da Empresa */}
+              {activeTab === 'empresa' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">Dados da Empresa</h3>
+                      <p className="text-sm text-gray-600 mb-6">
+                        Configure as informações básicas da sua empresa.
+                      </p>
+                    </div>
+                    <button
+                      onClick={salvarDadosEmpresa}
+                      disabled={isSavingEmpresa}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                    >
+                      {isSavingEmpresa ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Salvando...
+                        </>
+                      ) : (
+                        'Salvar Dados'
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Nome da Empresa */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nome da Empresa *
+                      </label>
+                      <input
+                        type="text"
+                        value={dadosEmpresa.nome}
+                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, nome: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Digite o nome da empresa"
+                        required
+                      />
+                    </div>
+
+                    {/* CNPJ */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        CNPJ
+                      </label>
+                      <input
+                        type="text"
+                        value={dadosEmpresa.cnpj}
+                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, cnpj: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="00.000.000/0000-00"
+                      />
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email *
+                      </label>
+                      <input
+                        type="email"
+                        value={dadosEmpresa.email}
+                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, email: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="contato@empresa.com"
+                        required
+                      />
+                    </div>
+
+                    {/* Telefone */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Telefone *
+                      </label>
+                      <input
+                        type="tel"
+                        value={dadosEmpresa.telefone}
+                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, telefone: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="(11) 99999-9999"
+                        required
+                      />
+                    </div>
+
+                    {/* Site */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Site
+                      </label>
+                      <input
+                        type="url"
+                        value={dadosEmpresa.site}
+                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, site: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="https://www.empresa.com"
+                      />
+                    </div>
+
+                    {/* Endereço */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Endereço
+                      </label>
+                      <input
+                        type="text"
+                        value={dadosEmpresa.endereco}
+                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, endereco: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Rua, número, bairro"
+                      />
+                    </div>
+
+                    {/* Cidade */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Cidade
+                      </label>
+                      <input
+                        type="text"
+                        value={dadosEmpresa.cidade}
+                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, cidade: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Nome da cidade"
+                      />
+                    </div>
+
+                    {/* Estado */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Estado
+                      </label>
+                      <select
+                        value={dadosEmpresa.estado}
+                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, estado: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Selecione o estado</option>
+                        <option value="AC">Acre</option>
+                        <option value="AL">Alagoas</option>
+                        <option value="AP">Amapá</option>
+                        <option value="AM">Amazonas</option>
+                        <option value="BA">Bahia</option>
+                        <option value="CE">Ceará</option>
+                        <option value="DF">Distrito Federal</option>
+                        <option value="ES">Espírito Santo</option>
+                        <option value="GO">Goiás</option>
+                        <option value="MA">Maranhão</option>
+                        <option value="MT">Mato Grosso</option>
+                        <option value="MS">Mato Grosso do Sul</option>
+                        <option value="MG">Minas Gerais</option>
+                        <option value="PA">Pará</option>
+                        <option value="PB">Paraíba</option>
+                        <option value="PR">Paraná</option>
+                        <option value="PE">Pernambuco</option>
+                        <option value="PI">Piauí</option>
+                        <option value="RJ">Rio de Janeiro</option>
+                        <option value="RN">Rio Grande do Norte</option>
+                        <option value="RS">Rio Grande do Sul</option>
+                        <option value="RO">Rondônia</option>
+                        <option value="RR">Roraima</option>
+                        <option value="SC">Santa Catarina</option>
+                        <option value="SP">São Paulo</option>
+                        <option value="SE">Sergipe</option>
+                        <option value="TO">Tocantins</option>
+                      </select>
+                    </div>
+
+                    {/* CEP */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        CEP
+                      </label>
+                      <input
+                        type="text"
+                        value={dadosEmpresa.cep}
+                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, cep: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="00000-000"
+                      />
+                    </div>
+
+                    {/* Descrição */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Descrição da Empresa
+                      </label>
+                      <textarea
+                        value={dadosEmpresa.descricao}
+                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, descricao: e.target.value }))}
+                        rows={4}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Descreva brevemente a empresa, seus serviços e atividades..."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-md p-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Informações Importantes:</h4>
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      <li>• Os campos marcados com * são obrigatórios</li>
+                      <li>• As alterações serão registradas nos logs de auditoria</li>
+                      <li>• O nome da empresa será exibido em todo o sistema</li>
+                      <li>• O email será usado para comunicações oficiais</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+
               {/* Configurações de Sistema */}
               {activeTab === CategoriaConfiguracao.SISTEMA && (
                 <div className="space-y-6">
