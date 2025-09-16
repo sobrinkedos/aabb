@@ -172,29 +172,29 @@
   - _Requirements: 3.6_
 
 -
-  6. [ ] Desenvolver sistema de permissões
-  - Criar interface para definir permissões por módulo
-  - Implementar controle de acesso no frontend
-  - Configurar middleware de autorização
-  - Adicionar validação de permissões no backend
+  6. [x] Desenvolver sistema de permissões
+  - ✅ Criar interface para definir permissões por módulo
+  - ✅ Implementar controle de acesso no frontend
+  - ✅ Configurar middleware de autorização
+  - ✅ Adicionar validação de permissões no backend
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 6.1 Criar interface de permissões
-  - Implementar página de edição de permissões
-  - Criar componente de seleção de módulos
-  - Adicionar controles para diferentes tipos de acesso
+- [x] 6.1 Criar interface de permissões
+  - ✅ Implementar página de edição de permissões
+  - ✅ Criar componente de seleção de módulos
+  - ✅ Adicionar controles para diferentes tipos de acesso
   - _Requirements: 4.1, 4.2_
 
-- [ ] 6.2 Implementar controle de acesso no frontend
-  - Criar hook para verificar permissões
-  - Implementar componente de proteção de rotas
-  - Configurar ocultação de elementos sem permissão
+- [x] 6.2 Implementar controle de acesso no frontend
+  - ✅ Criar hook para verificar permissões
+  - ✅ Implementar componente de proteção de rotas
+  - ✅ Configurar ocultação de elementos sem permissão
   - _Requirements: 4.3, 4.4_
 
-- [ ] 6.3 Desenvolver middleware de autorização
-  - Criar middleware para verificar permissões de API
-  - Implementar função para validar acesso a módulos
-  - Configurar retorno de erros de autorização
+- [x] 6.3 Desenvolver middleware de autorização
+  - ✅ Criar middleware para verificar permissões de API
+  - ✅ Implementar função para validar acesso a módulos
+  - ✅ Configurar retorno de erros de autorização
   - _Requirements: 4.4, 4.5_
 
 - [ ] 6.4 Implementar aplicação imediata de permissões
