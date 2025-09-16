@@ -66,7 +66,7 @@ export const useCashManagement = (): UseCashManagementReturn => {
 
       const currentSession: CashSessionWithEmployee | null = sessionData ? {
         ...sessionData as CashSession,
-        employee: { id: user.id, name: user.email || 'Usuário', role: 'employee' }
+        employee: { id: user.id, name: user.name || 'Usuário', role: 'employee' }
       } : null;
 
       updateState({

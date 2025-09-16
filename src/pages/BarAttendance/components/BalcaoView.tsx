@@ -517,7 +517,7 @@ interface PaymentMethod {
                     notes: item.notes
                   })),
                   timestamp: new Date(),
-                  employeeName: user.name || user.email || 'Funcionário'
+                  employeeName: user.name || 'Funcionário'
                 }}
                 onPrint={handleOrderReceiptPrinted}
               />

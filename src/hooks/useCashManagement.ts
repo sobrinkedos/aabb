@@ -207,7 +207,7 @@ export const useCashManagement = (): UseCashManagementReturn => {
         ...currentSessionData,
         employee: { 
           id: user.id, 
-          name: user.name || user.email || 'Usuário', 
+          name: user.name || 'Usuário', 
           role: user.role || 'employee' 
         },
         supervisor: undefined
@@ -225,13 +225,13 @@ export const useCashManagement = (): UseCashManagementReturn => {
       const todaysTransactions: CashTransactionWithDetails[] = transactionsData?.map((transaction: any) => ({
         ...transaction,
         comanda: transaction.comandas || undefined,
-        processed_by_employee: transaction.profiles || { id: user.id, name: user.email || 'Usuário' },
+        processed_by_employee: transaction.profiles || { id: user.id, name: user.name || 'Usuário' },
         session: transaction.cash_sessions || undefined
       })) || [];
 
       const todaysSessions: CashSessionWithEmployee[] = sessionsData?.map((session: any) => ({
         ...session,
-        employee: { id: user.id, name: user.email || 'Usuário', role: 'employee' }
+        employee: { id: user.id, name: user.name || 'Usuário', role: 'employee' }
       })) || [];
 
       // Gerar resumo do dia

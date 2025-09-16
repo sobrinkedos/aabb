@@ -44,7 +44,7 @@ const BarHeader: React.FC<BarHeaderProps> = ({ mode, onModeChange, user }) => {
             </h1>
             {user && (
               <span className="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-0 truncate">
-                <span className="hidden sm:inline">Atendente: </span>{user.full_name || user.email}
+                <span className="hidden sm:inline">Atendente: </span>{user.full_name || user.name || 'Usuário'}
               </span>
             )}
           </div>
