@@ -198,6 +198,18 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
     try {
       console.log('💳 Iniciando processamento de pagamento:', data.order_id);
       
+      // Buscar o pedido para obter o order_number
+      const { data: orderData, error: orderError } = await supabase
+        .from('balcao_orders')
+        .select('order_number, customer_name')
+        .eq('id', data.order_id)
+        .single();
+
+      if (orderError) {
+        console.error('❌ Erro ao buscar dados do pedido:', orderError);
+        throw orderError;
+      }
+
       await updateOrderStatus(data.order_id, {
         status: 'paid',
         payment_method: data.payment_method,
@@ -205,18 +217,40 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
         notes: data.notes
       });
 
-      // Registrar transação no caixa
-      const { error: transactionError } = await supabase
+      // Registrar transação no caixa com número amigável
+      console.log('💰 Registrando transação no caixa...');
+      console.log('📊 Dados do pedido:', orderData);
+      
+      const orderNumber = orderData.order_number.toString().padStart(4, '0');
+      const customerInfo = orderData.customer_name ? ` - ${orderData.customer_name}` : '';
+      const notesText = `Pedido Balcão #${orderNumber}${customerInfo}`;
+      
+      console.log('📝 Nota que será salva:', notesText);
+      
+      const transactionData = {
+        cash_session_id: data.cash_session_id,
+        transaction_type: 'sale',
+        payment_method: data.payment_method,
+        amount: data.amount_paid,
+        processed_by: user!.id,
+        notes: notesText
+        // Removido processed_at para usar created_at automático
+      };
+      
+      console.log('📋 Dados da transação de balcão:', transactionData);
+      
+      const { data: insertedTransaction, error: transactionError } = await supabase
         .from('cash_transactions')
-        .insert({
-          cash_session_id: data.cash_session_id,
-          transaction_type: 'sale',
-          payment_method: data.payment_method,
-          amount: data.amount_paid,
-          processed_by: user!.id,
-          notes: `Pedido de balcão #${data.order_id}`,
-          processed_at: new Date().toISOString()
-        });
+        .insert(transactionData)
+        .select()
+        .single();
+
+      if (transactionError) {
+        console.error('❌ Erro ao inserir transação de balcão:', transactionError);
+        throw transactionError;
+      }
+      
+      console.log('✅ Transação de balcão inserida:', insertedTransaction);
 
       if (transactionError) throw transactionError;
       

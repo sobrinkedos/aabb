@@ -3,6 +3,8 @@ import { Eye, ArrowLeft, Plus, Minus, ShoppingCart, CreditCard } from 'lucide-re
 import NovaComandaModal from './NovaComandaModal';
 import ComandaAlerts from './ComandaAlerts';
 import ComandaFilters from './ComandaFilters';
+import { CloseAccountModal } from '../../../components/sales/CloseAccountModal';
+import { useCloseAccountModal } from '../../../hooks/useCloseAccountModal';
 import { useComandas } from '../../../hooks/useComandas';
 import { useBarTables } from '../../../hooks/useBarTables';
 import { useMenuItems } from '../../../hooks/useMenuItems';
@@ -10,6 +12,8 @@ import { useBarAttendance } from '../../../hooks/useBarAttendance';
 import { useApp } from '../../../contexts/AppContext';
 import { Comanda, ComandaStatus } from '../../../types/bar-attendance';
 import { MenuItem } from '../../../types';
+import { Command } from '../../../types/sales-management';
+import { supabase } from '../../../lib/supabase';
 
 const ComandasView: React.FC = () => {
   const { comandas, loading, refetch } = useComandas();
@@ -33,11 +37,72 @@ const ComandasView: React.FC = () => {
   const [isAddingItems, setIsAddingItems] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  
+  // Hook para fechamento de conta melhorado
+  const {
+    isOpen: showCloseModal,
+    selectedComanda: closeModalComanda,
+    loading: isClosingComanda,
+    error: closeError,
+    openModal: openCloseModal,
+    closeModal: closeCloseModal,
+    handleConfirm: handleCloseConfirm,
+    clearError: clearCloseError
+  } = useCloseAccountModal({
+    onSuccess: async (result) => {
+      console.log('✅ Modal processado com sucesso:', result);
+      
+      // Agora fechar a comanda no sistema real do bar
+      if (selectedComanda) {
+        try {
+          console.log('💳 Fechando comanda no sistema do bar:', selectedComanda.id);
+          
+          // Atualizar status da comanda para pendente de pagamento diretamente
+          const { error: updateError } = await supabase
+            .from('comandas')
+            .update({
+              status: 'pending_payment',
+              payment_method: 'pending',
+              notes: 'Enviado para caixa - aguardando processamento',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', selectedComanda.id);
 
-  // Estados para fechamento de conta
-  const [showCloseModal, setShowCloseModal] = useState(false);
-  const [isClosingComanda, setIsClosingComanda] = useState(false);
-
+          if (updateError) {
+            throw new Error(`Erro ao atualizar comanda: ${updateError.message}`);
+          }
+          
+          console.log('✅ [MODAL NOVO] Comanda atualizada para pendente de pagamento com sucesso');
+          
+          // Atualizar dados
+          await refetch();
+          await refreshBarOrders();
+          await refreshKitchenOrders();
+          
+          // Voltar para a lista
+          setViewMode('list');
+          setSelectedComanda(null);
+          setCart([]);
+          
+          setSuccessMessage('Comanda enviada para o caixa com sucesso!');
+          setShowSuccessMessage(true);
+          setTimeout(() => setShowSuccessMessage(false), 3000);
+          
+        } catch (error) {
+          console.error('❌ [MODAL NOVO] Erro ao fechar comanda no sistema do bar:', error);
+          setSuccessMessage('❌ Erro ao processar fechamento da comanda');
+          setShowSuccessMessage(true);
+          setTimeout(() => setShowSuccessMessage(false), 5000);
+        }
+      }
+    },
+    onError: (error) => {
+      console.error('❌ Erro no modal:', error);
+      setSuccessMessage(`Erro: ${error.message}`);
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 5000);
+    }
+  });
   // Hook para menu items
   const { menuItems, loading: menuLoading } = useMenuItems(true);
   const { adicionarItemComanda, fecharComanda } = useBarAttendance();
@@ -176,46 +241,57 @@ const ComandasView: React.FC = () => {
     }
   };
 
-  const handleCloseComanda = async (metodoPagamento: string, observacoes?: string) => {
-    if (!selectedComanda) return;
-
-    setIsClosingComanda(true);
-
-    try {
-      console.log('💳 Fechando comanda:', selectedComanda.id, 'Método:', metodoPagamento);
-
-      await fecharComanda(selectedComanda.id, metodoPagamento, observacoes);
-
-      console.log('✅ Comanda fechada com sucesso');
-
-      // Atualizar dados
-      await refetch();
-      await refreshBarOrders();
-      await refreshKitchenOrders();
-
-      // Voltar para a lista
-      setViewMode('list');
-      setSelectedComanda(null);
-      setCart([]);
-      setShowCloseModal(false);
-
-      // Mostrar mensagem de sucesso
-      setSuccessMessage('✅ Comanda fechada e enviada para o caixa!');
-      setShowSuccessMessage(true);
-      setTimeout(() => {
-        setShowSuccessMessage(false);
-      }, 3000);
-
-    } catch (error) {
-      console.error('❌ Erro ao fechar comanda:', error);
-      setSuccessMessage('❌ Erro ao fechar comanda');
-      setShowSuccessMessage(true);
-      setTimeout(() => {
-        setShowSuccessMessage(false);
-      }, 3000);
-    } finally {
-      setIsClosingComanda(false);
-    }
+  // Função para converter comanda do sistema para o formato do modal
+  const convertComandaToCommand = (comanda: any): Command => {
+    console.log('🔄 Convertendo comanda:', comanda);
+    
+    return {
+      id: comanda.id,
+      mesa_id: comanda.table_id || undefined,
+      cliente_id: comanda.customer_id || undefined,
+      nome_cliente: comanda.customer_name || undefined,
+      funcionario_id: comanda.employee_id,
+      status: comanda.status === 'open' ? 'aberta' as any : comanda.status as any,
+      total: comanda.total || 0,
+      quantidade_pessoas: comanda.people_count || 1,
+      aberta_em: comanda.opened_at || comanda.created_at || new Date().toISOString(),
+      fechada_em: comanda.closed_at || undefined,
+      observacoes: comanda.notes || undefined,
+      created_at: comanda.created_at || new Date().toISOString(),
+      updated_at: comanda.updated_at || comanda.created_at || new Date().toISOString(),
+      data_abertura: comanda.opened_at || comanda.created_at || new Date().toISOString(),
+      mesa: comanda.table ? {
+        id: comanda.table.id,
+        numero: comanda.table.number,
+        capacidade: comanda.table.capacity
+      } : undefined,
+      itens: comanda.items?.map((item: any) => {
+        console.log('🔄 Convertendo item:', item);
+        
+        // Extrair dados do menu_item se disponível
+        const menuItem = item.menu_item || item.menu_items;
+        const nomeItem = item.product_name || menuItem?.name || 'Item sem nome';
+        const precoUnitario = item.unit_price || menuItem?.price || 0;
+        const quantidade = item.quantity || 1;
+        const precoTotal = item.total_price || (precoUnitario * quantidade);
+        
+        return {
+          id: item.id,
+          comanda_id: comanda.id,
+          produto_id: item.menu_item_id || '',
+          nome_produto: nomeItem,
+          quantidade: quantidade,
+          preco_unitario: precoUnitario,
+          preco_total: precoTotal,
+          status: item.status as any,
+          adicionado_em: item.created_at || new Date().toISOString(),
+          entregue_em: item.delivered_at || undefined,
+          created_at: item.created_at || new Date().toISOString(),
+          observacoes: item.notes || undefined
+        };
+      }) || []
+    };
+  };
   };
 
   const handleDismissAlert = (comandaId: string) => {
@@ -336,7 +412,7 @@ const ComandasView: React.FC = () => {
             </button>
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
-                Mesa {selectedComanda.table?.number || 'N/A'} - {selectedComanda.customer_name || 'Cliente'}
+                {selectedComanda.table?.number ? `Mesa ${selectedComanda.table.number}` : 'Balcão'} - {selectedComanda.customer_name || 'Cliente'}
               </h2>
               <div className="flex items-center space-x-4 mt-2">
                 <p className="text-sm text-gray-600">
@@ -357,7 +433,20 @@ const ComandasView: React.FC = () => {
           {/* Ações */}
           <div className="flex flex-col space-y-2">
             <button
-              onClick={() => setShowCloseModal(true)}
+              onClick={() => {
+                console.log('🔥 Botão Fechar Conta clicado!');
+                console.log('📋 Comanda selecionada:', selectedComanda);
+                console.log('📋 Itens da comanda:', selectedComanda?.items);
+                if (selectedComanda) {
+                  const commandForModal = convertComandaToCommand(selectedComanda);
+                  console.log('🔄 Comanda convertida:', commandForModal);
+                  console.log('🔄 Itens convertidos:', commandForModal.itens);
+                  console.log('🚀 Abrindo modal...');
+                  openCloseModal(commandForModal);
+                } else {
+                  console.error('❌ Nenhuma comanda selecionada');
+                }
+              }}
               className="bg-red-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center space-x-2"
             >
               <CreditCard size={20} />
@@ -466,12 +555,14 @@ const ComandasView: React.FC = () => {
                     </span>
                   </h4>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {selectedComanda.items.map((item: any) => (
-                      <div key={item.id} className="bg-white rounded-lg p-3 shadow-sm">
+                    {selectedComanda.items.map((item: any) => {
+                      console.log('🔍 Debug item da comanda:', item);
+                      return (
+                        <div key={item.id} className="bg-white rounded-lg p-3 shadow-sm">
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex-1">
                             <h5 className="font-medium text-gray-900 text-sm">
-                              {item.menu_item?.name || 'Item não encontrado'}
+                              {item.menu_item?.name || item.menu_items?.name || `Item ${item.menu_item_id}`}
                             </h5>
                             <p className="text-xs text-gray-600">
                               R$ {item.price.toFixed(2)} cada
@@ -497,8 +588,9 @@ const ComandasView: React.FC = () => {
                         {item.notes && (
                           <p className="text-xs text-gray-500 mt-1">Obs: {item.notes}</p>
                         )}
-                      </div>
-                    ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -608,14 +700,38 @@ const ComandasView: React.FC = () => {
           </div>
         </div>
 
-        {/* Modal Fechar Conta - Detalhes */}
-        <CloseComandaModal
-          isOpen={showCloseModal}
-          onClose={() => setShowCloseModal(false)}
-          comanda={selectedComanda}
-          onConfirm={handleCloseComanda}
-          isLoading={isClosingComanda}
-        />
+        {/* Modal Fechar Conta Melhorado */}
+        {(() => {
+          console.log('🔍 Debug Modal:', { 
+            showCloseModal, 
+            closeModalComanda: !!closeModalComanda,
+            isClosingComanda 
+          });
+          return closeModalComanda && (
+            <CloseAccountModal
+              isOpen={showCloseModal}
+              comanda={closeModalComanda}
+              onClose={closeCloseModal}
+              onConfirm={handleCloseConfirm}
+              loading={isClosingComanda}
+            />
+          );
+        })()}
+
+        {/* Exibir erro do modal se houver */}
+        {closeError && (
+          <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg z-50">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium">Erro: {closeError}</span>
+              <button
+                onClick={clearCloseError}
+                className="text-red-600 hover:text-red-800"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -810,15 +926,8 @@ const ComandasView: React.FC = () => {
   }
 };
 
-// Modal para fechar comanda
-interface CloseComandaModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  comanda: Comanda;
-  onConfirm: (metodoPagamento: string, observacoes?: string) => void;
-  isLoading: boolean;
-}
 
+<<<<<<< HEAD
 const CloseComandaModal: React.FC<CloseComandaModalProps> = ({
   isOpen,
   onClose,
@@ -927,5 +1036,7 @@ const CloseComandaModal: React.FC<CloseComandaModalProps> = ({
     </div>
   );
 };
+=======
+>>>>>>> e766f8d829901008fe5a04ddfdcf57d9487a14b1
 
 export default ComandasView;

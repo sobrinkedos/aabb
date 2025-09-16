@@ -6,9 +6,12 @@ import { Session } from '@supabase/supabase-js';
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error: string | null }>;
+  register: (name: string, email: string, password: string) => Promise<{ success: boolean; error: string | null }>;
   loginAsDemo: () => Promise<{ success: boolean; error: string | null }>;
   logout: () => void;
-  isLoading: boolean; // Apenas para o carregamento inicial da sessão
+  isLoading: boolean;
+  isOffline: boolean;
+  checkOnlineStatus: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,6 +32,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
+
+  // Função para detectar se está offline
+  const checkOnlineStatus = async () => {
+    if (!isSupabaseConfigured) {
+      setIsOffline(false); // Modo demo sempre online
+      return true;
+    }
+
+    try {
+      // Usar uma verificação mais simples com timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
+      
+      const { data, error } = await supabase.auth.getSession();
+      clearTimeout(timeoutId);
+      
+      const isOnline = !error || error.message !== 'Failed to fetch';
+      setIsOffline(!isOnline);
+      return isOnline;
+    } catch (error) {
+      console.log('Verificação de conectividade falhou:', error);
+      setIsOffline(true);
+      return false;
+    }
+  };
 
   // Efeito #1: Lida APENAS com a sessão de autenticação do Supabase.
   // É rápido e não depende do banco de dados.
@@ -39,18 +68,68 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
     
-    // Pega a sessão inicial para parar o carregamento o mais rápido possível.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setIsLoading(false); // <-- PONTO CRÍTICO: resolve o carregamento infinito.
-    }).catch((error) => {
-      console.warn('Erro ao verificar sessão, usando modo mock:', error);
-      setIsLoading(false);
+    // Função para limpar tokens corrompidos
+    const clearCorruptedTokens = () => {
+      try {
+        // Limpar todos os tokens relacionados ao Supabase do localStorage
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+          if (key.includes('supabase') || key.includes('sb-')) {
+            localStorage.removeItem(key);
+          }
+        });
+        console.log('🧹 Tokens corrompidos limpos do localStorage');
+      } catch (error) {
+        console.warn('Erro ao limpar localStorage:', error);
+      }
+    };
+    
+
+    
+    // Verificar status online primeiro
+    checkOnlineStatus().then((isOnline) => {
+      if (!isOnline) {
+        console.log('🔌 Aplicação em modo offline');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Pega a sessão inicial para parar o carregamento o mais rápido possível.
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        setIsLoading(false); // <-- PONTO CRÍTICO: resolve o carregamento infinito.
+      }).catch((error) => {
+      console.warn('Erro ao verificar sessão:', error);
+      
+      // Se o erro for relacionado a refresh token inválido, limpar tokens
+      if (error.message && error.message.includes('refresh') || 
+          error.message && error.message.includes('Invalid Refresh Token')) {
+        console.log('🔄 Detectado token de refresh inválido, limpando tokens...');
+        clearCorruptedTokens();
+        // Tentar novamente após limpar
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          setSession(session);
+        }).catch(() => {
+          console.log('ℹ️ Usando modo sem autenticação após limpeza');
+          setSession(null);
+        });
+      }
+      
+        setIsLoading(false);
+      });
     });
 
     // Ouve por futuras mudanças na autenticação (login/logout).
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        console.log('🔐 Auth state changed:', event, session ? 'Session ativa' : 'Sem sessão');
+        
+        // Se houver erro de token, limpar e tentar novamente
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          console.log('🔄 Token refresh falhou, limpando tokens...');
+          clearCorruptedTokens();
+        }
+        
         setSession(session);
       }
     );
@@ -87,9 +166,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const appUser: User = {
               id: profile.id,
               name: profile.name || session.user.email || 'Usuário',
-              email: session.user.email!,
-              role: profile.role as User['role'],
-              avatar: profile.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${profile.name || session.user.email}`,
+          email: session.user.email!,
+          role: profile.role || 'employee',
+          avatar: profile.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${profile.name || session.user.email}`,
             };
             console.log('AuthContext: Usuário da aplicação criado:', appUser);
             setUser(appUser);
@@ -132,6 +211,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const register = async (name: string, email: string, password: string) => {
+    if (!isSupabaseConfigured) {
+      return { success: false, error: 'Cadastro não disponível no modo demonstração' };
+    }
+
+    try {
+      const { data, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name }
+        }
+      });
+
+      if (authError) {
+        return { success: false, error: authError.message };
+      }
+
+      if (data.user) {
+        // O perfil é criado automaticamente pelo trigger handle_new_user()
+        // Aguardar um pouco para o trigger processar
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        console.log('✅ Usuário registrado com sucesso. Perfil criado automaticamente pelo trigger.');
+        return { success: true, error: null };
+      }
+
+      return { success: false, error: 'Erro desconhecido no cadastro' };
+    } catch (err) {
+      console.error('Erro no cadastro:', err);
+      return { success: false, error: 'Erro de conexão. Verifique a configuração do Supabase.' };
+    }
+  };
+
   const loginAsDemo = async () => {
     return login('demo@clubmanager.com', 'demo123456');
   };
@@ -147,7 +260,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, loginAsDemo, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, register, loginAsDemo, logout, isLoading, isOffline, checkOnlineStatus }}>
       {!isSupabaseConfigured && (
         <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-black px-4 py-2 text-sm z-50">
           ⚠️ <strong>Modo Desenvolvimento:</strong> Supabase não configurado. 

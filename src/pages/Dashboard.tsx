@@ -183,7 +183,7 @@ const Dashboard: React.FC = () => {
             {orders.slice(0, 5).map((order) => (
               <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div>
-                  <p className="font-medium text-gray-800">Mesa {order.tableNumber || 'N/A'}</p>
+                  <p className="font-medium text-gray-800">{order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão'}</p>
                   <p className="text-sm text-gray-600">
                     {format(order.createdAt, 'HH:mm', { locale: ptBR })}
                   </p>

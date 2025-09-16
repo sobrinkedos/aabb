@@ -475,4 +475,22 @@ export interface UseCashManagementReturn extends CashManagementState {
   // Funções de busca e filtro
   searchTransactions: (filters: TransactionFilters) => Promise<CashTransactionWithDetails[]>;
   searchSessions: (filters: SessionFilters) => Promise<CashSessionWithEmployee[]>;
+  
+  // Funções de histórico e movimento
+  getLastClosedSessionBalance: (employeeId?: string) => Promise<number>;
+  getDailyCashMovement: (date: string) => Promise<{
+    sessions: CashSessionWithEmployee[];
+    transactions: CashTransactionWithDetails[];
+    summary: {
+      opening_total: number;
+      closing_total: number;
+      sales_total: number;
+      cash_sales: number;
+      card_sales: number;
+      pix_sales: number;
+      adjustments: number;
+      discrepancy_total: number;
+      transaction_count: number;
+    };
+  }>;
 }

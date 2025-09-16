@@ -43,7 +43,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, member }) =>
       }
       onClose();
     } catch (error) {
-      console.error("Falha ao salvar o membro:", error);
+      console.error("Falha ao salvar o sócio:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -63,7 +63,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, member }) =>
             className="bg-white rounded-lg shadow-xl w-full max-w-lg"
           >
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-800">{member ? 'Editar Membro' : 'Novo Membro'}</h2>
+              <h2 className="text-2xl font-bold text-gray-800">{member ? 'Editar Sócio' : 'Novo Sócio'}</h2>
               <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
             </div>
             <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
@@ -106,7 +106,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, member }) =>
               <div className="pt-4 flex justify-end space-x-3">
                 <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" disabled={isSubmitting}>Cancelar</button>
                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-wait" disabled={isSubmitting}>
-                  {isSubmitting ? 'Salvando...' : (member ? 'Salvar Alterações' : 'Adicionar Membro')}
+                  {isSubmitting ? 'Salvando...' : (member ? 'Salvar Alterações' : 'Adicionar Sócio')}
                 </button>
               </div>
             </form>

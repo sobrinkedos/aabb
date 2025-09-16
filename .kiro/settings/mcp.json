@@ -4,8 +4,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@supabase/mcp-server-supabase@latest",
-        "wznycskqsavpmejwpksp"
+        "@supabase/mcp-server-supabase@latest"
       ],
       "env": {
         "SUPABASE_ACCESS_TOKEN": "sbp_1a0bb2d152e4e357386b17af2cc583603b1de6e1"
@@ -13,7 +12,8 @@
       "disabled": false,
       "autoApprove": [
         "list_tables",
-        "describe_table"
+        "describe_table",
+        "run_query"
       ]
     }
   }

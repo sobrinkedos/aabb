@@ -78,7 +78,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
         <div className="flex items-center space-x-2">
           <MapPin size={16} className="text-gray-400" />
           <span className="font-medium text-gray-800">
-            Mesa {order.tableNumber || 'N/A'}
+            {order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão'}
           </span>
           
           {/* Badge do número do pedido */}
@@ -138,6 +138,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
         </span>
       </div>
 
+      {/* Botão de Ação Principal */}
       {nextStatus && (
         <button
           onClick={() => updateOrderStatus(order.id, nextStatus)}

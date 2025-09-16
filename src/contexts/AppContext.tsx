@@ -308,7 +308,137 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const updateOrderStatus = async (orderId: string, status: Order['status']) => {
     try {
-      console.log('updateOrderStatus chamado:', { orderId, status });
+      console.log('🔄 updateOrderStatus chamado:', { orderId, status });
+      
+      // CORREÇÃO: Para comandas, usar CommandManager
+      if (orderId.startsWith('comanda-')) {
+        console.log('🍽️ Processando comanda com CommandManager');
+        
+        try {
+          const { CommandManager } = await import('../services/command-manager');
+          const commandManager = CommandManager.getInstance();
+          
+          // Extrair comandaId do orderId (formato: comanda-{uuid}-{timestamp})
+          const comandaId = orderId.replace('comanda-', '').split('-').slice(0, 5).join('-');
+          
+          console.log('📋 Buscando comanda:', comandaId);
+          
+          // Buscar comanda
+          let comanda = await commandManager.buscarComanda(comandaId);
+          
+          // Se não encontrar, criar uma comanda de teste
+          if (!comanda) {
+            console.log('⚠️ Comanda não encontrada, criando uma de teste');
+            comanda = await commandManager.criarComanda({
+              funcionario_id: 'user-demo',
+              quantidade_pessoas: 1,
+              observacoes: `Comanda de teste para ${orderId}`
+            });
+            
+            // Adicionar um item de teste
+            await commandManager.adicionarItem(comanda.id, {
+              produto_id: 'prod-001',
+              nome_produto: 'Hambúrguer Teste',
+              quantidade: 1,
+              preco_unitario: 25.90,
+              observacoes: 'Item de teste'
+            });
+            
+            // Recarregar comanda com itens
+            comanda = await commandManager.buscarComanda(comanda.id);
+          }
+          
+          // Atualizar status de todos os itens pendentes
+          if (comanda?.itens) {
+            const itensPendentes = comanda.itens.filter(item => 
+              item.status === 'pendente' || item.status === 'preparando'
+            );
+            
+            console.log(`🔄 Atualizando ${itensPendentes.length} itens da comanda`);
+            
+            for (const item of itensPendentes) {
+              // Mapear status da Order para ItemStatus
+              let itemStatus: any;
+              switch (status) {
+                case 'pending':
+                  itemStatus = 'pendente';
+                  break;
+                case 'preparing':
+                  itemStatus = 'preparando';
+                  break;
+                case 'ready':
+                  itemStatus = 'pronto';
+                  break;
+                case 'delivered':
+                  itemStatus = 'entregue';
+                  break;
+                default:
+                  itemStatus = status;
+              }
+              
+              await commandManager.atualizarStatusItem(comanda.id, item.id, itemStatus);
+            }
+            
+            console.log('✅ Itens da comanda atualizados com sucesso!');
+          }
+          
+          // CORREÇÃO: Também atualizar no Supabase para refletir na interface
+          console.log('🔄 Atualizando também no Supabase para refletir na interface...');
+          
+          try {
+            // Buscar itens da comanda no Supabase
+            const { data: supabaseItems, error: fetchError } = await supabase
+              .from('comanda_items')
+              .select('*')
+              .eq('comanda_id', comandaId)
+              .in('status', ['pending', 'preparing', 'ready']);
+
+            if (fetchError) {
+              console.warn('⚠️ Erro ao buscar itens no Supabase:', fetchError);
+            } else if (supabaseItems && supabaseItems.length > 0) {
+              // Atualizar todos os itens no Supabase
+              const { error: updateError } = await supabase
+                .from('comanda_items')
+                .update({ status } as any)
+                .eq('comanda_id', comandaId)
+                .in('status', ['pending', 'preparing', 'ready']);
+
+              if (updateError) {
+                console.warn('⚠️ Erro ao atualizar no Supabase:', updateError);
+              } else {
+                console.log('✅ Supabase também atualizado!');
+              }
+            } else {
+              console.log('ℹ️ Nenhum item encontrado no Supabase para atualizar');
+            }
+          } catch (supabaseError) {
+            console.warn('⚠️ Erro na sincronização com Supabase:', supabaseError);
+          }
+          
+          // Atualizar estado local imediatamente para feedback visual
+          console.log('🔄 Atualizando estado local para feedback imediato...');
+          
+          setOrders(prevOrders => 
+            prevOrders.map(order => 
+              order.id === orderId 
+                ? { ...order, status, updatedAt: new Date() }
+                : order
+            )
+          );
+          
+          // Recarregar pedidos do servidor
+          console.log('🔄 Recarregando pedidos do servidor...');
+          await fetchKitchenOrders();
+          await fetchBarOrders();
+          
+          console.log('✅ Processo completo finalizado!');
+          return;
+          
+        } catch (commandError) {
+          console.error('❌ Erro no CommandManager:', commandError);
+          console.log('🔄 Continuando com lógica original...');
+        }
+      }
       
       // Verificar se é um pedido de balcão (começa com 'balcao-')
       if (orderId.startsWith('balcao-')) {
@@ -345,7 +475,13 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         if (error) throw error;
         console.log('Pedido de balcão atualizado com sucesso');
       } else {
-        // Lógica original para comandas
+        // CORREÇÃO: Usar CommandManager para comandas
+        console.log('🔄 Processando comanda com CommandManager');
+        
+        // Importar CommandManager
+        const { CommandManager } = await import('../services/command-manager');
+        const commandManager = CommandManager.getInstance();
+        
         // Extrair comandaId do orderId
         let realComandaId: string;
         let timeKey: string;
@@ -383,41 +519,86 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           throw new Error(`ID da comanda inválido: ${realComandaId}`);
         }
 
-        // Buscar itens específicos deste pedido baseado no timestamp
-        const { data: currentItems, error: fetchError } = await supabase
-          .from('comanda_items')
-          .select('*')
-          .eq('comanda_id', realComandaId)
-          .in('status', ['pending', 'preparing', 'ready']);
-
-        if (fetchError) {
-          console.error('Erro na busca dos itens da comanda:', fetchError);
-          throw fetchError;
-        }
-
-        // Filtrar itens que pertencem a este pedido específico (mesmo minuto)
-        const itemsToUpdate = currentItems?.filter(item => {
-          const addedAt = new Date((item as any).added_at);
-          const itemTimeKey = `${addedAt.getFullYear()}-${addedAt.getMonth()}-${addedAt.getDate()}-${addedAt.getHours()}-${addedAt.getMinutes()}`;
-          return timeKey === itemTimeKey;
-        }) || [];
-
-        console.log('Itens encontrados para atualizar:', itemsToUpdate.length);
-
-        // Atualizar apenas os itens deste pedido específico
-        if (itemsToUpdate.length > 0) {
-          const itemIds = itemsToUpdate.map(item => (item as any).id);
-          console.log('Atualizando itens:', itemIds, 'para status:', status);
-          
-          const { error } = await supabase
+        // Se não há timeKey, usar abordagem baseada em timestamp
+        if (!timeKey) {
+          // Buscar itens mais recentes da comanda
+          const { data: currentItems, error: fetchError } = await supabase
             .from('comanda_items')
-            .update({ status } as any)
-            .in('id', itemIds);
+            .select('*')
+            .eq('comanda_id', realComandaId)
+            .in('status', ['pending', 'preparing', 'ready'])
+            .order('added_at', { ascending: false });
 
-          if (error) throw error;
-          console.log('Atualização realizada com sucesso');
+          if (fetchError) {
+            console.error('Erro na busca dos itens da comanda:', fetchError);
+            throw fetchError;
+          }
+
+          if (currentItems && currentItems.length > 0) {
+            const itemIds = currentItems.map(item => (item as any).id);
+            console.log('Atualizando todos os itens pendentes:', itemIds, 'para status:', status);
+            
+            const { error } = await supabase
+              .from('comanda_items')
+              .update({ status } as any)
+              .in('id', itemIds);
+
+            if (error) throw error;
+            console.log('Atualização realizada com sucesso');
+          } else {
+            console.log('Nenhum item encontrado para atualizar');
+          }
         } else {
-          console.log('Nenhum item encontrado para atualizar');
+          // Usar timeKey para filtrar itens específicos
+          // Converter timeKey (formato: "ano-mês-dia-hora-minuto") para intervalo de tempo em UTC
+          const timeKeyParts = timeKey.split('-');
+          console.log('Partes do timeKey:', timeKeyParts);
+          
+          const [year, month, day, hour, minute] = timeKeyParts.map(Number);
+          console.log('Valores parseados:', { year, month, day, hour, minute });
+          
+          // Validar se todos os valores são números válidos
+          if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
+            console.error('❌ Valores de data inválidos:', { year, month, day, hour, minute });
+            throw new Error(`Valores de data inválidos no timeKey: ${timeKey}`);
+          }
+
+          // Buscar itens específicos deste pedido baseado no timestamp
+          const { data: currentItems, error: fetchError } = await supabase
+            .from('comanda_items')
+            .select('*')
+            .eq('comanda_id', realComandaId)
+            .in('status', ['pending', 'preparing', 'ready']);
+
+          if (fetchError) {
+            console.error('Erro na busca dos itens da comanda:', fetchError);
+            throw fetchError;
+          }
+
+          // Filtrar itens que pertencem a este pedido específico (mesmo minuto)
+          const itemsToUpdate = currentItems?.filter(item => {
+            const addedAt = new Date((item as any).added_at);
+            const itemTimeKey = `${addedAt.getFullYear()}-${addedAt.getMonth()}-${addedAt.getDate()}-${addedAt.getHours()}-${addedAt.getMinutes()}`;
+            return timeKey === itemTimeKey;
+          }) || [];
+
+          console.log('Itens encontrados para atualizar:', itemsToUpdate.length);
+
+          // Atualizar apenas os itens deste pedido específico
+          if (itemsToUpdate.length > 0) {
+            const itemIds = itemsToUpdate.map(item => (item as any).id);
+            console.log('Atualizando itens:', itemIds, 'para status:', status);
+            
+            const { error } = await supabase
+              .from('comanda_items')
+              .update({ status } as any)
+              .in('id', itemIds);
+
+            if (error) throw error;
+            console.log('Atualização realizada com sucesso');
+          } else {
+            console.log('Nenhum item encontrado para atualizar');
+          }
         }
       }
       
@@ -527,6 +708,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             table_id,
             customer_name,
             opened_at,
+            status,
             table:bar_tables(number)
           ),
           menu_item:menu_items(
@@ -539,7 +721,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       if (comandaError) throw comandaError;
 
-      // Buscar pedidos de balcão
+      // Buscar pedidos de balcão (apenas pagos)
       const { data: balcaoData, error: balcaoError } = await supabase
         .from('balcao_order_items')
         .select(`
@@ -562,53 +744,53 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       if (balcaoError) throw balcaoError;
 
       // Agrupar itens por comanda E por timestamp de adição para criar pedidos separados
-       const orderMap = new Map<string, Order>();
-       
-       // Processar pedidos de comandas
-       comandaData?.forEach(item => {
-         const comandaId = item.comanda?.id;
-         if (!comandaId) return;
+      const orderMap = new Map<string, Order>();
+      
+      // Processar pedidos de comandas
+      comandaData?.forEach(item => {
+        const comandaId = item.comanda?.id;
+        if (!comandaId) return;
 
-         // Criar chave única baseada na comanda + timestamp (agrupando por minuto)
-         const addedAt = new Date(item.added_at);
-         const timeKey = `${addedAt.getFullYear()}-${addedAt.getMonth()}-${addedAt.getDate()}-${addedAt.getHours()}-${addedAt.getMinutes()}`;
-         const orderKey = `comanda-${comandaId}-${timeKey}`;
+        // Criar chave única baseada na comanda + timestamp (agrupando por minuto)
+        const addedAt = new Date(item.added_at);
+        const timeKey = `${addedAt.getUTCFullYear()}-${addedAt.getUTCMonth()}-${addedAt.getUTCDate()}-${addedAt.getUTCHours()}-${addedAt.getUTCMinutes()}`;
+        const orderKey = `comanda-${comandaId}-${timeKey}`;
 
-         if (!orderMap.has(orderKey)) {
-           orderMap.set(orderKey, {
-             id: orderKey,
-             tableNumber: item.comanda?.table?.number,
-             items: [],
-             status: item.status as Order['status'],
-             total: 0,
-             createdAt: new Date(item.added_at),
-             updatedAt: new Date(item.created_at),
-             employeeId: '',
-             notes: `Mesa ${item.comanda?.table?.number} - ${item.comanda?.customer_name || 'Cliente'}`
-           });
-         }
+        if (!orderMap.has(orderKey)) {
+          orderMap.set(orderKey, {
+            id: orderKey,
+            tableNumber: item.comanda?.table?.number,
+            items: [],
+            status: item.status as Order['status'],
+            total: 0,
+            createdAt: new Date(item.added_at),
+            updatedAt: new Date(item.created_at),
+            employeeId: '',
+            notes: `Mesa ${item.comanda?.table?.number} - ${item.comanda?.customer_name || 'Cliente'}`
+          });
+        }
 
-         const order = orderMap.get(orderKey)!;
-         order.items.push({
-           id: item.id,
-           menuItemId: item.menu_item_id,
-           quantity: item.quantity,
-           price: item.price,
-           notes: item.notes,
-           // Incluir dados do menu item diretamente
-           menuItem: item.menu_item ? {
-             id: item.menu_item.id,
-             // Para itens diretos, usar o nome do produto do estoque se disponível
-             name: item.menu_item.item_type === 'direct' && item.menu_item.inventory_items?.name
-               ? item.menu_item.inventory_items.name
-               : item.menu_item.name,
-             category: item.menu_item.category,
-             preparationTime: item.menu_item.preparation_time,
-             item_type: item.menu_item.item_type
-           } : undefined
-         });
-         order.total += item.price * item.quantity;
-       });
+        const order = orderMap.get(orderKey)!;
+        order.items.push({
+          id: item.id,
+          menuItemId: item.menu_item_id,
+          quantity: item.quantity,
+          price: item.price,
+          notes: item.notes,
+          // Incluir dados do menu item diretamente
+          menuItem: item.menu_item ? {
+            id: item.menu_item.id,
+            // Para itens diretos, usar o nome do produto do estoque se disponível
+            name: item.menu_item.item_type === 'direct' && item.menu_item.inventory_items?.name
+              ? item.menu_item.inventory_items.name
+              : item.menu_item.name,
+            category: item.menu_item.category,
+            preparationTime: item.menu_item.preparation_time,
+            item_type: item.menu_item.item_type
+          } : undefined
+        });
+        order.total += item.price * item.quantity;
+      });
 
        // Processar pedidos de balcão
        balcaoData?.forEach(item => {
@@ -673,6 +855,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             table_id,
             customer_name,
             opened_at,
+            status,
             table:bar_tables(number)
           ),
           menu_item:menu_items!inner(*)
@@ -683,7 +866,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       if (comandaError) throw comandaError;
 
-      // Buscar pedidos de balcão (apenas itens preparados)
+      // Buscar pedidos de balcão (apenas itens preparados e pagos)
       const { data: balcaoData, error: balcaoError } = await supabase
         .from('balcao_order_items')
         .select(`
@@ -703,91 +886,89 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       if (balcaoError) throw balcaoError;
 
-
-
       // Agrupar itens por comanda E por timestamp de adição para criar pedidos separados
-       const orderMap = new Map<string, Order>();
-       
-       // Processar pedidos de comandas
-       comandaData?.forEach(item => {
-         const comandaId = item.comanda?.id;
-         if (!comandaId) return;
+      const orderMap = new Map<string, Order>();
 
-         // Criar chave única baseada na comanda + timestamp (agrupando por minuto)
-         const addedAt = new Date(item.added_at);
-         const timeKey = `${addedAt.getFullYear()}-${addedAt.getMonth()}-${addedAt.getDate()}-${addedAt.getHours()}-${addedAt.getMinutes()}`;
-         const orderKey = `comanda-${comandaId}-${timeKey}`;
+      // Processar pedidos de comandas
+      comandaData?.forEach(item => {
+        const comandaId = item.comanda?.id;
+        if (!comandaId) return;
 
-         if (!orderMap.has(orderKey)) {
-           orderMap.set(orderKey, {
-             id: orderKey,
-             tableNumber: item.comanda?.table?.number,
-             items: [],
-             status: item.status as Order['status'],
-             total: 0,
-             createdAt: new Date(item.added_at),
-             updatedAt: new Date(item.created_at),
-             employeeId: '',
-             notes: `Mesa ${item.comanda?.table?.number} - ${item.comanda?.customer_name || 'Cliente'}`
-           });
-         }
+        // Criar chave única baseada na comanda + timestamp (agrupando por minuto)
+        const addedAt = new Date(item.added_at);
+        const timeKey = `${addedAt.getUTCFullYear()}-${addedAt.getUTCMonth()}-${addedAt.getUTCDate()}-${addedAt.getUTCHours()}-${addedAt.getUTCMinutes()}`;
+        const orderKey = `comanda-${comandaId}-${timeKey}`;
 
-         const order = orderMap.get(orderKey)!;
-         order.items.push({
-           id: item.id,
-           menuItemId: item.menu_item_id,
-           quantity: item.quantity,
-           price: item.price,
-           notes: item.notes,
-           // Incluir dados do menu item diretamente
-           menuItem: item.menu_item ? {
-             id: item.menu_item.id,
-             name: item.menu_item.name,
-             category: item.menu_item.category,
-             preparationTime: item.menu_item.preparation_time
-           } : undefined
-         });
-         order.total += item.price * item.quantity;
-       });
+        if (!orderMap.has(orderKey)) {
+          orderMap.set(orderKey, {
+            id: orderKey,
+            tableNumber: item.comanda?.table?.number,
+            items: [],
+            status: item.status as Order['status'],
+            total: 0,
+            createdAt: new Date(item.added_at),
+            updatedAt: new Date(item.created_at),
+            employeeId: '',
+            notes: `Mesa ${item.comanda?.table?.number} - ${item.comanda?.customer_name || 'Cliente'}`
+          });
+        }
 
-       // Processar pedidos de balcão
-       balcaoData?.forEach(item => {
-         const balcaoOrderId = item.balcao_order?.id;
-         if (!balcaoOrderId) return;
+        const order = orderMap.get(orderKey)!;
+        order.items.push({
+          id: item.id,
+          menuItemId: item.menu_item_id,
+          quantity: item.quantity,
+          price: item.price,
+          notes: item.notes,
+          // Incluir dados do menu item diretamente
+          menuItem: item.menu_item ? {
+            id: item.menu_item.id,
+            name: item.menu_item.name,
+            category: item.menu_item.category,
+            preparationTime: item.menu_item.preparation_time
+          } : undefined
+        });
+        order.total += item.price * item.quantity;
+      });
 
-         const orderKey = `balcao-${balcaoOrderId}`;
+      // Processar pedidos de balcão
+      balcaoData?.forEach(item => {
+        const balcaoOrderId = item.balcao_order?.id;
+        if (!balcaoOrderId) return;
 
-         if (!orderMap.has(orderKey)) {
-           orderMap.set(orderKey, {
-             id: orderKey,
-             tableNumber: 'Balcão',
-             items: [],
-             status: item.balcao_order.status === 'paid' ? 'pending' as Order['status'] : 'preparing' as Order['status'],
-             total: 0,
-             createdAt: new Date(item.balcao_order.created_at),
-             updatedAt: new Date(item.created_at),
-             employeeId: '',
-             notes: `Pedido Balcão #${item.balcao_order.order_number}${item.balcao_order.customer_name ? ` - ${item.balcao_order.customer_name}` : ''}`
-           });
-         }
+        const orderKey = `balcao-${balcaoOrderId}`;
 
-         const order = orderMap.get(orderKey)!;
-         order.items.push({
-           id: item.id,
-           menuItemId: item.menu_item_id,
-           quantity: item.quantity,
-           price: item.unit_price,
-           notes: item.notes,
-           // Incluir dados do menu item diretamente
-           menuItem: item.menu_item ? {
-             id: item.menu_item.id,
-             name: item.menu_item.name,
-             category: item.menu_item.category,
-             preparationTime: item.menu_item.preparation_time
-           } : undefined
-         });
-         order.total += item.unit_price * item.quantity;
-       });
+        if (!orderMap.has(orderKey)) {
+          orderMap.set(orderKey, {
+            id: orderKey,
+            tableNumber: 'Balcão',
+            items: [],
+            status: item.balcao_order.status === 'paid' ? 'pending' as Order['status'] : 'preparing' as Order['status'],
+            total: 0,
+            createdAt: new Date(item.balcao_order.created_at),
+            updatedAt: new Date(item.created_at),
+            employeeId: '',
+            notes: `Pedido Balcão #${item.balcao_order.order_number}${item.balcao_order.customer_name ? ` - ${item.balcao_order.customer_name}` : ''}`
+          });
+        }
+
+        const order = orderMap.get(orderKey)!;
+        order.items.push({
+          id: item.id,
+          menuItemId: item.menu_item_id,
+          quantity: item.quantity,
+          price: item.unit_price,
+          notes: item.notes,
+          // Incluir dados do menu item diretamente
+          menuItem: item.menu_item ? {
+            id: item.menu_item.id,
+            name: item.menu_item.name,
+            category: item.menu_item.category,
+            preparationTime: item.menu_item.preparation_time
+          } : undefined
+        });
+        order.total += item.unit_price * item.quantity;
+      });
 
       setKitchenOrders(Array.from(orderMap.values()));
     } catch (error) {

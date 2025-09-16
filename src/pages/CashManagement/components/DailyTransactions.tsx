@@ -23,17 +23,20 @@ import {
 } from '../../../types/cash-management';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getComandaNumber, extractOrderNumberFromNotes } from '../../../utils/comanda-formatter';
 
 interface DailyTransactionsProps {
   transactions: CashTransactionWithDetails[];
   onAddWithdrawal: () => void;
   onExportReport: () => void;
+  isCashSessionOpen?: boolean;
 }
 
 const DailyTransactions: React.FC<DailyTransactionsProps> = ({
   transactions,
   onAddWithdrawal,
-  onExportReport
+  onExportReport,
+  isCashSessionOpen = false
 }) => {
   const [filterType, setFilterType] = useState<TransactionType | 'all'>('all');
   const [filterPayment, setFilterPayment] = useState<PaymentMethod | 'all'>('all');
@@ -111,7 +114,13 @@ const DailyTransactions: React.FC<DailyTransactionsProps> = ({
         <div className="flex items-center space-x-3">
           <button
             onClick={onAddWithdrawal}
-            className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center space-x-2 text-sm"
+            disabled={!isCashSessionOpen}
+            className={`px-4 py-2 rounded-lg flex items-center space-x-2 text-sm transition-colors ${
+              isCashSessionOpen 
+                ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+            title={!isCashSessionOpen ? 'Caixa deve estar aberto para realizar saídas de dinheiro' : 'Registrar saída de dinheiro'}
           >
             <Minus className="h-4 w-4" />
             <span>Saída de Dinheiro</span>
@@ -247,12 +256,34 @@ const DailyTransactions: React.FC<DailyTransactionsProps> = ({
                 <div>
                   <p className="text-sm font-medium text-gray-900">
                     {TRANSACTION_TYPE_LABELS[realType] || 'Transação'}
+                    {transaction.comanda && (
+                      <span className="ml-2 text-blue-600">
+                        - Comanda #{getComandaNumber(transaction.comanda.id)}
+                      </span>
+                    )}
+                    {!transaction.comanda && transaction.notes && (transaction.notes.includes('Pedido Balcão') || transaction.notes.includes('Pedido de balcão')) && (
+                      <span className="ml-2 text-green-600">
+                        - Pedido Balcão {extractOrderNumberFromNotes(transaction.notes)}
+                      </span>
+                    )}
                   </p>
                   <div className="flex items-center space-x-2 text-xs text-gray-600">
                     <Clock className="h-3 w-3" />
                     <span>{format(new Date(transaction.processed_at), 'HH:mm', { locale: ptBR })}</span>
                     <span>•</span>
                     <span>{PAYMENT_METHOD_LABELS[transaction.payment_method]}</span>
+                    {transaction.comanda?.customer_name && (
+                      <>
+                        <span>•</span>
+                        <span>{transaction.comanda.customer_name}</span>
+                      </>
+                    )}
+                    {transaction.comanda?.table_number && (
+                      <>
+                        <span>•</span>
+                        <span>Mesa {transaction.comanda.table_number}</span>
+                      </>
+                    )}
                     {transaction.processed_by_employee && (
                       <>
                         <span>•</span>
@@ -261,9 +292,6 @@ const DailyTransactions: React.FC<DailyTransactionsProps> = ({
                       </>
                     )}
                   </div>
-                  {transaction.notes && (
-                    <p className="text-xs text-gray-500 mt-1">{transaction.notes.replace(/\[[^\]]+\]\s*/g, '')}</p>
-                  )}
                 </div>
               </div>
 

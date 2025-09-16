@@ -31,12 +31,16 @@ import TreasuryTransferReceipt from './TreasuryTransferReceipt';
 import CashWithdrawalReceipt from './CashWithdrawalReceipt';
 import DailyTransactions from './DailyTransactions';
 import PaymentReceipt from '../../BarAttendance/components/PaymentReceipt';
-import { formatCurrency, PAYMENT_METHOD_LABELS, PaymentMethod } from '../../../types/cash-management';
+import { PendingComandas } from './PendingComandas';
+import { ProcessComandaPaymentModal } from '../../../components/cash/ProcessComandaPaymentModal';
+import { useNavigate } from 'react-router-dom';
 import { ComandaWithItems } from '../../../types/bar-attendance';
 import { BalcaoOrderWithDetails } from '../../../types/balcao-orders';
+import { formatCurrency, PAYMENT_METHOD_LABELS } from '../../../types/cash-management';
 
 export const DashboardOverview: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const {
     currentSession,
     pendingComandas,
@@ -65,7 +69,9 @@ export const DashboardOverview: React.FC = () => {
   const [showTreasuryReceiptModal, setShowTreasuryReceiptModal] = useState(false);
   const [showCashWithdrawalReceiptModal, setShowCashWithdrawalReceiptModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<BalcaoOrderWithDetails | null>(null);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('dinheiro');
+  const [selectedComanda, setSelectedComanda] = useState<ComandaWithItems | null>(null);
+  const [showComandaPaymentModal, setShowComandaPaymentModal] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'dinheiro' | 'cartao_debito' | 'cartao_credito' | 'pix' | 'transferencia'>('dinheiro');
   const [processing, setProcessing] = useState(false);
   const [lastPaymentData, setLastPaymentData] = useState<any>(null);
   const [lastTreasuryTransferData, setLastTreasuryTransferData] = useState<any>(null);
@@ -83,6 +89,41 @@ export const DashboardOverview: React.FC = () => {
     
     setSelectedOrder(order);
     setShowPaymentModal(true);
+  };
+
+  // Função para abrir modal de pagamento de comanda
+  const handleComandaPayment = (comanda: ComandaWithItems) => {
+    if (!currentSession) {
+      alert('É necessário ter uma sessão de caixa aberta para processar pagamentos.');
+      return;
+    }
+    
+    setSelectedComanda(comanda);
+    setShowComandaPaymentModal(true);
+  };
+
+  // Função para processar pagamento de comanda
+  const processComandaPaymentWithMethod = async (paymentMethod: string, observations?: string) => {
+    if (!selectedComanda || !currentSession) return;
+    
+    try {
+      setProcessing(true);
+      await processComandaPayment({
+        comanda_id: selectedComanda.id,
+        payment_method: paymentMethod,
+        amount: selectedComanda.total || 0,
+        notes: observations
+      });
+      
+      console.log('✅ Pagamento da comanda processado com sucesso');
+      setShowComandaPaymentModal(false);
+      setSelectedComanda(null);
+    } catch (error) {
+      console.error('❌ Erro ao processar pagamento da comanda:', error);
+      alert('Erro ao processar pagamento da comanda');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const handleProcessPayment = async () => {
@@ -276,6 +317,13 @@ export const DashboardOverview: React.FC = () => {
         </div>
         
         <div className="flex space-x-3">
+          <button
+            onClick={() => navigate('/cash/movement')}
+            className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 flex items-center space-x-2 transition-colors"
+          >
+            <FileText className="h-5 w-5" />
+            <span>Movimento</span>
+          </button>
           {!currentSession ? (
             <button
               onClick={() => setShowOpenModal(true)}
@@ -601,29 +649,16 @@ export const DashboardOverview: React.FC = () => {
         transactions={todaysTransactions}
         onAddWithdrawal={handleAddWithdrawal}
         onExportReport={handleExportReport}
+        isCashSessionOpen={currentSession?.status === 'open'}
       />
 
-      {/* Comandas Pendentes - Versão Simplificada */}
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <div className="flex items-center space-x-3 mb-4">
-          <Clock className="h-6 w-6 text-orange-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Comandas Pendentes de Pagamento</h3>
-          <span className="bg-orange-100 text-orange-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-            {pendingComandas.length}
-          </span>
-        </div>
-        
-        {pendingComandas.length === 0 ? (
-          <div className="text-center py-8">
-            <Clock className="h-12 w-12 text-green-600 mx-auto mb-4" />
-            <p className="text-gray-600 text-lg font-medium">Todas as comandas foram pagas!</p>
-            <p className="text-gray-500 text-sm mt-1">Não há comandas aguardando pagamento no momento.</p>
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <p className="text-gray-600">Sistema de comandas será integrado após criação das tabelas.</p>
-          </div>
-        )}
+      {/* Comandas Pendentes */}
+      <div className="mb-8">
+        <PendingComandas
+          comandas={pendingComandas}
+          onPayComanda={handleComandaPayment}
+          disabled={!currentSession || processing}
+        />
       </div>
 
       {/* Pedidos de Balcão Pendentes */}
@@ -785,7 +820,7 @@ export const DashboardOverview: React.FC = () => {
               </label>
               <select
                 value={selectedPaymentMethod}
-                onChange={(e) => setSelectedPaymentMethod(e.target.value as PaymentMethod)}
+                onChange={(e) => setSelectedPaymentMethod(e.target.value as 'dinheiro' | 'cartao_debito' | 'cartao_credito' | 'pix' | 'transferencia')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 aria-label="Método de pagamento"
               >
@@ -816,6 +851,18 @@ export const DashboardOverview: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal de Processamento de Pagamento de Comanda */}
+      <ProcessComandaPaymentModal
+        isOpen={showComandaPaymentModal}
+        comanda={selectedComanda}
+        onClose={() => {
+          setShowComandaPaymentModal(false);
+          setSelectedComanda(null);
+        }}
+        onConfirm={processComandaPaymentWithMethod}
+        loading={processing}
+      />
 
       {/* Modal de Comprovante de Pagamento */}
       {showReceiptModal && lastPaymentData && (

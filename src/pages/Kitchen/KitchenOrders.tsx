@@ -5,6 +5,7 @@ import { Order, MenuItem } from '../../types';
 import { useApp } from '../../contexts/AppContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { formatTableDisplay } from '../../utils/comanda-formatter';
 
 interface KitchenOrdersProps {
   orders: Order[];
@@ -72,13 +73,19 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
 
   // Função para atualizar status com feedback visual
   const handleStatusUpdate = async (orderId: string, newStatus: Order['status']) => {
+    console.log('🍳 Cozinha - Atualizando status:', {
+      orderId,
+      newStatus,
+      isComandaOrder: isComandaOrder({ id: orderId } as Order)
+    });
+    
     setUpdatingOrders(prev => new Set([...prev, orderId]));
     
     try {
       await updateOrderStatus(orderId, newStatus);
       console.log(`✅ Status do pedido ${orderId} atualizado para ${newStatus}`);
     } catch (error) {
-      console.error('Erro ao atualizar status:', error);
+      console.error('❌ Erro ao atualizar status:', error);
     } finally {
       setTimeout(() => {
         setUpdatingOrders(prev => {
@@ -189,7 +196,7 @@ const KitchenOrders: React.FC<KitchenOrdersProps> = ({ orders, menuItems }) => {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-2">
                     <MapPin size={16} className="text-gray-500" />
-                    <span className="font-bold text-lg">Mesa {order.tableNumber || 'N/A'}</span>
+                    <span className="font-bold text-lg">{formatTableDisplay(order.tableNumber)}</span>
                     
                     {/* Badge do número do pedido */}
                     <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
