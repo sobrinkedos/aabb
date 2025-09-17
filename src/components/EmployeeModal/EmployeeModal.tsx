@@ -222,6 +222,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
             <PermissionsSection
               employee={employee}
               onTogglePermission={togglePermission}
+              mode={mode}
             />
 
             {/* Credentials Section - Only for create mode */}

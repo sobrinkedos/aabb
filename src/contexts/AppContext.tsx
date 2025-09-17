@@ -165,7 +165,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     fetchData();
   }, []);
 
-  // Debug removido
+
 
   // Real-time subscriptions
   useEffect(() => {

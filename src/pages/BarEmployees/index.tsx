@@ -6,7 +6,9 @@ import { BarEmployee } from '../../types';
 import { EmployeeModal } from '../../components/EmployeeModal';
 import { NetworkNotification } from '../../components/NetworkNotification';
 import { CredentialsModal } from '../../components/CredentialsModal';
+
 import { Employee, EmployeeRole } from '../../types/employee.types';
+import { ROLE_PRESETS } from '../../utils/permissionPresets';
 
 const BarEmployeesModule: React.FC = () => {
   const {
@@ -84,7 +86,7 @@ const BarEmployeesModule: React.FC = () => {
       cpf: barEmployee.employee?.cpf || '',
       phone: barEmployee.employee?.phone || '',
       role: roleMapping[barEmployee.bar_role] || 'waiter',
-      permissions: [], // Será preenchido automaticamente baseado no role
+      permissions: ROLE_PRESETS[roleMapping[barEmployee.bar_role] || 'waiter']?.permissions || [],
       status: barEmployee.status === 'active' ? 'active' : 'inactive',
       hire_date: barEmployee.employee?.hire_date ? new Date(barEmployee.employee.hire_date) : new Date(),
       observations: barEmployee.notes || ''
@@ -615,6 +617,8 @@ const BarEmployeesModule: React.FC = () => {
           employeeName={credentialsEmployeeName}
         />
       )}
+
+
 
 
     </div>

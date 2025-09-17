@@ -3,6 +3,7 @@ import { Database } from '../types/supabase';
 
 const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
 const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
+const supabaseServiceRoleKey = (import.meta as any).env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
 // Verificar se as credenciais são válidas (não são placeholders)
 const isValidCredentials = (
@@ -11,6 +12,12 @@ const isValidCredentials = (
   supabaseUrl !== 'https://your-project.supabase.co' &&
   supabaseAnonKey !== 'your-anon-key-here' &&
   supabaseUrl.includes('.supabase.co')
+);
+
+// Verificar se a service role key está disponível
+const hasServiceRoleKey = (
+  supabaseServiceRoleKey && 
+  supabaseServiceRoleKey !== 'your-service-role-key-here'
 );
 
 if (!isValidCredentials) {
@@ -30,5 +37,18 @@ export const supabase = createClient<Database>(
   isValidCredentials ? supabaseAnonKey : mockKey
 );
 
-// Export flag para componentes verificarem se estão em modo mock
+// Cliente admin para operações administrativas (criar usuários, etc.)
+export const supabaseAdmin = createClient<Database>(
+  isValidCredentials ? supabaseUrl : mockUrl,
+  isValidCredentials && hasServiceRoleKey ? supabaseServiceRoleKey : mockKey,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
+
+// Export flags para componentes verificarem configuração
 export const isSupabaseConfigured = isValidCredentials;
+export const isAdminConfigured = isValidCredentials && hasServiceRoleKey;

@@ -28,18 +28,23 @@ export const CredentialsSection: React.FC<CredentialsSectionProps> = ({
   const [useCustomCredentials, setUseCustomCredentials] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const generateCredentials = () => {
+  const generateCredentials = async () => {
     if (!employee.name) {
       alert('Preencha o nome do funcionário primeiro');
       return;
     }
 
-    const newCredentials = generateEmployeeCredentials(employee as Employee);
-    setCredentials(newCredentials);
-    
-    // Gerar credenciais completas incluindo mobile se for garçom
-    const fullCredentials = generateAccessCredentials(employee as Employee);
-    onCredentialsGenerated(fullCredentials);
+    try {
+      const newCredentials = await generateEmployeeCredentials(employee as Employee);
+      setCredentials(newCredentials);
+      
+      // Gerar credenciais completas incluindo mobile se for garçom
+      const fullCredentials = await generateAccessCredentials(employee as Employee);
+      onCredentialsGenerated(fullCredentials);
+    } catch (error) {
+      console.error('Erro ao gerar credenciais:', error);
+      alert(`Erro ao gerar credenciais: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
   };
 
   const handleCustomCredentials = () => {

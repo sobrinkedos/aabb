@@ -79,9 +79,35 @@ export const generateTemporaryPassword = (): string => {
 /**
  * Gera credenciais completas para um funcionário
  */
-export const generateEmployeeCredentials = (employee: Employee): UserCredentials => {
-  const username = generateUsername(employee.name, employee.cpf);
+export const generateEmployeeCredentials = async (employee: Employee): Promise<UserCredentials> => {
+  let username = generateUsername(employee.name, employee.cpf);
   const password = generateTemporaryPassword();
+
+  // Verificar se username já existe e gerar alternativo se necessário
+  const { EmployeeAuthService } = await import('../services/employee-auth-service');
+  const authService = EmployeeAuthService.getInstance();
+  
+  let attempts = 0;
+  const maxAttempts = 5;
+  
+  while (attempts < maxAttempts) {
+    const usernameExists = await authService.checkUsernameExists(username);
+    
+    if (!usernameExists) {
+      break; // Username disponível
+    }
+    
+    // Gerar variação do username
+    attempts++;
+    const suffix = attempts.toString().padStart(2, '0');
+    username = `${generateUsername(employee.name, employee.cpf)}${suffix}`;
+  }
+
+  // Verificar se email já existe
+  const emailExists = await authService.checkEmailExists(employee.email);
+  if (emailExists) {
+    throw new Error(`Email ${employee.email} já está em uso por outro funcionário`);
+  }
 
   return {
     username,
@@ -174,8 +200,8 @@ export const formatCredentialsForDisplay = (credentials: UserCredentials): strin
 /**
  * Gera credenciais para diferentes tipos de acesso
  */
-export const generateAccessCredentials = (employee: Employee) => {
-  const baseCredentials = generateEmployeeCredentials(employee);
+export const generateAccessCredentials = async (employee: Employee) => {
+  const baseCredentials = await generateEmployeeCredentials(employee);
   
   return {
     // Credenciais principais do sistema

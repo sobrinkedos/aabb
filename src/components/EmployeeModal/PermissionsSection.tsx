@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
-import { Shield, ChevronDown, ChevronRight, Smartphone, Check } from 'lucide-react';
+import { Shield, ChevronDown, ChevronRight, Smartphone, Check, Settings, RotateCcw } from 'lucide-react';
 import { Employee, Permission } from '../../types/employee.types';
 import { ROLE_PRESETS, getModuleDisplayName, getActionDisplayName } from '../../utils/permissionPresets';
+import { useEmployeePermissions } from '../../hooks/useEmployeePermissions';
 
 interface PermissionsSectionProps {
   employee: Partial<Employee>;
   onTogglePermission: (permissionId: string) => void;
+  mode?: 'create' | 'edit';
 }
 
 export const PermissionsSection: React.FC<PermissionsSectionProps> = ({
   employee,
-  onTogglePermission
+  onTogglePermission,
+  mode = 'create'
 }) => {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set(['app-garcom']));
+  const { hasCustomPermissions, resetToDefaultPermissions } = useEmployeePermissions();
 
   const toggleModule = (module: string) => {
     const newExpanded = new Set(expandedModules);
@@ -48,6 +52,23 @@ export const PermissionsSection: React.FC<PermissionsSectionProps> = ({
 
   const availablePermissions = getAvailablePermissions();
   const groupedPermissions = groupPermissionsByModule(availablePermissions);
+  const isCustomized = mode === 'edit' && employee.id && hasCustomPermissions(employee.id);
+
+  const handleResetPermissions = () => {
+    if (employee.id && employee.role) {
+      const confirmed = confirm('Tem certeza que deseja resetar as permissões para o padrão da função?');
+      if (confirmed) {
+        resetToDefaultPermissions(employee.id);
+        // Recarregar permissões padrão
+        const preset = ROLE_PRESETS[employee.role];
+        if (preset) {
+          // Aqui precisaríamos de uma função para resetar as permissões no estado
+          // Por enquanto, vamos apenas mostrar uma mensagem
+          alert('Permissões resetadas! Feche e abra o modal novamente para ver as mudanças.');
+        }
+      }
+    }
+  };
 
   const getModuleIcon = (module: string) => {
     const icons: Record<string, string> = {
@@ -95,9 +116,27 @@ export const PermissionsSection: React.FC<PermissionsSectionProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-2 mb-4">
-        <Shield className="h-5 w-5 text-blue-600" />
-        <h3 className="text-lg font-semibold text-gray-900">Permissões</h3>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-2">
+          <Shield className="h-5 w-5 text-blue-600" />
+          <h3 className="text-lg font-semibold text-gray-900">Permissões</h3>
+          {isCustomized && (
+            <div className="flex items-center space-x-1 bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">
+              <Settings className="h-3 w-3" />
+              <span>Customizado</span>
+            </div>
+          )}
+        </div>
+        
+        {isCustomized && (
+          <button
+            onClick={handleResetPermissions}
+            className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md transition-colors"
+          >
+            <RotateCcw className="h-3 w-3" />
+            <span>Resetar</span>
+          </button>
+        )}
       </div>
 
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">

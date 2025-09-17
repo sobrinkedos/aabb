@@ -5,6 +5,8 @@ import { useEmployeeValidation } from './useEmployeeValidation';
 import { useOfflineStorage } from './useOfflineStorage';
 import { useNetworkStatus } from './useNetworkStatus';
 import { useRetryOperation } from './useRetryOperation';
+import { useEmployeePermissions } from './useEmployeePermissions';
+import { EmployeeAuthService } from '../services/employee-auth-service';
 
 interface UseEmployeeFormProps {
   initialEmployee?: Employee;
@@ -17,6 +19,7 @@ export const useEmployeeForm = ({ initialEmployee, onSave, onClose }: UseEmploye
   const { saveOffline } = useOfflineStorage();
   const { isOnline } = useNetworkStatus();
   const { executeWithRetry, retryCount, isRetrying } = useRetryOperation();
+  const { saveCustomPermissions, getEmployeePermissions } = useEmployeePermissions();
   const [credentials, setCredentials] = useState<any>(null);
   
   const [state, setState] = useState<EmployeeModalState>({
@@ -59,24 +62,34 @@ export const useEmployeeForm = ({ initialEmployee, onSave, onClose }: UseEmploye
   // Atualizar employee quando initialEmployee mudar (para modo de edição)
   useEffect(() => {
     if (initialEmployee) {
+      // Para edição, carregar permissões customizadas se existirem
+      const defaultPermissions = initialEmployee.permissions || [];
+      const customPermissions = initialEmployee.id 
+        ? getEmployeePermissions(initialEmployee.id, defaultPermissions)
+        : defaultPermissions;
+
       setEmployee({
         name: '',
         email: '',
         cpf: '',
         phone: '',
         role: 'waiter',
-        permissions: [],
         status: 'active',
         hire_date: new Date(),
         observations: '',
-        ...initialEmployee
+        ...initialEmployee,
+        permissions: customPermissions
       });
     }
-  }, [initialEmployee]);
+  }, [initialEmployee, getEmployeePermissions]);
 
-  // Aplicar preset de permissões quando a função mudar
+  // Aplicar preset de permissões quando a função mudar (apenas para novos funcionários)
   useEffect(() => {
-    if (employee.role && !initialEmployee) {
+    // Só aplica preset se:
+    // 1. Tem uma função selecionada
+    // 2. NÃO é edição (initialEmployee é undefined)
+    // 3. As permissões estão vazias (novo funcionário)
+    if (employee.role && !initialEmployee && (!employee.permissions || employee.permissions.length === 0)) {
       const preset = ROLE_PRESETS[employee.role];
       if (preset) {
         setEmployee(prev => ({
@@ -121,31 +134,35 @@ export const useEmployeeForm = ({ initialEmployee, onSave, onClose }: UseEmploye
   }, []);
 
   const configureMobileAccess = async (employeeId: string, appName: string, permissions: MobilePermission[]) => {
-    // Esta função seria implementada para integrar com o Supabase
-    // Por enquanto, apenas um placeholder
     console.log('Configurando acesso mobile:', { employeeId, appName, permissions });
     
-    // TODO: Implementar integração real com Supabase
-    // const { data: mobileAccess } = await supabase
-    //   .from('mobile_app_access')
-    //   .insert({
-    //     employee_id: employeeId,
-    //     app_name: appName,
-    //     has_access: true,
-    //     device_limit: 2
-    //   })
-    //   .select()
-    //   .single();
+    // TODO: Implementar integração real com Supabase quando as tabelas estiverem criadas
+    // Por enquanto, apenas log para debug
+  };
+
+  const createEmployeeAuthUser = async (employee: Employee, credentials: any) => {
+    if (!credentials || !credentials.system) {
+      console.log('ℹ️ Nenhuma credencial fornecida, pulando criação de usuário Auth');
+      return { success: true };
+    }
+
+    const authService = EmployeeAuthService.getInstance();
     
-    // const permissionInserts = permissions.map(perm => ({
-    //   mobile_access_id: mobileAccess.id,
-    //   feature: perm.feature,
-    //   permission_level: perm.level
-    // }));
+    console.log('🔐 Criando usuário de autenticação para funcionário:', employee.name);
     
-    // await supabase
-    //   .from('mobile_permissions')
-    //   .insert(permissionInserts);
+    const result = await authService.createEmployeeUser(employee, {
+      email: credentials.system.email,
+      password: credentials.system.password,
+      username: credentials.system.username,
+      temporaryPassword: credentials.system.temporaryPassword
+    });
+
+    if (!result.success) {
+      throw new Error(`Erro ao criar usuário de autenticação: ${result.error}`);
+    }
+
+    console.log('✅ Usuário de autenticação criado com sucesso');
+    return result;
   };
 
   const handleSave = useCallback(async () => {
@@ -181,17 +198,39 @@ export const useEmployeeForm = ({ initialEmployee, onSave, onClose }: UseEmploye
         return;
       }
       
-      // Usar sistema de retry para operações que podem falhar por timeout
-      const timeoutDuration = initialEmployee ? 60000 : 45000; // 60s para edição, 45s para criação
+      // Usar sistema de retry otimizado para operações mais rápidas
+      const timeoutDuration = initialEmployee ? 20000 : 15000; // 20s para edição, 15s para criação
       
       await executeWithRetry(
         () => onSave(employeeToSave, credentials),
         {
-          maxRetries: initialEmployee ? 1 : 2, // Menos retries para edição
-          retryDelay: 3000,
+          maxRetries: initialEmployee ? 1 : 1, // Apenas 1 retry para evitar demora
+          retryDelay: 2000, // Delay menor entre tentativas
           timeoutDuration
         }
       );
+
+      // Criar usuário de autenticação se for novo funcionário com credenciais
+      if (!initialEmployee && credentials) {
+        try {
+          await createEmployeeAuthUser(employeeToSave, credentials);
+        } catch (authError) {
+          console.error('Erro ao criar usuário de autenticação:', authError);
+          // Não bloquear o salvamento, mas mostrar aviso
+          setState(prev => ({
+            ...prev,
+            errors: {
+              general: `Funcionário cadastrado, mas houve erro ao criar usuário de login: ${authError instanceof Error ? authError.message : 'Erro desconhecido'}`,
+              fields: []
+            }
+          }));
+        }
+      }
+
+      // Salvar permissões customizadas se for edição
+      if (initialEmployee && employeeToSave.id && employeeToSave.permissions) {
+        saveCustomPermissions(employeeToSave.id, employeeToSave.permissions);
+      }
 
       // Se for garçom, configurar acesso ao app-garcom
       if (employee.role === 'waiter' && employeeToSave.id) {
@@ -224,10 +263,11 @@ export const useEmployeeForm = ({ initialEmployee, onSave, onClose }: UseEmploye
         }, 3000);
       } else if (error instanceof Error && error.message.includes('Timeout')) {
         const isEdit = !!initialEmployee;
-        errorMessage = `Operação demorou muito (${isEdit ? '60s' : '45s'}). ${isEdit ? 'A edição' : 'O cadastro'} pode ter sido processada mesmo assim. Verifique a lista de funcionários e tente novamente se necessário.`;
+        errorMessage = `Operação demorou mais que ${isEdit ? '20s' : '15s'}. ${isEdit ? 'A edição' : 'O cadastro'} pode ter sido processada mesmo assim. Verifique a lista de funcionários e tente novamente se necessário.`;
         
         // Para edição, salvar offline como backup
         if (isEdit) {
+          const employeeToSave = employee as Employee;
           saveOffline(employeeToSave);
           errorMessage += ' Os dados foram salvos offline como backup.';
         }

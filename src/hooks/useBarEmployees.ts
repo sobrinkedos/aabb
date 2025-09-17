@@ -99,7 +99,17 @@ export const useBarEmployees = () => {
     try {
       setError(null);
 
-      // Criar registro diretamente na tabela bar_employees sem depender da tabela employees
+      // Construir notes de forma limpa, evitando duplicação
+      const notesArray = [];
+      if (employeeData.name) notesArray.push(`Nome: ${employeeData.name}`);
+      if (employeeData.cpf) notesArray.push(`CPF: ${employeeData.cpf}`);
+      if (employeeData.email) notesArray.push(`Email: ${employeeData.email}`);
+      if (employeeData.phone) notesArray.push(`Telefone: ${employeeData.phone}`);
+      if (employeeData.notes) notesArray.push(`Observações: ${employeeData.notes}`);
+      
+      const cleanNotes = notesArray.join(', ');
+
+      // Criar registro diretamente na tabela bar_employees
       const { data: newBarEmployee, error: barEmployeeError } = await supabase
         .from('bar_employees')
         .insert([{
@@ -110,14 +120,15 @@ export const useBarEmployees = () => {
           commission_rate: employeeData.commission_rate || 0,
           is_active: true,
           start_date: new Date().toISOString().split('T')[0],
-          notes: `Nome: ${employeeData.name}${employeeData.cpf ? `, CPF: ${employeeData.cpf}` : ''}${employeeData.email ? `, Email: ${employeeData.email}` : ''}${employeeData.phone ? `, Telefone: ${employeeData.phone}` : ''}${employeeData.notes ? `, Observações: ${employeeData.notes}` : ''}`
+          notes: cleanNotes,
+          empresa_id: '00000000-0000-0000-0000-000000000001' // ID fixo da empresa
         }])
         .select()
         .single();
 
       if (barEmployeeError) throw barEmployeeError;
 
-      // Recarregar a lista
+      // Recarregar a lista de forma otimizada
       await fetchEmployees();
       
       return newBarEmployee.id;
@@ -129,12 +140,12 @@ export const useBarEmployees = () => {
     }
   }, [fetchEmployees]);
 
-  // Atualizar funcionário existente (versão simplificada)
+  // Atualizar funcionário existente (versão otimizada)
   const updateEmployee = useCallback(async (employeeId: string, updateData: UpdateBarEmployeeData): Promise<void> => {
     try {
       setError(null);
 
-      // Buscar dados atuais para preservar informações nas observações
+      // Buscar dados atuais
       const { data: currentEmployee, error: fetchError } = await supabase
         .from('bar_employees')
         .select('notes')
@@ -143,40 +154,42 @@ export const useBarEmployees = () => {
 
       if (fetchError) throw fetchError;
 
-      // Construir novas observações combinando dados atuais e novos
-      let updatedNotes = currentEmployee?.notes || '';
+      // Reconstruir notes de forma limpa, evitando duplicação
+      const currentNotes = currentEmployee?.notes || '';
       
-      if (updateData.name !== undefined) {
-        updatedNotes = updatedNotes.replace(/Nome: [^,]+/, `Nome: ${updateData.name}`);
-        if (!updatedNotes.includes('Nome:')) {
-          updatedNotes = `Nome: ${updateData.name}, ${updatedNotes}`;
-        }
-      }
+      // Extrair dados atuais das notes
+      const extractValue = (pattern: RegExp) => {
+        const match = currentNotes.match(pattern);
+        return match ? match[1] : '';
+      };
+
+      const currentName = extractValue(/Nome: ([^,]+)/);
+      const currentCpf = extractValue(/CPF: ([^,]+)/);
+      const currentEmail = extractValue(/Email: ([^,]+)/);
+      const currentPhone = extractValue(/Telefone: ([^,]+)/);
+      const currentObservations = extractValue(/Observações: (.+)$/);
+
+      // Usar dados novos ou manter os atuais
+      const finalName = updateData.name !== undefined ? updateData.name : currentName;
+      const finalCpf = updateData.cpf !== undefined ? updateData.cpf : currentCpf;
+      const finalEmail = updateData.email !== undefined ? updateData.email : currentEmail;
+      const finalPhone = updateData.phone !== undefined ? updateData.phone : currentPhone;
+      const finalObservations = updateData.notes !== undefined ? updateData.notes : currentObservations;
+
+      // Construir notes limpo
+      const notesArray = [];
+      if (finalName) notesArray.push(`Nome: ${finalName}`);
+      if (finalCpf) notesArray.push(`CPF: ${finalCpf}`);
+      if (finalEmail) notesArray.push(`Email: ${finalEmail}`);
+      if (finalPhone) notesArray.push(`Telefone: ${finalPhone}`);
+      if (finalObservations) notesArray.push(`Observações: ${finalObservations}`);
       
-      if (updateData.cpf !== undefined) {
-        updatedNotes = updatedNotes.replace(/CPF: [^,]+/, `CPF: ${updateData.cpf}`);
-        if (!updatedNotes.includes('CPF:') && updateData.cpf) {
-          updatedNotes += `, CPF: ${updateData.cpf}`;
-        }
-      }
-      
-      if (updateData.email !== undefined) {
-        updatedNotes = updatedNotes.replace(/Email: [^,]+/, `Email: ${updateData.email}`);
-        if (!updatedNotes.includes('Email:') && updateData.email) {
-          updatedNotes += `, Email: ${updateData.email}`;
-        }
-      }
-      
-      if (updateData.phone !== undefined) {
-        updatedNotes = updatedNotes.replace(/Telefone: [^,]+/, `Telefone: ${updateData.phone}`);
-        if (!updatedNotes.includes('Telefone:') && updateData.phone) {
-          updatedNotes += `, Telefone: ${updateData.phone}`;
-        }
-      }
+      const cleanNotes = notesArray.join(', ');
 
       // Preparar dados de atualização
       const updatePayload: any = {
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        notes: cleanNotes
       };
 
       if (updateData.bar_role !== undefined) updatePayload.bar_role = updateData.bar_role;
@@ -184,11 +197,6 @@ export const useBarEmployees = () => {
       if (updateData.specialties !== undefined) updatePayload.specialties = updateData.specialties;
       if (updateData.commission_rate !== undefined) updatePayload.commission_rate = updateData.commission_rate;
       if (updateData.is_active !== undefined) updatePayload.is_active = updateData.is_active;
-      if (updateData.notes !== undefined) {
-        updatedNotes += updateData.notes ? `, Observações: ${updateData.notes}` : '';
-      }
-      
-      updatePayload.notes = updatedNotes;
 
       // Atualizar na tabela bar_employees
       const { error: updateError } = await supabase
