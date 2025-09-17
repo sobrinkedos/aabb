@@ -1,4 +1,4 @@
-	{
+{
   "mcpServers": {
     "supabase": {
       "command": "npx",
@@ -13,7 +13,8 @@
       "autoApprove": [
         "list_tables",
         "describe_table",
-        "run_query"
+        "run_query",
+        "execute_sql"
       ]
     }
   }

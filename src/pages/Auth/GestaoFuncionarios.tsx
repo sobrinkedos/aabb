@@ -42,14 +42,26 @@ export const GestaoFuncionarios: React.FC = () => {
   const carregarFuncionarios = async () => {
     try {
       setIsLoading(true);
+      
+      if (!empresa?.id) {
+        console.error('ID da empresa não encontrado');
+        return;
+      }
+
       const { data, error } = await supabase
         .from('usuarios_empresa')
         .select('*')
-        .eq('empresa_id', empresa?.id)
+        .eq('empresa_id', empresa.id)
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Erro ao carregar funcionários:', error);
+        console.error('Detalhes do erro:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         return;
       }
 
@@ -124,35 +136,49 @@ export const GestaoFuncionarios: React.FC = () => {
 
   // Salvar funcionário
   const salvarFuncionario = async () => {
+    console.log('🔍 DEBUG: Iniciando salvamento do funcionário');
+    console.log('🔍 DEBUG: Estado completo:', novoFuncionario);
+    
     if (!validarFormulario()) {
+      console.log('❌ DEBUG: Validação falhou');
       return;
     }
 
+    console.log('✅ DEBUG: Validação passou');
     setIsSubmitting(true);
+    setErrors({}); // Limpar erros anteriores
     
     try {
       let usuarioAuth = null;
       
-      // Se tem acesso ao sistema, criar usuário no Supabase Auth
-      if (novoFuncionario.tem_acesso_sistema) {
+      // Se tem acesso ao sistema e é um novo funcionário, criar usuário no Supabase Auth
+      if (novoFuncionario.tem_acesso_sistema && !editingFuncionario) {
         const senhaProvisoria = gerarSenhaProvisoria();
         
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: novoFuncionario.email,
-          password: senhaProvisoria,
-          options: {
-            data: {
-              nome_completo: novoFuncionario.nome_completo
+        try {
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: novoFuncionario.email,
+            password: senhaProvisoria,
+            options: {
+              data: {
+                nome_completo: novoFuncionario.nome_completo
+              }
             }
-          }
-        });
+          });
 
-        if (authError) {
-          setErrors({ submit: authError.message });
+          if (authError) {
+            setErrors({ submit: `Erro ao criar usuário: ${authError.message}` });
+            return;
+          }
+
+          usuarioAuth = authData.user;
+        } catch (error) {
+          setErrors({ submit: 'Erro ao criar usuário no sistema de autenticação' });
           return;
         }
-
-        usuarioAuth = authData.user;
+      } else if (editingFuncionario && novoFuncionario.tem_acesso_sistema) {
+        // Para edição, manter o user_id existente se já tem acesso
+        usuarioAuth = { id: editingFuncionario.user_id };
       }
 
       // Criar ou atualizar funcionário
@@ -161,30 +187,39 @@ export const GestaoFuncionarios: React.FC = () => {
         email: novoFuncionario.email,
         telefone: novoFuncionario.telefone || null,
         cargo: novoFuncionario.cargo || null,
-        user_id: usuarioAuth?.id || null,
+        user_id: novoFuncionario.tem_acesso_sistema ? (usuarioAuth?.id || editingFuncionario?.user_id) : null,
         empresa_id: empresa?.id,
         tipo_usuario: 'funcionario' as const,
-        status: 'ativo' as const,
-        senha_provisoria: novoFuncionario.tem_acesso_sistema
+        status: editingFuncionario?.status || 'ativo' as const,
+        senha_provisoria: novoFuncionario.tem_acesso_sistema && !editingFuncionario
       };
+
+      console.log('🔍 DEBUG: Dados do funcionário a salvar:', funcionarioData);
+      console.log('🔍 DEBUG: tem_acesso_sistema:', novoFuncionario.tem_acesso_sistema);
 
       let funcionarioId: string;
 
       if (editingFuncionario) {
         // Atualizar funcionário existente
+        console.log('🔍 DEBUG: Atualizando funcionário existente:', editingFuncionario.id);
+        
         const { error } = await supabase
           .from('usuarios_empresa')
           .update(funcionarioData)
           .eq('id', editingFuncionario.id);
 
         if (error) {
-          setErrors({ submit: error.message });
+          console.error('❌ DEBUG: Erro ao atualizar funcionário:', error);
+          setErrors({ submit: `Erro ao atualizar funcionário: ${error.message}` });
           return;
         }
         
+        console.log('✅ DEBUG: Funcionário atualizado com sucesso');
         funcionarioId = editingFuncionario.id;
       } else {
         // Criar novo funcionário
+        console.log('🔍 DEBUG: Criando novo funcionário');
+        
         const { data, error } = await supabase
           .from('usuarios_empresa')
           .insert(funcionarioData)
@@ -192,36 +227,103 @@ export const GestaoFuncionarios: React.FC = () => {
           .single();
 
         if (error) {
+          console.error('❌ DEBUG: Erro ao criar funcionário:', error);
           setErrors({ submit: error.message });
           return;
         }
         
+        console.log('✅ DEBUG: Funcionário criado com sucesso:', data);
         funcionarioId = data.id;
       }
 
       // Salvar permissões se tem acesso ao sistema
       if (novoFuncionario.tem_acesso_sistema) {
-        // Remover permissões existentes
-        await supabase
+        console.log('🔍 DEBUG: Iniciando salvamento de permissões');
+        console.log('🔍 DEBUG: FuncionarioId:', funcionarioId);
+        console.log('🔍 DEBUG: Permissões do estado:', novoFuncionario.permissoes);
+        
+        try {
+          // Primeiro, remover permissões existentes
+          const { error: deleteError } = await supabase
+            .from('permissoes_usuario')
+            .delete()
+            .eq('usuario_empresa_id', funcionarioId);
+
+          if (deleteError) {
+            console.error('❌ DEBUG: Erro ao remover permissões existentes:', deleteError);
+          } else {
+            console.log('✅ DEBUG: Permissões existentes removidas');
+          }
+
+          // Garantir que temos permissões inicializadas
+          const permissoesParaSalvar = novoFuncionario.permissoes && Object.keys(novoFuncionario.permissoes).length > 0 
+            ? novoFuncionario.permissoes 
+            : inicializarPermissoes();
+
+          console.log('🔍 DEBUG: Permissões para salvar:', permissoesParaSalvar);
+
+          // Inserir apenas permissões que têm pelo menos uma ação marcada como true
+          const permissoesArray: any[] = [];
+          
+          Object.entries(permissoesParaSalvar).forEach(([modulo, permissoes]) => {
+            console.log(`🔍 DEBUG: Processando módulo ${modulo}:`, permissoes);
+            
+            // Verificar se há pelo menos uma permissão ativa
+            const temPermissaoAtiva = Object.values(permissoes).some(valor => valor === true);
+            console.log(`🔍 DEBUG: Módulo ${modulo} tem permissão ativa:`, temPermissaoAtiva);
+            
+            if (temPermissaoAtiva) {
+              const permissaoItem = {
+                usuario_empresa_id: funcionarioId,
+                modulo: modulo as ModuloSistema,
+                permissoes: {
+                  visualizar: Boolean(permissoes.visualizar),
+                  criar: Boolean(permissoes.criar),
+                  editar: Boolean(permissoes.editar),
+                  excluir: Boolean(permissoes.excluir),
+                  administrar: Boolean(permissoes.administrar)
+                }
+              };
+              console.log(`🔍 DEBUG: Adicionando permissão para ${modulo}:`, permissaoItem);
+              permissoesArray.push(permissaoItem);
+            }
+          });
+
+          console.log('🔍 DEBUG: Array final de permissões:', permissoesArray);
+
+          // Inserir permissões apenas se houver alguma
+          if (permissoesArray.length > 0) {
+            console.log('🔍 DEBUG: Inserindo permissões no banco...');
+            
+            const { data, error: permError } = await supabase
+              .from('permissoes_usuario')
+              .insert(permissoesArray)
+              .select();
+
+            if (permError) {
+              console.error('❌ DEBUG: Erro ao salvar permissões:', permError);
+              setErrors({ submit: `Erro ao salvar permissões: ${permError.message}` });
+              return;
+            }
+            
+            console.log('✅ DEBUG: Permissões salvas com sucesso:', data);
+          } else {
+            console.log('⚠️ DEBUG: Nenhuma permissão para salvar');
+          }
+        } catch (error) {
+          console.error('❌ DEBUG: Erro no salvamento de permissões:', error);
+          setErrors({ submit: 'Erro ao salvar permissões' });
+          return;
+        }
+      } else {
+        // Se não tem mais acesso ao sistema, remover todas as permissões
+        const { error: deleteError } = await supabase
           .from('permissoes_usuario')
           .delete()
           .eq('usuario_empresa_id', funcionarioId);
 
-        // Inserir novas permissões
-        const permissoesArray = Object.entries(novoFuncionario.permissoes).map(([modulo, permissoes]) => ({
-          usuario_empresa_id: funcionarioId,
-          modulo: modulo as ModuloSistema,
-          permissoes
-        }));
-
-        if (permissoesArray.length > 0) {
-          const { error: permError } = await supabase
-            .from('permissoes_usuario')
-            .insert(permissoesArray);
-
-          if (permError) {
-            console.error('Erro ao salvar permissões:', permError);
-          }
+        if (deleteError) {
+          console.error('Erro ao remover permissões:', deleteError);
         }
       }
 
@@ -268,16 +370,61 @@ export const GestaoFuncionarios: React.FC = () => {
     }
   };
 
+  // Carregar permissões existentes do funcionário
+  const carregarPermissoesExistentes = async (funcionarioId: string): Promise<Record<ModuloSistema, PermissaoModulo>> => {
+    try {
+      const { data: permissoes, error } = await supabase
+        .from('permissoes_usuario')
+        .select('modulo, permissoes')
+        .eq('usuario_empresa_id', funcionarioId);
+
+      if (error) {
+        console.error('Erro ao carregar permissões:', error);
+        return inicializarPermissoes();
+      }
+
+      // Sempre inicializar com permissões padrão (todas false)
+      const permissoesMap = inicializarPermissoes();
+      
+      // Se há permissões salvas, aplicar apenas essas
+      if (permissoes && permissoes.length > 0) {
+        permissoes.forEach(perm => {
+          if (perm.modulo && perm.permissoes) {
+            permissoesMap[perm.modulo as ModuloSistema] = {
+              visualizar: Boolean(perm.permissoes.visualizar),
+              criar: Boolean(perm.permissoes.criar),
+              editar: Boolean(perm.permissoes.editar),
+              excluir: Boolean(perm.permissoes.excluir),
+              administrar: Boolean(perm.permissoes.administrar)
+            };
+          }
+        });
+      }
+
+      return permissoesMap;
+    } catch (error) {
+      console.error('Erro ao carregar permissões:', error);
+      return inicializarPermissoes();
+    }
+  };
+
   // Abrir modal para edição
-  const editarFuncionario = (funcionario: UsuarioEmpresa) => {
+  const editarFuncionario = async (funcionario: UsuarioEmpresa) => {
     setEditingFuncionario(funcionario);
+    
+    // Carregar permissões existentes se o funcionário tem acesso ao sistema
+    let permissoesExistentes = inicializarPermissoes();
+    if (funcionario.user_id) {
+      permissoesExistentes = await carregarPermissoesExistentes(funcionario.id);
+    }
+    
     setNovoFuncionario({
       nome_completo: funcionario.nome_completo,
       email: funcionario.email,
       telefone: funcionario.telefone || '',
       cargo: funcionario.cargo || '',
       tem_acesso_sistema: !!funcionario.user_id,
-      permissoes: inicializarPermissoes() // TODO: Carregar permissões existentes
+      permissoes: permissoesExistentes
     });
     setShowModal(true);
   };
@@ -295,16 +442,32 @@ export const GestaoFuncionarios: React.FC = () => {
 
   // Atualizar permissão específica
   const atualizarPermissao = (modulo: ModuloSistema, acao: keyof PermissaoModulo, valor: boolean) => {
-    setNovoFuncionario(prev => ({
-      ...prev,
-      permissoes: {
-        ...prev.permissoes,
+    setNovoFuncionario(prev => {
+      // Garantir que as permissões existam
+      const permissoesAtuais = prev.permissoes || inicializarPermissoes();
+      
+      // Garantir que o módulo existe
+      const moduloAtual = permissoesAtuais[modulo] || {
+        visualizar: false,
+        criar: false,
+        editar: false,
+        excluir: false,
+        administrar: false
+      };
+      
+      const novasPermissoes = {
+        ...permissoesAtuais,
         [modulo]: {
-          ...prev.permissoes[modulo],
+          ...moduloAtual,
           [acao]: valor
         }
-      }
-    }));
+      };
+      
+      return {
+        ...prev,
+        permissoes: novasPermissoes
+      };
+    });
   };
 
   return (
