@@ -292,7 +292,6 @@ const ComandasView: React.FC = () => {
       }) || []
     };
   };
-  };
 
   const handleDismissAlert = (comandaId: string) => {
     setDismissedAlerts(prev => new Set([...prev, comandaId]));
@@ -927,116 +926,5 @@ const ComandasView: React.FC = () => {
 };
 
 
-<<<<<<< HEAD
-const CloseComandaModal: React.FC<CloseComandaModalProps> = ({
-  isOpen,
-  onClose,
-  comanda,
-  onConfirm,
-  isLoading
-}) => {
-  const [metodoPagamento, setMetodoPagamento] = useState('dinheiro');
-  const [observacoes, setObservacoes] = useState('');
-
-  console.log('🔴 CloseComandaModal renderizado:', { isOpen, comanda: !!comanda, isLoading });
-
-  if (!isOpen) {
-    console.log('🔴 Modal não está aberto, retornando null');
-    return null;
-  }
-
-  console.log('🔴 Modal está aberto, renderizando interface');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onConfirm(metodoPagamento, observacoes);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Fechar Conta</h2>
-
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-semibold text-gray-900 mb-2">
-              Mesa {comanda.table?.number || 'N/A'} - {comanda.customer_name || 'Cliente'}
-            </h3>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Total da conta:</span>
-              <span className="text-2xl font-bold text-green-600">
-                R$ {comanda.total?.toFixed(2) || '0,00'}
-              </span>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Método de Pagamento
-              </label>
-              <select
-                value={metodoPagamento}
-                onChange={(e) => setMetodoPagamento(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              >
-                <option value="dinheiro">Dinheiro</option>
-                <option value="cartao_credito">Cartão de Crédito</option>
-                <option value="cartao_debito">Cartão de Débito</option>
-                <option value="pix">PIX</option>
-                <option value="vale_refeicao">Vale Refeição</option>
-                <option value="outros">Outros</option>
-              </select>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Observações (opcional)
-              </label>
-              <textarea
-                value={observacoes}
-                onChange={(e) => setObservacoes(e.target.value)}
-                placeholder="Observações sobre o pagamento..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows={3}
-              />
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isLoading}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Fechando...</span>
-                  </>
-                ) : (
-                  <>
-                    <CreditCard size={16} />
-                    <span>Fechar Conta</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-};
-=======
->>>>>>> e766f8d829901008fe5a04ddfdcf57d9487a14b1
 
 export default ComandasView;

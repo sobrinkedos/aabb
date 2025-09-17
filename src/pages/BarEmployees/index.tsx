@@ -3,6 +3,10 @@ import { motion } from 'framer-motion';
 import { Search, Plus, User, Phone, Mail, Calendar, Badge, Eye, Edit, Trash2, Save, X } from 'lucide-react';
 import { useBarEmployees, NewBarEmployeeData, UpdateBarEmployeeData } from '../../hooks/useBarEmployees';
 import { BarEmployee } from '../../types';
+import { EmployeeModal } from '../../components/EmployeeModal';
+import { NetworkNotification } from '../../components/NetworkNotification';
+import { CredentialsModal } from '../../components/CredentialsModal';
+import { Employee, EmployeeRole } from '../../types/employee.types';
 
 const BarEmployeesModule: React.FC = () => {
   const {
@@ -25,21 +29,11 @@ const BarEmployeesModule: React.FC = () => {
   const [showNewEmployeeModal, setShowNewEmployeeModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [generatedCredentials, setGeneratedCredentials] = useState<any>(null);
+  const [credentialsEmployeeName, setCredentialsEmployeeName] = useState('');
   
-  // Estados do formulário
-  const [formData, setFormData] = useState<NewBarEmployeeData>({
-    name: '',
-    cpf: '',
-    email: '',
-    phone: '',
-    bar_role: 'atendente',
-    shift_preference: 'qualquer',
-    specialties: [],
-    commission_rate: 0,
-    notes: ''
-  });
-  
-  const [editFormData, setEditFormData] = useState<UpdateBarEmployeeData>({});
+  // Estados não são mais necessários pois o modal gerencia seu próprio estado
 
   // Filtrar funcionários usando o hook
   const filteredEmployees = filterEmployees(searchTerm, roleFilter, statusFilter);
@@ -47,22 +41,75 @@ const BarEmployeesModule: React.FC = () => {
   // Estatísticas usando o hook
   const stats = getStats();
 
-  // Funções do formulário de novo funcionário
-  const handleCreateEmployee = async () => {
-    if (!formData.name.trim()) {
-      alert('Por favor, informe o nome do funcionário');
-      return;
-    }
+  // Função de conversão de Employee para BarEmployee
+  const convertEmployeeToBarEmployee = (employee: Employee): NewBarEmployeeData => {
+    // Mapear roles do novo sistema para o antigo
+    const roleMapping: Record<EmployeeRole, 'atendente' | 'garcom' | 'cozinheiro' | 'barman' | 'gerente'> = {
+      waiter: 'garcom',
+      cook: 'cozinheiro',
+      cashier: 'atendente',
+      supervisor: 'gerente',
+      manager: 'gerente',
+      admin: 'gerente'
+    };
 
+    return {
+      name: employee.name,
+      cpf: employee.cpf,
+      email: employee.email,
+      phone: employee.phone,
+      bar_role: roleMapping[employee.role] || 'atendente',
+      shift_preference: 'qualquer',
+      specialties: [],
+      commission_rate: 0,
+      notes: employee.observations || ''
+    };
+  };
+
+  // Função de conversão de BarEmployee para Employee
+  const convertBarEmployeeToEmployee = (barEmployee: BarEmployee): Employee => {
+    // Mapear roles do sistema antigo para o novo
+    const roleMapping: Record<string, EmployeeRole> = {
+      'garcom': 'waiter',
+      'cozinheiro': 'cook',
+      'atendente': 'cashier',
+      'barman': 'cashier',
+      'gerente': 'manager'
+    };
+
+    return {
+      id: barEmployee.id,
+      name: barEmployee.employee?.name || '',
+      email: barEmployee.employee?.email || '',
+      cpf: barEmployee.employee?.cpf || '',
+      phone: barEmployee.employee?.phone || '',
+      role: roleMapping[barEmployee.bar_role] || 'waiter',
+      permissions: [], // Será preenchido automaticamente baseado no role
+      status: barEmployee.status === 'active' ? 'active' : 'inactive',
+      hire_date: barEmployee.employee?.hire_date ? new Date(barEmployee.employee.hire_date) : new Date(),
+      observations: barEmployee.notes || ''
+    };
+  };
+
+  // Funções do formulário de novo funcionário
+  const handleCreateEmployee = async (employee: Employee, credentials?: any) => {
+    const barEmployeeData = convertEmployeeToBarEmployee(employee);
+    
     setProcessing(true);
     try {
-      await createEmployee(formData);
-      setShowNewEmployeeModal(false);
-      resetForm();
-      alert('Funcionário cadastrado com sucesso!');
+      await createEmployee(barEmployeeData);
+      
+      // Se há credenciais, mostrar modal elegante
+      if (credentials) {
+        setGeneratedCredentials(credentials);
+        setCredentialsEmployeeName(employee.name);
+        setShowCredentialsModal(true);
+      } else {
+        alert('Funcionário cadastrado com sucesso!');
+      }
     } catch (error) {
       console.error('Erro ao criar funcionário:', error);
-      alert('Erro ao cadastrar funcionário. Tente novamente.');
+      throw error; // Re-throw para o modal tratar
     } finally {
       setProcessing(false);
     }
@@ -71,33 +118,24 @@ const BarEmployeesModule: React.FC = () => {
   // Funções do formulário de edição
   const handleEditEmployee = (employee: BarEmployee) => {
     setSelectedEmployee(employee);
-    setEditFormData({
-      name: employee.employee?.name || '',
-      cpf: employee.employee?.cpf || '',
-      email: employee.employee?.email || '',
-      phone: employee.employee?.phone || '',
-      bar_role: employee.bar_role,
-      shift_preference: employee.shift_preference,
-      specialties: employee.specialties || [],
-      commission_rate: employee.commission_rate,
-      notes: employee.notes || ''
-    });
     setShowEditModal(true);
   };
 
-  const handleUpdateEmployee = async () => {
+  const handleUpdateEmployee = async (employee: Employee, credentials?: any) => {
     if (!selectedEmployee) return;
 
+    const barEmployeeData = convertEmployeeToBarEmployee(employee);
+    
     setProcessing(true);
     try {
-      await updateEmployee(selectedEmployee.id, editFormData);
-      setShowEditModal(false);
+      await updateEmployee(selectedEmployee.id, barEmployeeData);
       setSelectedEmployee(null);
-      setEditFormData({});
+      
+      // Credenciais não são geradas na edição, apenas na criação
       alert('Funcionário atualizado com sucesso!');
     } catch (error) {
       console.error('Erro ao atualizar funcionário:', error);
-      alert('Erro ao atualizar funcionário. Tente novamente.');
+      throw error; // Re-throw para o modal tratar
     } finally {
       setProcessing(false);
     }
@@ -131,20 +169,7 @@ const BarEmployeesModule: React.FC = () => {
     }
   };
 
-  // Resetar formulário
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      cpf: '',
-      email: '',
-      phone: '',
-      bar_role: 'atendente',
-      shift_preference: 'qualquer',
-      specialties: [],
-      commission_rate: 0,
-      notes: ''
-    });
-  };
+  // Função resetForm removida - não é mais necessária
 
   const handleViewDetails = (employee: BarEmployee) => {
     setSelectedEmployee(employee);
@@ -195,6 +220,7 @@ const BarEmployeesModule: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
+      <NetworkNotification />
       {/* Exibir erro se houver */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -559,320 +585,38 @@ const BarEmployeesModule: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Novo Funcionário */}
-      {showNewEmployeeModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Novo Funcionário</h3>
-              <button
-                onClick={() => setShowNewEmployeeModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nome completo"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
-                <input
-                  type="text"
-                  value={formData.cpf}
-                  onChange={(e) => setFormData(prev => ({ ...prev, cpf: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="000.000.000-00"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="email@exemplo.com"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-                <input
-                  type="text"
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="(11) 99999-9999"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Função *</label>
-                <select 
-                  value={formData.bar_role}
-                  onChange={(e) => setFormData(prev => ({ ...prev, bar_role: e.target.value as any }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="atendente">Atendente</option>
-                  <option value="garcom">Garçom</option>
-                  <option value="cozinheiro">Cozinheiro</option>
-                  <option value="barman">Barman</option>
-                  <option value="gerente">Gerente</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Turno Preferido</label>
-                <select 
-                  value={formData.shift_preference}
-                  onChange={(e) => setFormData(prev => ({ ...prev, shift_preference: e.target.value as any }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="qualquer">Qualquer</option>
-                  <option value="manha">Manhã</option>
-                  <option value="tarde">Tarde</option>
-                  <option value="noite">Noite</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Comissão (%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  value={formData.commission_rate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, commission_rate: parseFloat(e.target.value) || 0 }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="0"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                  placeholder="Observações adicionais (opcional)"
-                />
-              </div>
-            </div>
-            
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowNewEmployeeModal(false);
-                  resetForm();
-                }}
-                disabled={processing}
-                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleCreateEmployee}
-                disabled={processing || !formData.name.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
-              >
-                {processing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Cadastrando...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save size={16} />
-                    <span>Cadastrar</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal Novo Funcionário - Usando o novo componente */}
+      <EmployeeModal
+        isOpen={showNewEmployeeModal}
+        onClose={() => setShowNewEmployeeModal(false)}
+        onSave={handleCreateEmployee}
+        mode="create"
+      />
 
       {/* Modal Editar Funcionário */}
-      {showEditModal && selectedEmployee && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Editar Funcionário</h3>
-              <button
-                onClick={() => {
-                  setShowEditModal(false);
-                  setSelectedEmployee(null);
-                  setEditFormData({});
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-                <input
-                  type="text"
-                  value={editFormData.name || ''}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nome completo"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
-                <input
-                  type="text"
-                  value={editFormData.cpf || ''}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, cpf: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="000.000.000-00"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={editFormData.email || ''}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="email@exemplo.com"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-                <input
-                  type="text"
-                  value={editFormData.phone || ''}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="(11) 99999-9999"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Função *</label>
-                <select 
-                  value={editFormData.bar_role || 'atendente'}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, bar_role: e.target.value as any }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="atendente">Atendente</option>
-                  <option value="garcom">Garçom</option>
-                  <option value="cozinheiro">Cozinheiro</option>
-                  <option value="barman">Barman</option>
-                  <option value="gerente">Gerente</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Turno Preferido</label>
-                <select 
-                  value={editFormData.shift_preference || 'qualquer'}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, shift_preference: e.target.value as any }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="qualquer">Qualquer</option>
-                  <option value="manha">Manhã</option>
-                  <option value="tarde">Tarde</option>
-                  <option value="noite">Noite</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Comissão (%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  value={editFormData.commission_rate || 0}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, commission_rate: parseFloat(e.target.value) || 0 }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="0"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select 
-                  value={editFormData.is_active !== undefined ? (editFormData.is_active ? 'active' : 'inactive') : 'active'}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, is_active: e.target.value === 'active' }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="active">Ativo</option>
-                  <option value="inactive">Inativo</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
-                <textarea
-                  value={editFormData.notes || ''}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                  placeholder="Observações adicionais (opcional)"
-                />
-              </div>
-            </div>
-            
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowEditModal(false);
-                  setSelectedEmployee(null);
-                  setEditFormData({});
-                }}
-                disabled={processing}
-                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleUpdateEmployee}
-                disabled={processing || !editFormData.name?.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
-              >
-                {processing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Salvando...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save size={16} />
-                    <span>Salvar</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+      <EmployeeModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onSave={(employee) => handleUpdateEmployee(employee)}
+        employee={selectedEmployee ? convertBarEmployeeToEmployee(selectedEmployee) : undefined}
+        mode="edit"
+      />
+
+      {/* Modal de Credenciais */}
+      {generatedCredentials && (
+        <CredentialsModal
+          isOpen={showCredentialsModal}
+          onClose={() => {
+            setShowCredentialsModal(false);
+            setGeneratedCredentials(null);
+            setCredentialsEmployeeName('');
+          }}
+          credentials={generatedCredentials}
+          employeeName={credentialsEmployeeName}
+        />
       )}
+
+
     </div>
   );
 };

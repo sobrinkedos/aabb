@@ -2,7 +2,11 @@
 
 ## Visão Geral
 
-O aplicativo nativo do garçom será desenvolvido como uma Progressive Web App (PWA) otimizada para dispositivos móveis, utilizando React Native ou uma abordagem híbrida com Capacitor. O app integrará com o sistema web existente através da API Supabase, mantendo sincronização em tempo real e funcionamento offline robusto.
+O aplicativo nativo do garçom será desenvolvido como uma Progressive Web App
+(PWA) otimizada para dispositivos móveis, utilizando React Native ou uma
+abordagem híbrida com Capacitor. O app integrará com o sistema web existente
+através da API Supabase, mantendo sincronização em tempo real e funcionamento
+offline robusto.
 
 ## Arquitetura
 
@@ -46,6 +50,7 @@ graph TB
 ### Stack Tecnológico
 
 **Frontend Mobile:**
+
 - React Native com Expo (para desenvolvimento rápido e multiplataforma)
 - TypeScript para type safety
 - Redux Toolkit para gerenciamento de estado
@@ -54,11 +59,13 @@ graph TB
 - React Navigation para navegação
 
 **Backend (Existente):**
+
 - Supabase (PostgreSQL + Real-time + Auth)
 - Row Level Security (RLS) para segurança
 - Triggers para notificações em tempo real
 
 **Integrações:**
+
 - Expo Camera para QR codes e fotos
 - Expo Print para impressão de comandas
 - Expo Notifications para push notifications
@@ -69,141 +76,151 @@ graph TB
 ### 1. Componentes de Interface
 
 #### MapaMesas
+
 ```typescript
 interface Mesa {
-  id: string;
-  numero: number;
-  status: 'livre' | 'ocupada' | 'aguardando' | 'limpeza';
-  posicaoX: number;
-  posicaoY: number;
-  capacidade: number;
-  garcomResponsavel?: string;
-  tempoOcupacao?: Date;
-  comandaAtiva?: string;
+    id: string;
+    numero: number;
+    status: "livre" | "ocupada" | "aguardando" | "limpeza";
+    posicaoX: number;
+    posicaoY: number;
+    capacidade: number;
+    garcomResponsavel?: string;
+    tempoOcupacao?: Date;
+    comandaAtiva?: string;
 }
 
 interface MapaMesasProps {
-  mesas: Mesa[];
-  onMesaPress: (mesa: Mesa) => void;
-  layoutRestaurante: LayoutConfig;
+    mesas: Mesa[];
+    onMesaPress: (mesa: Mesa) => void;
+    layoutRestaurante: LayoutConfig;
 }
 ```
 
 #### GerenciadorComanda
+
 ```typescript
 interface Comanda {
-  id: string;
-  numeroMesa: number;
-  garcom: string;
-  cliente?: string;
-  itens: ItemComanda[];
-  status: 'aberta' | 'fechada' | 'cancelada';
-  dataAbertura: Date;
-  dataFechamento?: Date;
-  subtotal: number;
-  taxaServico: number;
-  total: number;
-  formaPagamento?: FormaPagamento;
+    id: string;
+    numeroMesa: number;
+    garcom: string;
+    cliente?: string;
+    itens: ItemComanda[];
+    status: "aberta" | "fechada" | "cancelada";
+    dataAbertura: Date;
+    dataFechamento?: Date;
+    subtotal: number;
+    taxaServico: number;
+    total: number;
+    formaPagamento?: FormaPagamento;
 }
 
 interface ItemComanda {
-  id: string;
-  produtoId: string;
-  nome: string;
-  quantidade: number;
-  preco: number;
-  observacoes?: string;
-  status: 'pendente' | 'preparando' | 'pronto' | 'servido';
-  tempoSolicitacao: Date;
+    id: string;
+    produtoId: string;
+    nome: string;
+    quantidade: number;
+    preco: number;
+    observacoes?: string;
+    status: "pendente" | "preparando" | "pronto" | "servido";
+    tempoSolicitacao: Date;
 }
 ```
 
 #### CardapioMobile
+
 ```typescript
 interface ProdutoCardapio {
-  id: string;
-  nome: string;
-  descricao: string;
-  preco: number;
-  categoria: string;
-  disponivel: boolean;
-  tempoPreparoMedio: number;
-  ingredientes: string[];
-  alergenos: string[];
-  imagem?: string;
+    id: string;
+    nome: string;
+    descricao: string;
+    preco: number;
+    categoria: string;
+    disponivel: boolean;
+    tempoPreparoMedio: number;
+    ingredientes: string[];
+    alergenos: string[];
+    imagem?: string;
 }
 
 interface CardapioProps {
-  produtos: ProdutoCardapio[];
-  onProdutoSelect: (produto: ProdutoCardapio, quantidade: number) => void;
-  filtroCategoria?: string;
+    produtos: ProdutoCardapio[];
+    onProdutoSelect: (produto: ProdutoCardapio, quantidade: number) => void;
+    filtroCategoria?: string;
 }
 ```
 
 ### 2. Serviços de Dados
 
 #### SincronizacaoService
+
 ```typescript
 class SincronizacaoService {
-  private queue: OperacaoPendente[] = [];
-  private isOnline: boolean = true;
-  
-  async sincronizarDados(): Promise<void>;
-  async adicionarOperacao(operacao: OperacaoPendente): Promise<void>;
-  async processarFilaOffline(): Promise<void>;
-  onConectividadeMudou(callback: (online: boolean) => void): void;
+    private queue: OperacaoPendente[] = [];
+    private isOnline: boolean = true;
+
+    async sincronizarDados(): Promise<void>;
+    async adicionarOperacao(operacao: OperacaoPendente): Promise<void>;
+    async processarFilaOffline(): Promise<void>;
+    onConectividadeMudou(callback: (online: boolean) => void): void;
 }
 
 interface OperacaoPendente {
-  id: string;
-  tipo: 'criar_comanda' | 'adicionar_item' | 'fechar_comanda' | 'atualizar_status';
-  dados: any;
-  timestamp: Date;
-  tentativas: number;
+    id: string;
+    tipo:
+        | "criar_comanda"
+        | "adicionar_item"
+        | "fechar_comanda"
+        | "atualizar_status";
+    dados: any;
+    timestamp: Date;
+    tentativas: number;
 }
 ```
 
 #### NotificacaoService
+
 ```typescript
 class NotificacaoService {
-  async configurarNotificacoes(): Promise<void>;
-  async enviarNotificacao(tipo: TipoNotificacao, dados: any): Promise<void>;
-  async registrarToken(): Promise<string>;
+    async configurarNotificacoes(): Promise<void>;
+    async enviarNotificacao(tipo: TipoNotificacao, dados: any): Promise<void>;
+    async registrarToken(): Promise<string>;
 }
 
-type TipoNotificacao = 
-  | 'pedido_pronto'
-  | 'cliente_chamando'
-  | 'problema_cozinha'
-  | 'turno_terminando'
-  | 'emergencia';
+type TipoNotificacao =
+    | "pedido_pronto"
+    | "cliente_chamando"
+    | "problema_cozinha"
+    | "turno_terminando"
+    | "emergencia";
 ```
 
 ### 3. Gerenciamento de Estado
 
 #### Store Redux
+
 ```typescript
 interface AppState {
-  auth: AuthState;
-  mesas: MesasState;
-  comandas: ComandasState;
-  cardapio: CardapioState;
-  sincronizacao: SincronizacaoState;
-  notificacoes: NotificacoesState;
+    auth: AuthState;
+    mesas: MesasState;
+    comandas: ComandasState;
+    cardapio: CardapioState;
+    sincronizacao: SincronizacaoState;
+    notificacoes: NotificacoesState;
 }
 
 interface MesasState {
-  layout: Mesa[];
-  mesaSelecionada?: Mesa;
-  filtroStatus?: StatusMesa;
-  loading: boolean;
+    layout: Mesa[];
+    mesaSelecionada?: Mesa;
+    filtroStatus?: StatusMesa;
+    loading: boolean;
 }
 
 interface ComandasState {
-  comandasAbertas: Comanda[];
-  comandaAtiva?: Comanda;
-  historico: Comanda[];
-  loading: boolean;
+    comandasAbertas: Comanda[];
+    comandaAtiva?: Comanda;
+    historico: Comanda[];
+    loading: boolean;
 }
 ```
 
@@ -333,48 +350,52 @@ CREATE TRIGGER trigger_notificar_item_pronto
 
 ```typescript
 class ErrorBoundary extends React.Component {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: any) {
-    // Log para serviço de monitoramento
-    console.error('App Error:', error, errorInfo);
-    // Enviar para Sentry ou similar
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return <ErrorFallback error={this.state.error} />;
+    constructor(props: any) {
+        super(props);
+        this.state = { hasError: false, error: null };
     }
-    return this.props.children;
-  }
+
+    static getDerivedStateFromError(error: Error) {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error: Error, errorInfo: any) {
+        // Log para serviço de monitoramento
+        console.error("App Error:", error, errorInfo);
+        // Enviar para Sentry ou similar
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return <ErrorFallback error={this.state.error} />;
+        }
+        return this.props.children;
+    }
 }
 ```
 
 ## Estratégia de Testes
 
 ### Testes Unitários
+
 - Jest para lógica de negócio
 - React Native Testing Library para componentes
 - Cobertura mínima de 80%
 
 ### Testes de Integração
+
 - Testes de API com mock do Supabase
 - Testes de sincronização offline/online
 - Testes de fluxos completos de comanda
 
 ### Testes E2E
+
 - Detox para testes end-to-end
 - Cenários críticos: abrir comanda, fazer pedido, processar pagamento
 - Testes de performance e memory leaks
 
 ### Testes de Usabilidade
+
 - Testes com garçons reais
 - Métricas de tempo de execução de tarefas
 - Feedback sobre interface e fluxos
@@ -382,18 +403,21 @@ class ErrorBoundary extends React.Component {
 ## Considerações de Performance
 
 ### Otimizações de Interface
+
 - Lazy loading de componentes
 - Virtualização de listas longas
 - Debounce em buscas e filtros
 - Memoização de componentes pesados
 
 ### Otimizações de Dados
+
 - Paginação de comandas históricas
 - Cache inteligente com TTL
 - Compressão de dados offline
 - Sincronização incremental
 
 ### Otimizações de Bateria
+
 - Background sync otimizado
 - Redução de polling desnecessário
 - Uso eficiente de GPS e câmera
@@ -402,18 +426,21 @@ class ErrorBoundary extends React.Component {
 ## Segurança
 
 ### Autenticação e Autorização
+
 - JWT tokens com refresh automático
 - Row Level Security no Supabase
 - Biometria para login rápido
 - Timeout de sessão configurável
 
 ### Proteção de Dados
+
 - Criptografia de dados sensíveis locais
 - HTTPS obrigatório para todas as comunicações
 - Sanitização de inputs
 - Logs sem informações sensíveis
 
 ### Auditoria
+
 - Log de todas as operações críticas
 - Rastreamento de alterações em comandas
 - Monitoramento de tentativas de acesso
@@ -422,18 +449,21 @@ class ErrorBoundary extends React.Component {
 ## Integração com Sistemas Existentes
 
 ### Sistema de Cozinha
+
 - WebSocket para comunicação em tempo real
 - API REST para operações CRUD
 - Formato padronizado de pedidos
 - Fallback para impressão local
 
 ### Sistema de Caixa
+
 - Integração via API Supabase
 - Sincronização de produtos e preços
 - Processamento de pagamentos
 - Conciliação automática
 
 ### Sistema de Estoque
+
 - Atualização automática de disponibilidade
 - Alertas de produtos em falta
 - Integração com sistema de compras
@@ -442,18 +472,21 @@ class ErrorBoundary extends React.Component {
 ## Deployment e Distribuição
 
 ### Build e Deploy
+
 - CI/CD com GitHub Actions
 - Builds automatizados para iOS/Android
 - Code signing automático
 - Distribuição via App Store/Play Store
 
 ### Atualizações
+
 - Over-the-air updates com CodePush
 - Versionamento semântico
 - Rollback automático em caso de erro
 - Notificação de atualizações disponíveis
 
 ### Monitoramento
+
 - Crashlytics para crash reporting
 - Analytics de uso e performance
 - Alertas de problemas críticos
