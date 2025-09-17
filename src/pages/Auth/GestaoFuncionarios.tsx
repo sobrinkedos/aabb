@@ -530,17 +530,40 @@ export const GestaoFuncionarios: React.FC = () => {
 
       {/* Modal de Cadastro/Edição */}
       {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
-            <div className="mt-3">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+            <div className="flex flex-col h-full">
+              {/* Header fixo */}
+              <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    {editingFuncionario ? 'Editar Funcionário' : 'Adicionar Funcionário'}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowModal(false);
+                      setEditingFuncionario(null);
+                      setErrors({});
+                    }}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Conteúdo com scroll */}
+              <div className="flex-1 overflow-y-auto px-6 py-4">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
                 {editingFuncionario ? 'Editar Funcionário' : 'Adicionar Funcionário'}
               </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Dados Básicos */}
-                <div className="space-y-4">
-                  <h4 className="text-md font-medium text-gray-700">Dados Básicos</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Dados Básicos */}
+                  <div className="space-y-4">
+                    <h4 className="text-md font-medium text-gray-700 border-b border-gray-200 pb-2">Dados Básicos</h4>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Nome Completo *</label>
@@ -592,103 +615,172 @@ export const GestaoFuncionarios: React.FC = () => {
                     />
                   </div>
                   
-                  <div className="flex items-center">
-                    <input
-                      id="tem_acesso_sistema"
-                      type="checkbox"
-                      checked={novoFuncionario.tem_acesso_sistema}
-                      onChange={(e) => {
-                        setNovoFuncionario(prev => ({ 
-                          ...prev, 
-                          tem_acesso_sistema: e.target.checked,
-                          permissoes: e.target.checked ? inicializarPermissoes() : {} as Record<ModuloSistema, PermissaoModulo>
-                        }));
-                      }}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <label htmlFor="tem_acesso_sistema" className="ml-2 block text-sm text-gray-900">
-                      Tem acesso ao sistema
-                    </label>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center">
+                      <input
+                        id="tem_acesso_sistema"
+                        type="checkbox"
+                        checked={novoFuncionario.tem_acesso_sistema}
+                        onChange={(e) => {
+                          setNovoFuncionario(prev => ({ 
+                            ...prev, 
+                            tem_acesso_sistema: e.target.checked,
+                            permissoes: e.target.checked ? inicializarPermissoes() : {} as Record<ModuloSistema, PermissaoModulo>
+                          }));
+                        }}
+                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="tem_acesso_sistema" className="ml-3 block text-sm font-medium text-blue-900">
+                        Criar acesso ao sistema para este funcionário
+                      </label>
+                    </div>
+                    <p className="mt-2 text-xs text-blue-700">
+                      Marque esta opção se o funcionário precisar fazer login no sistema. 
+                      Será gerada uma senha provisória que deverá ser alterada no primeiro acesso.
+                    </p>
                   </div>
                 </div>
                 
-                {/* Permissões */}
-                {novoFuncionario.tem_acesso_sistema && (
-                  <div className="space-y-4">
-                    <h4 className="text-md font-medium text-gray-700">Permissões de Acesso</h4>
-                    
-                    <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-md p-4">
-                      {Object.values(ModuloSistema).map(modulo => (
-                        <div key={modulo} className="mb-4 p-3 border border-gray-100 rounded">
-                          <h5 className="text-sm font-medium text-gray-800 mb-2 capitalize">
-                            {modulo.replace('_', ' ')}
-                          </h5>
-                          
-                          <div className="grid grid-cols-2 gap-2">
-                            {(['visualizar', 'criar', 'editar', 'excluir'] as const).map(acao => (
-                              <label key={acao} className="flex items-center">
-                                <input
-                                  type="checkbox"
-                                  checked={novoFuncionario.permissoes[modulo]?.[acao] || false}
-                                  onChange={(e) => atualizarPermissao(modulo, acao, e.target.checked)}
-                                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                />
-                                <span className="ml-2 text-xs text-gray-600 capitalize">{acao}</span>
-                              </label>
-                            ))}
-                          </div>
+                  {/* Permissões */}
+                  {novoFuncionario.tem_acesso_sistema && (
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <h4 className="text-md font-medium text-gray-700 border-b border-gray-200 pb-2 flex-1">Permissões de Acesso</h4>
+                        <div className="flex items-center space-x-1 text-green-600">
+                          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-xs font-medium">Acesso Habilitado</span>
                         </div>
-                      ))}
+                      </div>
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <p className="text-sm text-green-800">
+                          <strong>Instruções:</strong> Selecione as permissões que o funcionário terá em cada módulo do sistema. 
+                          Use o botão "Marcar/Desmarcar Todas" para facilitar a configuração.
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-3 max-h-80 overflow-y-auto border border-gray-200 rounded-md p-4 bg-gray-50">
+                        {Object.values(ModuloSistema).map(modulo => {
+                          const nomeModulo = {
+                            [ModuloSistema.DASHBOARD]: 'Dashboard',
+                            [ModuloSistema.MONITOR_BAR]: 'Monitor Bar',
+                            [ModuloSistema.ATENDIMENTO_BAR]: 'Atendimento Bar',
+                            [ModuloSistema.MONITOR_COZINHA]: 'Monitor Cozinha',
+                            [ModuloSistema.GESTAO_CAIXA]: 'Gestão de Caixa',
+                            [ModuloSistema.CLIENTES]: 'Clientes',
+                            [ModuloSistema.FUNCIONARIOS]: 'Funcionários',
+                            [ModuloSistema.SOCIOS]: 'Sócios',
+                            [ModuloSistema.CONFIGURACOES]: 'Configurações',
+                            [ModuloSistema.RELATORIOS]: 'Relatórios'
+                          }[modulo] || modulo.replace('_', ' ');
+
+                          return (
+                            <div key={modulo} className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
+                              <div className="flex items-center justify-between mb-3">
+                                <h5 className="text-sm font-semibold text-gray-800">
+                                  {nomeModulo}
+                                </h5>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const todasMarcadas = ['visualizar', 'criar', 'editar', 'excluir'].every(
+                                      acao => novoFuncionario.permissoes[modulo]?.[acao as keyof PermissaoModulo]
+                                    );
+                                    ['visualizar', 'criar', 'editar', 'excluir'].forEach(acao => {
+                                      atualizarPermissao(modulo, acao as keyof PermissaoModulo, !todasMarcadas);
+                                    });
+                                  }}
+                                  className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                >
+                                  Marcar/Desmarcar Todas
+                                </button>
+                              </div>
+                              
+                              <div className="grid grid-cols-2 gap-3">
+                                {(['visualizar', 'criar', 'editar', 'excluir'] as const).map(acao => {
+                                  const nomeAcao = {
+                                    visualizar: 'Visualizar',
+                                    criar: 'Criar',
+                                    editar: 'Editar',
+                                    excluir: 'Excluir'
+                                  }[acao];
+
+                                  return (
+                                    <label key={acao} className="flex items-center space-x-2 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={novoFuncionario.permissoes[modulo]?.[acao] || false}
+                                        onChange={(e) => atualizarPermissao(modulo, acao, e.target.checked)}
+                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                      />
+                                      <span className="text-sm text-gray-700">{nomeAcao}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {errors.submit && (
+                  <div className="mt-4 rounded-md bg-red-50 p-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-red-800">
+                          {errors.submit}
+                        </h3>
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
               
-              {errors.submit && (
-                <div className="mt-4 rounded-md bg-red-50 p-4">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-red-800">
-                        {errors.submit}
-                      </h3>
-                    </div>
-                  </div>
+              {/* Footer fixo */}
+              <div className="px-6 py-4 border-t border-gray-200 flex-shrink-0 bg-gray-50">
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowModal(false);
+                      setEditingFuncionario(null);
+                      setErrors({});
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={salvarFuncionario}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {editingFuncionario ? 'Atualizar' : 'Salvar'}
+                      </>
+                    )}
+                  </button>
                 </div>
-              )}
-              
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => {
-                    setShowModal(false);
-                    setEditingFuncionario(null);
-                    setErrors({});
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={salvarFuncionario}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Salvando...
-                    </>
-                  ) : (
-                    editingFuncionario ? 'Atualizar' : 'Salvar'
-                  )}
-                </button>
               </div>
             </div>
           </div>
