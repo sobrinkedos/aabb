@@ -10,7 +10,11 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "perf:enable": "node scripts/performance-test.js enable",
+    "perf:disable": "node scripts/performance-test.js disable",
+    "perf:status": "node scripts/performance-test.js status",
+    "perf:test": "node scripts/performance-test.js"
   },
   "dependencies": {
     "@faker-js/faker": "^10.0.0",

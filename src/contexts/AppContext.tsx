@@ -92,6 +92,7 @@ interface AppContextType {
   addMenuItem: (itemData: Omit<MenuItem, 'id'>) => Promise<void>;
   updateMenuItem: (item: MenuItem) => Promise<void>;
   removeMenuItem: (itemId: string) => Promise<void>;
+  loadMenuItems: () => Promise<void>;
   
   orders: Order[];
   addOrder: (orderData: { items: Omit<OrderItem, 'id'>[]; tableNumber?: string; employeeId: string; notes?: string; status: Order['status']; }) => Promise<void>;
@@ -111,6 +112,8 @@ interface AppContextType {
   members: Member[];
   addMember: (memberData: Omit<Member, 'id' | 'joinDate'>) => Promise<void>;
   updateMember: (member: Member) => Promise<void>;
+  loadMembers: () => Promise<void>;
+  loadFullInventory: () => Promise<void>;
   
   notifications: string[];
   addNotification: (message: string) => void;
@@ -143,24 +146,29 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // const [sales, setSales] = useState<Sale[]>([]);
   const [notifications, setNotifications] = useState<string[]>([]);
 
-  // Fetch initial data
+  // Fetch initial data - OTIMIZADO para carregar apenas dados essenciais
   useEffect(() => {
     const fetchData = async () => {
-      const [menuData, inventoryData, categoriesData, membersData] = await Promise.all([
-        // Buscar todos os itens do menu (incluindo diretos do estoque) para o módulo bar
-        supabase.from('menu_items').select(`
-          *,
-          inventory_items!left(name, image_url)
-        `).order('name'),
-        supabase.from('inventory_items').select('*').order('name'),
-        supabase.from('inventory_categories').select('*').eq('is_active', true).order('name'),
-        supabase.from('members').select('*').order('name'),
-      ]);
+      // Carregar apenas inventory para dashboard (estoque baixo)
+      const inventoryData = await supabase
+        .from('inventory_items')
+        .select('*')
+        .lte('current_stock', supabase.raw('min_stock'))
+        .limit(10)
+        .order('name');
 
-      if (menuData.data) setMenuItems(menuData.data.map(fromMenuItemSupabase));
+      // Carregar categorias
+      const categoriesData = await supabase
+        .from('inventory_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
+      if (inventoryData.data) setInventory(inventoryData.data.map(fromInventorySupabase));
       if (inventoryData.data) setInventory(inventoryData.data.map(fromInventorySupabase));
       if (categoriesData.data) setInventoryCategories(categoriesData.data.map(fromInventoryCategorySupabase));
-      if (membersData.data) setMembers(membersData.data.map(fromMemberSupabase));
+      
+      // Menu items e members serão carregados sob demanda
     };
     fetchData();
   }, []);
@@ -691,6 +699,47 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const clearNotifications = () => setNotifications([]);
 
+  // Funções de carregamento lazy
+  const loadMenuItems = async () => {
+    if (menuItems.length > 0) return; // Já carregado
+    
+    const { data, error } = await supabase.from('menu_items').select(`
+      *,
+      inventory_items!left(name, image_url)
+    `).order('name');
+    
+    if (error) {
+      console.error('Erro ao carregar menu items:', error);
+      return;
+    }
+    
+    if (data) setMenuItems(data.map(fromMenuItemSupabase));
+  };
+
+  const loadMembers = async () => {
+    if (members.length > 0) return; // Já carregado
+    
+    const { data, error } = await supabase.from('members').select('*').order('name');
+    
+    if (error) {
+      console.error('Erro ao carregar members:', error);
+      return;
+    }
+    
+    if (data) setMembers(data.map(fromMemberSupabase));
+  };
+
+  const loadFullInventory = async () => {
+    const { data, error } = await supabase.from('inventory_items').select('*').order('name');
+    
+    if (error) {
+      console.error('Erro ao carregar inventory completo:', error);
+      return;
+    }
+    
+    if (data) setInventory(data.map(fromInventorySupabase));
+  };
+
   // Buscar pedidos da cozinha a partir dos comanda_items
   const [kitchenOrders, setKitchenOrders] = useState<Order[]>([]);
   const [barOrders, setBarOrders] = useState<Order[]>([]);
@@ -1104,14 +1153,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   return (
     <AppContext.Provider value={{
-      menuItems, addMenuItem, updateMenuItem, removeMenuItem,
+      menuItems, addMenuItem, updateMenuItem, removeMenuItem, loadMenuItems,
       orders, addOrder, updateOrderStatus, 
       kitchenOrders: activeKitchenOrders,
       barOrders: activeBarOrders,
       refreshKitchenOrders: fetchKitchenOrders,
       refreshBarOrders: fetchBarOrders,
-      inventory, inventoryCategories, addInventoryItem, updateInventoryItem, removeInventoryItem,
-      members, addMember, updateMember,
+      inventory, inventoryCategories, addInventoryItem, updateInventoryItem, removeInventoryItem, loadFullInventory,
+      members, addMember, updateMember, loadMembers,
       notifications, addNotification, clearNotifications,
       // sales, addSale
     }}>
