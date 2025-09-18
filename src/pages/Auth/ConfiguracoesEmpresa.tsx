@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useMultitenantAuth } from '../../contexts/MultitenantAuthContext';
 import { ProtectedRoute } from '../../components/Auth/ProtectedRoute';
 import { ModuloSistema, CategoriaConfiguracao, ConfiguracaoEmpresa } from '../../types/multitenant';
 import { supabase } from '../../lib/supabase';
+import { useDebounce } from '../../hooks/useDebounce';
 
 interface ConfiguracaoSeguranca {
   tempo_sessao: number; // em minutos
@@ -101,32 +102,37 @@ export const ConfiguracoesEmpresa: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [currentEmpresaId, setCurrentEmpresaId] = useState<string | null>(null);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pendingChanges, setPendingChanges] = useState<Partial<TodasConfiguracoes>>({});
   const [dadosEmpresa, setDadosEmpresa] = useState({
     nome: empresa?.nome || '',
     cnpj: '',
-    email: empresa?.email || '',
+    email_admin: empresa?.email || '',
     telefone: empresa?.telefone || '',
-    endereco: '',
-    cidade: '',
-    estado: '',
-    cep: '',
-    site: '',
-    descricao: ''
+    endereco: {
+      logradouro: '',
+      cidade: '',
+      estado: '',
+      cep: ''
+    }
   });
   const [isSavingEmpresa, setIsSavingEmpresa] = useState(false);
+  
+  // Debounce para evitar muitas chamadas de API
+  const debouncedDadosEmpresa = useDebounce(dadosEmpresa, 500);
 
   // Carregar dados da empresa
-  const carregarDadosEmpresa = async () => {
+  const carregarDadosEmpresa = useCallback(async () => {
     if (!empresa?.id) return;
 
     try {
       const { data: empresaData, error } = await supabase
         .from('empresas')
-        .select('*')
+        .select('nome, cnpj, email_admin, telefone, endereco')
         .eq('id', empresa.id)
         .single();
 
@@ -136,90 +142,182 @@ export const ConfiguracoesEmpresa: React.FC = () => {
       }
 
       if (empresaData) {
+        const endereco = empresaData.endereco || {};
         setDadosEmpresa({
           nome: empresaData.nome || '',
           cnpj: empresaData.cnpj || '',
-          email: empresaData.email || '',
+          email_admin: empresaData.email_admin || '',
           telefone: empresaData.telefone || '',
-          endereco: empresaData.endereco || '',
-          cidade: empresaData.cidade || '',
-          estado: empresaData.estado || '',
-          cep: empresaData.cep || '',
-          site: empresaData.site || '',
-          descricao: empresaData.descricao || ''
+          endereco: {
+            logradouro: endereco.logradouro || '',
+            cidade: endereco.cidade || '',
+            estado: endereco.estado || '',
+            cep: endereco.cep || ''
+          }
         });
       }
     } catch (error) {
       console.error('Erro ao carregar dados da empresa:', error);
     }
-  };
+  }, [empresa?.id]);
 
-  // Salvar dados da empresa
-  const salvarDadosEmpresa = async () => {
-    if (!empresa?.id) return;
+  // Salvar dados da empresa (com debug melhorado)
+  const salvarDadosEmpresa = useCallback(async () => {
+    if (!empresa?.id) {
+      console.error('❌ Empresa ID não encontrado');
+      return;
+    }
 
     try {
       setIsSavingEmpresa(true);
       setError('');
 
-      const { error: updateError } = await supabase
-        .from('empresas')
-        .update({
-          nome: dadosEmpresa.nome,
-          cnpj: dadosEmpresa.cnpj,
-          email: dadosEmpresa.email,
-          telefone: dadosEmpresa.telefone,
-          endereco: dadosEmpresa.endereco,
-          cidade: dadosEmpresa.cidade,
-          estado: dadosEmpresa.estado,
-          cep: dadosEmpresa.cep,
-          site: dadosEmpresa.site,
-          descricao: dadosEmpresa.descricao,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', empresa.id);
+      // Validar estrutura do endereço
+      const enderecoValido = {
+        logradouro: dadosEmpresa.endereco?.logradouro || '',
+        cidade: dadosEmpresa.endereco?.cidade || '',
+        estado: dadosEmpresa.endereco?.estado || '',
+        cep: dadosEmpresa.endereco?.cep || ''
+      };
+
+      // Validar CNPJ (remover caracteres especiais se houver)
+      const cnpjLimpo = dadosEmpresa.cnpj?.replace(/[^\d]/g, '') || '';
+      
+      // Verificar se o CNPJ já existe em outra empresa
+      if (cnpjLimpo && cnpjLimpo.length > 0) {
+        const { data: cnpjExistente, error: cnpjError } = await supabase
+          .from('empresas')
+          .select('id')
+          .eq('cnpj', cnpjLimpo)
+          .neq('id', empresa.id);
+          
+        if (cnpjError) {
+          console.warn('⚠️ Erro ao verificar CNPJ:', cnpjError);
+        } else if (cnpjExistente && cnpjExistente.length > 0) {
+          throw new Error('CNPJ já está sendo usado por outra empresa');
+        }
+      }
+
+      const camposParaAtualizar = {
+        nome: dadosEmpresa.nome,
+        cnpj: cnpjLimpo || null,
+        email_admin: dadosEmpresa.email_admin,
+        telefone: dadosEmpresa.telefone,
+        endereco: enderecoValido,
+        updated_at: new Date().toISOString()
+      };
+
+      // Tentar update com select, com fallback se não funcionar
+      let data = null;
+      let updateError = null;
+
+      // Executar update com fallback robusto
+      try {
+        const result = await supabase
+          .from('empresas')
+          .update(camposParaAtualizar)
+          .eq('id', empresa.id)
+          .select();
+        
+        data = result.data;
+        updateError = result.error;
+        
+        // Se não retornou dados, tentar verificação separada
+        if (!updateError && (!data || data.length === 0)) {
+          const { error: updateOnlyError } = await supabase
+            .from('empresas')
+            .update(camposParaAtualizar)
+            .eq('id', empresa.id);
+          
+          if (!updateOnlyError) {
+            const { data: checkData, error: checkError } = await supabase
+              .from('empresas')
+              .select('*')
+              .eq('id', empresa.id)
+              .single();
+              
+            if (!checkError && checkData) {
+              data = [checkData];
+            }
+          }
+        }
+      } catch (err) {
+        updateError = err;
+      }
+
+      if (updateError) {
+        console.error('❌ Erro no update:', updateError);
+        throw new Error(updateError.message);
+      }
 
       if (updateError) {
         throw new Error(updateError.message);
       }
 
+      // Log de auditoria
+      try {
+        await supabase.rpc('registrar_log_auditoria', {
+          p_empresa_id: empresa.id,
+          p_usuario_id: user?.user_id,
+          p_acao: 'UPDATE_COMPANY_DATA',
+          p_recurso: 'empresas',
+          p_detalhes: {
+            campos_alterados: ['nome', 'cnpj', 'email_admin', 'telefone', 'endereco']
+          }
+        });
+      } catch (logError) {
+        // Log de auditoria não é crítico
+      }
+
       setSuccessMessage('Dados da empresa salvos com sucesso!');
       setTimeout(() => setSuccessMessage(''), 3000);
 
-      // Registrar log de auditoria
-      await supabase.rpc('registrar_log_auditoria', {
-        p_empresa_id: empresa.id,
-        p_usuario_id: user?.user_id,
-        p_acao: 'UPDATE_COMPANY_DATA',
-        p_recurso: 'empresas',
-        p_detalhes: {
-          campos_alterados: Object.keys(dadosEmpresa)
+      // Recarregar dados para refletir as alterações
+      setTimeout(async () => {
+        if (empresa?.id) {
+          try {
+            const { data: empresaData, error } = await supabase
+              .from('empresas')
+              .select('nome, cnpj, email_admin, telefone, endereco')
+              .eq('id', empresa.id)
+              .single();
+
+            if (!error && empresaData) {
+              const endereco = empresaData.endereco || {};
+              setDadosEmpresa({
+                nome: empresaData.nome || '',
+                cnpj: empresaData.cnpj || '',
+                email_admin: empresaData.email_admin || '',
+                telefone: empresaData.telefone || '',
+                endereco: {
+                  logradouro: endereco.logradouro || '',
+                  cidade: endereco.cidade || '',
+                  estado: endereco.estado || '',
+                  cep: endereco.cep || ''
+                }
+              });
+            }
+          } catch (error) {
+            console.error('Erro ao recarregar dados:', error);
+          }
         }
-      });
+      }, 1000);
 
     } catch (error) {
-      console.error('Erro ao salvar dados da empresa:', error);
       setError(error instanceof Error ? error.message : 'Erro ao salvar dados da empresa');
     } finally {
       setIsSavingEmpresa(false);
     }
-  };
+  }, [dadosEmpresa, empresa?.id, user?.user_id]);
 
   // Carregar configurações da empresa
-  useEffect(() => {
-    if (empresa?.id) {
-      carregarConfiguracoes();
-      carregarDadosEmpresa();
-    }
-  }, [empresa?.id]);
-
-  const carregarConfiguracoes = async () => {
+  const carregarConfiguracoes = useCallback(async () => {
+    if (!empresa?.id) return;
+    
     try {
-      setIsLoading(true);
-      
       const { data, error } = await supabase
         .from('configuracoes_empresa')
-        .select('*')
+        .select('categoria, configuracoes')
         .eq('empresa_id', empresa?.id);
 
       if (error) {
@@ -243,52 +341,80 @@ export const ConfiguracoesEmpresa: React.FC = () => {
       setConfiguracoes(configsCarregadas);
     } catch (error) {
       console.error('Erro ao carregar configurações:', error);
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [empresa?.id]);
 
-  // Salvar configurações
-  const salvarConfiguracoes = async (categoria: CategoriaConfiguracao, novasConfigs: any) => {
+  // Carregar dados apenas quando empresa mudar
+  useEffect(() => {
+    if (empresa?.id && empresa.id !== currentEmpresaId) {
+      setCurrentEmpresaId(empresa.id);
+      setIsLoading(true);
+      setError('');
+      setSuccessMessage('');
+      
+      // Carregar dados em paralelo
+      const loadData = async () => {
+        try {
+          await Promise.all([
+            carregarConfiguracoes(),
+            carregarDadosEmpresa()
+          ]);
+        } catch (error) {
+          console.error('Erro ao carregar dados:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      loadData();
+    }
+  }, [empresa?.id, currentEmpresaId]);
+
+  // Salvar configurações (otimizado)
+  const salvarConfiguracoes = useCallback(async (categoria: CategoriaConfiguracao, novasConfigs: any) => {
     try {
       setIsSaving(true);
       setErrors({});
 
-      // Upsert das configurações
-      const { error } = await supabase
-        .from('configuracoes_empresa')
-        .upsert({
-          empresa_id: empresa?.id,
-          categoria,
-          configuracoes: novasConfigs
-        }, {
-          onConflict: 'empresa_id,categoria'
-        });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      // Atualizar estado local
+      // Atualizar estado local imediatamente para melhor UX
       setConfiguracoes(prev => ({
         ...prev,
         [categoria]: novasConfigs
       }));
 
+      // Executar upsert e log em paralelo
+      const [upsertResult] = await Promise.allSettled([
+        supabase
+          .from('configuracoes_empresa')
+          .upsert({
+            empresa_id: empresa?.id,
+            categoria,
+            configuracoes: novasConfigs
+          }, {
+            onConflict: 'empresa_id,categoria'
+          }),
+        
+        // Log de auditoria em paralelo
+        supabase.rpc('registrar_log_auditoria', {
+          p_empresa_id: empresa?.id,
+          p_usuario_id: user?.user_id,
+          p_acao: 'UPDATE_CONFIG',
+          p_recurso: `configuracoes_${categoria}`,
+          p_detalhes: {
+            categoria,
+            alteracoes: Object.keys(novasConfigs)
+          }
+        })
+      ]);
+
+      if (upsertResult.status === 'rejected' || upsertResult.value.error) {
+        // Reverter estado local em caso de erro
+        await carregarConfiguracoes();
+        throw new Error(upsertResult.status === 'rejected' ? 'Erro na conexão' : upsertResult.value.error.message);
+      }
+
       setSuccessMessage('Configurações salvas com sucesso!');
       setTimeout(() => setSuccessMessage(''), 3000);
-
-      // Registrar log de auditoria
-      await supabase.rpc('registrar_log_auditoria', {
-        p_empresa_id: empresa?.id,
-        p_usuario_id: user?.user_id,
-        p_acao: 'UPDATE_CONFIG',
-        p_recurso: `configuracoes_${categoria}`,
-        p_detalhes: {
-          categoria,
-          alteracoes: Object.keys(novasConfigs)
-        }
-      });
 
     } catch (error) {
       console.error('Erro ao salvar configurações:', error);
@@ -296,10 +422,10 @@ export const ConfiguracoesEmpresa: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [empresa?.id, user?.user_id, carregarConfiguracoes]);
 
-  // Confirmar senha para alterações sensíveis
-  const confirmarSenha = async () => {
+  // Confirmar senha para alterações sensíveis (otimizado)
+  const confirmarSenha = useCallback(async () => {
     if (!confirmPassword) {
       setErrors({ password: 'Senha é obrigatória para confirmar alterações' });
       return false;
@@ -322,24 +448,27 @@ export const ConfiguracoesEmpresa: React.FC = () => {
       setErrors({ password: 'Erro ao verificar senha' });
       return false;
     }
-  };
+  }, [confirmPassword, user?.email]);
 
-  // Aplicar alterações pendentes
-  const aplicarAlteracoesPendentes = async () => {
+  // Aplicar alterações pendentes (otimizado)
+  const aplicarAlteracoesPendentes = useCallback(async () => {
     const senhaConfirmada = await confirmarSenha();
     if (!senhaConfirmada) return;
 
-    for (const [categoria, configs] of Object.entries(pendingChanges)) {
-      await salvarConfiguracoes(categoria as CategoriaConfiguracao, configs);
-    }
+    // Salvar todas as configurações pendentes em paralelo
+    const savePromises = Object.entries(pendingChanges).map(([categoria, configs]) =>
+      salvarConfiguracoes(categoria as CategoriaConfiguracao, configs)
+    );
+
+    await Promise.all(savePromises);
 
     setPendingChanges({});
     setShowConfirmPassword(false);
     setConfirmPassword('');
-  };
+  }, [confirmarSenha, pendingChanges, salvarConfiguracoes]);
 
-  // Atualizar configuração específica
-  const atualizarConfiguracao = (categoria: CategoriaConfiguracao, campo: string, valor: any) => {
+  // Atualizar configuração específica (otimizado)
+  const atualizarConfiguracao = useCallback((categoria: CategoriaConfiguracao, campo: string, valor: any) => {
     const novasConfigs = {
       ...configuracoes[categoria],
       [campo]: valor
@@ -361,9 +490,10 @@ export const ConfiguracoesEmpresa: React.FC = () => {
       // Salvar imediatamente para outras categorias
       salvarConfiguracoes(categoria, novasConfigs);
     }
-  };
+  }, [configuracoes, salvarConfiguracoes]);
 
-  const tabs = [
+  // Memoizar tabs para evitar re-renders desnecessários
+  const tabs = useMemo(() => [
     {
       id: 'empresa' as CategoriaConfiguracao,
       name: 'Empresa',
@@ -394,17 +524,22 @@ export const ConfiguracoesEmpresa: React.FC = () => {
       icon: '🔗',
       description: 'Configurações de integração e backup'
     }
-  ];
+  ], []);
+
+  // Componente de loading otimizado
+  const LoadingSpinner = useMemo(() => (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Carregando configurações...</p>
+      </div>
+    </div>
+  ), []);
 
   if (isLoading) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Carregando configurações...</p>
-          </div>
-        </div>
+        {LoadingSpinner}
       </ProtectedRoute>
     );
   }
@@ -437,7 +572,7 @@ export const ConfiguracoesEmpresa: React.FC = () => {
             </div>
           )}
 
-          {errors.submit && (
+          {(errors.submit || error) && (
             <div className="mb-6 rounded-md bg-red-50 p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
@@ -446,7 +581,7 @@ export const ConfiguracoesEmpresa: React.FC = () => {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-red-800">{errors.submit}</p>
+                  <p className="text-sm font-medium text-red-800">{errors.submit || error}</p>
                 </div>
               </div>
             </div>
@@ -541,8 +676,8 @@ export const ConfiguracoesEmpresa: React.FC = () => {
                       </label>
                       <input
                         type="email"
-                        value={dadosEmpresa.email}
-                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, email: e.target.value }))}
+                        value={dadosEmpresa.email_admin}
+                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, email_admin: e.target.value }))}
                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="contato@empresa.com"
                         required
@@ -564,20 +699,6 @@ export const ConfiguracoesEmpresa: React.FC = () => {
                       />
                     </div>
 
-                    {/* Site */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Site
-                      </label>
-                      <input
-                        type="url"
-                        value={dadosEmpresa.site}
-                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, site: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="https://www.empresa.com"
-                      />
-                    </div>
-
                     {/* Endereço */}
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -585,8 +706,11 @@ export const ConfiguracoesEmpresa: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={dadosEmpresa.endereco}
-                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, endereco: e.target.value }))}
+                        value={dadosEmpresa.endereco.logradouro}
+                        onChange={(e) => setDadosEmpresa(prev => ({ 
+                          ...prev, 
+                          endereco: { ...prev.endereco, logradouro: e.target.value }
+                        }))}
                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Rua, número, bairro"
                       />
@@ -599,8 +723,11 @@ export const ConfiguracoesEmpresa: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={dadosEmpresa.cidade}
-                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, cidade: e.target.value }))}
+                        value={dadosEmpresa.endereco.cidade}
+                        onChange={(e) => setDadosEmpresa(prev => ({ 
+                          ...prev, 
+                          endereco: { ...prev.endereco, cidade: e.target.value }
+                        }))}
                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Nome da cidade"
                       />
@@ -612,8 +739,11 @@ export const ConfiguracoesEmpresa: React.FC = () => {
                         Estado
                       </label>
                       <select
-                        value={dadosEmpresa.estado}
-                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, estado: e.target.value }))}
+                        value={dadosEmpresa.endereco.estado}
+                        onChange={(e) => setDadosEmpresa(prev => ({ 
+                          ...prev, 
+                          endereco: { ...prev.endereco, estado: e.target.value }
+                        }))}
                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="">Selecione o estado</option>
@@ -654,24 +784,13 @@ export const ConfiguracoesEmpresa: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={dadosEmpresa.cep}
-                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, cep: e.target.value }))}
+                        value={dadosEmpresa.endereco.cep}
+                        onChange={(e) => setDadosEmpresa(prev => ({ 
+                          ...prev, 
+                          endereco: { ...prev.endereco, cep: e.target.value }
+                        }))}
                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="00000-000"
-                      />
-                    </div>
-
-                    {/* Descrição */}
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Descrição da Empresa
-                      </label>
-                      <textarea
-                        value={dadosEmpresa.descricao}
-                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, descricao: e.target.value }))}
-                        rows={4}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Descreva brevemente a empresa, seus serviços e atividades..."
                       />
                     </div>
                   </div>
