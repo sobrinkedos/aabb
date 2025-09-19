@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useCashManagement } from '../../../hooks/useCashManagement';
 import { useBalcaoOrders } from '../../../hooks/useBalcaoOrders';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/AuthContextSimple';
 import { OpenCashModal } from './OpenCashModal';
 import { CloseCashModal } from './CloseCashModal';
 import CashWithdrawalModal from './CashWithdrawalModal';

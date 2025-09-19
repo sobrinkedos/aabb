@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useMultitenantAuth } from '../../contexts/MultitenantAuthContext';
+import { useMultitenantAuth } from '../../contexts/MultitenantAuthContextSimple';
 import { RegistroEmpresaData } from '../../types/multitenant';
 
 interface FormErrors {

@@ -14,7 +14,7 @@ import {
   MagnifyingGlassIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/AuthContextSimple';
 import { useMenuItems } from '../../../hooks/useMenuItems';
 import { useBalcaoOrders } from '../../../hooks/useBalcaoOrders';
 import { useCashManagement } from '../../../hooks/useCashManagementSimple';

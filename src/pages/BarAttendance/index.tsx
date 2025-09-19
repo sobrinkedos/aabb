@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/AuthContextSimple";
 import { useComandas } from "../../hooks/useComandas";
 import BarHeader from "./components/BarHeader";
 import BalcaoView from "./components/BalcaoView";

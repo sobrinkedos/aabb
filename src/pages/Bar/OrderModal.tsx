@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Minus, User } from 'lucide-react';
 import { MenuItem, OrderItem, BarCustomer } from '../../types';
 import { useApp } from '../../contexts/AppContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextSimple';
 import CustomerQuickRegister from '../../components/Bar/CustomerQuickRegister';
 
 interface OrderModalProps {

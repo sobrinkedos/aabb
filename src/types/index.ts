@@ -409,7 +409,8 @@ export interface BillSplit {
   created_at: string;
 }
 
-// Export all cash management types
+// Export all types
+export * from './auth';
 export * from './cash-management';
 export * from './bar-attendance';
 export * from './sales-management';

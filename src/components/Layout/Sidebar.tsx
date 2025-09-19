@@ -13,7 +13,7 @@ import {
   Coffee,
   DollarSign
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextSimple';
 import { motion } from 'framer-motion';
 
 const Sidebar: React.FC = () => {

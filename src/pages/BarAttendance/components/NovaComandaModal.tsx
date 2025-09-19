@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, User, Users, MapPin } from 'lucide-react';
 import { useBarTables } from '../../../hooks/useBarTables';
 import { useComandas } from '../../../hooks/useComandas';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/AuthContextSimple';
 import { BarTable, BarCustomer } from '../../../types';
 import { supabase } from '../../../lib/supabase';
 

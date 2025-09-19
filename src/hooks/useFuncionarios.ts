@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { UsuarioEmpresa, ModuloSistema, PermissaoModulo } from '../types/multitenant';
-import { useMultitenantAuth } from '../contexts/MultitenantAuthContext';
+import { useMultitenantAuth } from '../contexts/MultitenantAuthContextSimple';
 
 interface NovoFuncionarioData {
   nome_completo: string;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { CategoriaConfiguracao } from '../types/multitenant';
-import { useMultitenantAuth } from '../contexts/MultitenantAuthContext';
+import { useMultitenantAuth } from '../contexts/MultitenantAuthContextSimple';
 
 /**
  * Interface para configurações tipadas

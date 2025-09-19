@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { useMenuItems } from '../../../hooks/useMenuItems';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/AuthContextSimple';
 import { MenuItem } from '../../../types';
 import { supabase } from '../../../lib/supabase';
 

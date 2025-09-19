@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useMultitenantAuth } from '../../contexts/MultitenantAuthContext';
+import { useMultitenantAuth } from '../../contexts/MultitenantAuthContextSimple';
 import { ProtectedRoute } from '../../components/Auth/ProtectedRoute';
 import { ModuloSistema } from '../../types/multitenant';
 import { supabase } from '../../lib/supabase';

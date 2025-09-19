@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useCashManagement } from '../../../hooks/useCashManagement';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/AuthContextSimple';
 
 export const CashTest: React.FC = () => {
   const { user } = useAuth();

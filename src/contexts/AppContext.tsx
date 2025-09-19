@@ -150,12 +150,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   useEffect(() => {
     const fetchData = async () => {
       // Carregar apenas inventory para dashboard (estoque baixo)
-      const inventoryData = await supabase
-        .from('inventory_items')
-        .select('*')
-        .lte('current_stock', supabase.raw('min_stock'))
-        .limit(10)
-        .order('name');
+      const inventoryData = await supabase.rpc('get_low_stock_items', { limit_count: 10 });
 
       // Carregar categorias
       const categoriesData = await supabase
@@ -164,7 +159,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         .eq('is_active', true)
         .order('name');
 
-      if (inventoryData.data) setInventory(inventoryData.data.map(fromInventorySupabase));
       if (inventoryData.data) setInventory(inventoryData.data.map(fromInventorySupabase));
       if (categoriesData.data) setInventoryCategories(categoriesData.data.map(fromInventoryCategorySupabase));
       

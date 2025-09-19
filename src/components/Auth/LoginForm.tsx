@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextSimple';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Lock, Mail, Zap, Users } from 'lucide-react';
+import { AuthErrorDisplay } from './AuthErrorDisplay';
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -20,10 +21,15 @@ const LoginForm: React.FC = () => {
       return;
     }
     
-    const success = await login(email, password);
-    if (!success) {
-      setError('Erro ao fazer login. Tente novamente.');
+    const result = await login(email, password);
+    if (!result.success) {
+      setError(result.error || 'Erro ao fazer login. Tente novamente.');
     }
+  };
+
+  const handleRetry = () => {
+    setError('');
+    handleSubmit({ preventDefault: () => {} } as React.FormEvent);
   };
 
   const handleDemoLogin = () => {
@@ -106,15 +112,12 @@ const LoginForm: React.FC = () => {
             </div>
           </div>
 
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-lg border border-red-200"
-            >
-              {error}
-            </motion.div>
-          )}
+          <AuthErrorDisplay
+            error={error}
+            onRetry={handleRetry}
+            onDismiss={() => setError('')}
+            context="login"
+          />
 
           <motion.button
             whileHover={{ scale: 1.02 }}

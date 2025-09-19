@@ -1,24 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '../types/supabase';
+import { SUPABASE_CONFIG, isSupabaseBasicConfigured, isSupabaseFullyConfigured } from '../config/supabase';
 
-const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
-const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
-const supabaseServiceRoleKey = (import.meta as any).env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+const { url: supabaseUrl, anonKey: supabaseAnonKey, serviceRoleKey: supabaseServiceRoleKey } = SUPABASE_CONFIG;
 
-// Verificar se as credenciais são válidas (não são placeholders)
-const isValidCredentials = (
-  supabaseUrl && 
-  supabaseAnonKey && 
-  supabaseUrl !== 'https://your-project.supabase.co' &&
-  supabaseAnonKey !== 'your-anon-key-here' &&
-  supabaseUrl.includes('.supabase.co')
-);
+// Verificar se as credenciais básicas são válidas
+const isValidCredentials = isSupabaseBasicConfigured();
 
 // Verificar se a service role key está disponível
-const hasServiceRoleKey = (
-  supabaseServiceRoleKey && 
-  supabaseServiceRoleKey !== 'your-service-role-key-here'
-);
+const hasServiceRoleKey = isSupabaseFullyConfigured();
 
 if (!isValidCredentials) {
   console.warn('⚠️ Supabase credentials not configured. Using mock mode for development.');
@@ -34,7 +24,14 @@ const mockKey = 'mock-anon-key';
 
 export const supabase = createClient<Database>(
   isValidCredentials ? supabaseUrl : mockUrl,
-  isValidCredentials ? supabaseAnonKey : mockKey
+  isValidCredentials ? supabaseAnonKey : mockKey,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true
+    }
+  }
 );
 
 // Cliente admin para operações administrativas (criar usuários, etc.)

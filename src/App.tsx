@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { MultitenantAuthProvider } from './contexts/MultitenantAuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContextSimple';
+import { MultitenantAuthProvider } from './contexts/MultitenantAuthContextSimple';
 import { AppProvider } from './contexts/AppContext';
 import { AppProvider as AppProviderOptimized } from './contexts/AppContextOptimized';
 import LoginForm from './components/Auth/LoginForm';

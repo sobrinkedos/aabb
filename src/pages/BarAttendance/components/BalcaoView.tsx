@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useMenuItems } from '../../../hooks/useMenuItems';
 import { useBalcaoOrders } from '../../../hooks/useBalcaoOrders';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/AuthContextSimple';
 import { MenuItem, BarCustomer } from '../../../types';
 import { CreateBalcaoOrderData } from '../../../types/balcao-orders';
 import CustomerSearchModal from './CustomerSearchModal';

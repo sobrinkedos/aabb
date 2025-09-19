@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { useMultitenantAuth } from '../contexts/MultitenantAuthContext';
+import { useMultitenantAuth } from '../contexts/MultitenantAuthContextSimple';
 
 /**
  * Interface para log de auditoria

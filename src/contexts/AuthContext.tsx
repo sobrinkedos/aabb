@@ -1,20 +1,20 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { User } from '../types';
+import { User, AuthContextType } from '../types/auth';
+import { AUTH_CONFIG } from '../config/auth';
+import { SUPABASE_CONFIG } from '../config/supabase';
 import { Session } from '@supabase/supabase-js';
+import AuthLoader from '../components/Auth/AuthLoader';
+import { processAuthError, AuthRetryManager, AuthErrorLogger } from '../utils/authErrors';
 
-interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => Promise<{ success: boolean; error: string | null }>;
+// Estendendo o tipo para incluir funcionalidades adicionais
+interface ExtendedAuthContextType extends AuthContextType {
   register: (name: string, email: string, password: string) => Promise<{ success: boolean; error: string | null }>;
-  loginAsDemo: () => Promise<{ success: boolean; error: string | null }>;
-  logout: () => void;
-  isLoading: boolean;
   isOffline: boolean;
   checkOnlineStatus: () => Promise<boolean>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<ExtendedAuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -33,6 +33,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
+  const retryManager = new AuthRetryManager();
+  const errorLogger = AuthErrorLogger.getInstance();
 
   // Função para detectar se está offline
   const checkOnlineStatus = async () => {
@@ -42,14 +44,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     try {
-      // Usar uma verificação mais simples com timeout
+      // Verificação simples de conectividade com timeout agressivo
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
+      const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 segundos timeout
       
-      const { data, error } = await supabase.auth.getSession();
+      // Tentar uma requisição simples ao Supabase
+      const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/`, {
+        method: 'HEAD',
+        signal: controller.signal,
+        headers: {
+          'apikey': SUPABASE_CONFIG.anonKey
+        }
+      });
+      
       clearTimeout(timeoutId);
       
-      const isOnline = !error || error.message !== 'Failed to fetch';
+      const isOnline = response.ok || response.status === 401; // 401 é esperado sem auth
       setIsOffline(!isOnline);
       return isOnline;
     } catch (error) {
@@ -62,12 +72,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Efeito #1: Lida APENAS com a sessão de autenticação do Supabase.
   // É rápido e não depende do banco de dados.
   useEffect(() => {
-    // Se Supabase não está configurado, pular verificação de sessão
-    if (!isSupabaseConfigured) {
-      setIsLoading(false);
-      return;
-    }
-    
     // Função para limpar tokens corrompidos
     const clearCorruptedTokens = () => {
       try {
@@ -83,41 +87,83 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.warn('Erro ao limpar localStorage:', error);
       }
     };
-    
 
-    
-    // Verificar status online primeiro
-    checkOnlineStatus().then((isOnline) => {
-      if (!isOnline) {
-        console.log('🔌 Aplicação em modo offline');
+    // Função de inicialização com timeout forçado
+    const initializeAuth = async () => {
+      // Se Supabase não está configurado, usar modo demo
+      if (!isSupabaseConfigured) {
+        console.log('🔧 Supabase não configurado, usando modo demo');
         setIsLoading(false);
         return;
       }
-      
-      // Pega a sessão inicial para parar o carregamento o mais rápido possível.
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        setSession(session);
-        setIsLoading(false); // <-- PONTO CRÍTICO: resolve o carregamento infinito.
-      }).catch((error) => {
-      console.warn('Erro ao verificar sessão:', error);
-      
-      // Se o erro for relacionado a refresh token inválido, limpar tokens
-      if (error.message && error.message.includes('refresh') || 
-          error.message && error.message.includes('Invalid Refresh Token')) {
-        console.log('🔄 Detectado token de refresh inválido, limpando tokens...');
-        clearCorruptedTokens();
-        // Tentar novamente após limpar
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          setSession(session);
-        }).catch(() => {
-          console.log('ℹ️ Usando modo sem autenticação após limpeza');
-          setSession(null);
-        });
-      }
-      
+
+      // Timeout global para toda a inicialização
+      const globalTimeout = setTimeout(() => {
+        console.log('⏰ Timeout na inicialização, forçando modo offline');
+        setIsOffline(true);
         setIsLoading(false);
-      });
-    });
+      }, 5000); // 5 segundos máximo
+
+      try {
+        // Verificar conectividade rapidamente
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        
+        const connectivityCheck = fetch(`${SUPABASE_CONFIG.url}/rest/v1/`, {
+          method: 'HEAD',
+          headers: { 'apikey': SUPABASE_CONFIG.anonKey },
+          signal: controller.signal
+        }).then(response => {
+          clearTimeout(timeoutId);
+          return response.ok || response.status === 401; // 401 é esperado
+        }).catch(() => {
+          clearTimeout(timeoutId);
+          return false;
+        });
+
+        const isOnline = await connectivityCheck;
+        
+        if (!isOnline) {
+          console.log('🔌 Sem conectividade, usando modo offline');
+          setIsOffline(true);
+          clearTimeout(globalTimeout);
+          setIsLoading(false);
+          return;
+        }
+
+        // Tentar obter sessão
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.warn('Erro ao verificar sessão:', error);
+          
+          // Se erro de token, limpar e tentar novamente
+          if (error.message?.includes('refresh') || error.message?.includes('Invalid')) {
+            console.log('🔄 Limpando tokens corrompidos...');
+            clearCorruptedTokens();
+            
+            // Segunda tentativa
+            const { data: { session: retrySession } } = await supabase.auth.getSession();
+            setSession(retrySession);
+          } else {
+            setSession(null);
+          }
+        } else {
+          setSession(session);
+        }
+
+        clearTimeout(globalTimeout);
+        setIsLoading(false);
+        
+      } catch (error) {
+        console.error('Erro na inicialização:', error);
+        clearTimeout(globalTimeout);
+        setIsOffline(true);
+        setIsLoading(false);
+      }
+    };
+    
+    initializeAuth();
 
     // Ouve por futuras mudanças na autenticação (login/logout).
     const { data: authListener } = supabase.auth.onAuthStateChange(
@@ -185,29 +231,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (!isSupabaseConfigured) {
       console.info('🔑 Usando autenticação mock para desenvolvimento');
       
-      // Simular usuário demo
-      if (email === 'demo@clubmanager.com' && password === 'demo123456') {
+      // Simular usuário demo usando configuração
+      if (email === AUTH_CONFIG.DEMO_USER.email && password === 'demo123456') {
         const mockUser: User = {
           id: 'demo-user-id',
-          name: 'Usuário Demonstração',
-          email: 'demo@clubmanager.com',
-          role: 'admin',
+          name: AUTH_CONFIG.DEMO_USER.name,
+          email: AUTH_CONFIG.DEMO_USER.email,
+          role: AUTH_CONFIG.DEMO_USER.role,
           avatar: 'https://api.dicebear.com/8.x/initials/svg?seed=Demo'
         };
         setUser(mockUser);
         return { success: true, error: null };
       } else {
-        return { success: false, error: 'Credenciais inválidas. Use: demo@clubmanager.com / demo123456' };
+        return { success: false, error: `Credenciais inválidas. Use: ${AUTH_CONFIG.DEMO_USER.email} / demo123456` };
       }
     }
     
-    // Login normal com Supabase configurado
+    // Login normal com Supabase configurado usando retry
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      return { success: !error, error: error?.message || null };
+      const result = await retryManager.executeWithRetry(
+        async () => {
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          return { success: true, error: null };
+        },
+        (attempt, error) => {
+          console.warn(`Tentativa de login ${attempt} falhou:`, error);
+          errorLogger.logError(error, 'login_retry', email);
+        }
+      );
+      
+      return result;
     } catch (err) {
-      console.error('Erro de conexão com Supabase:', err);
-      return { success: false, error: 'Erro de conexão. Verifique a configuração do Supabase.' };
+      const errorInfo = processAuthError(err);
+      errorLogger.logError(err, 'login', email);
+      
+      return { 
+        success: false, 
+        error: errorInfo.userMessage 
+      };
     }
   };
 
@@ -217,36 +279,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     try {
-      const { data, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { name }
+      const result = await retryManager.executeWithRetry(
+        async () => {
+          const { data, error: authError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: { name }
+            }
+          });
+
+          if (authError) throw authError;
+
+          if (data.user) {
+            // O perfil é criado automaticamente pelo trigger handle_new_user()
+            // Aguardar um pouco para o trigger processar
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            console.log('✅ Usuário registrado com sucesso. Perfil criado automaticamente pelo trigger.');
+            return { success: true, error: null };
+          }
+
+          throw new Error('Erro desconhecido no cadastro');
+        },
+        (attempt, error) => {
+          console.warn(`Tentativa de cadastro ${attempt} falhou:`, error);
+          errorLogger.logError(error, 'register_retry', email);
         }
-      });
+      );
 
-      if (authError) {
-        return { success: false, error: authError.message };
-      }
-
-      if (data.user) {
-        // O perfil é criado automaticamente pelo trigger handle_new_user()
-        // Aguardar um pouco para o trigger processar
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        console.log('✅ Usuário registrado com sucesso. Perfil criado automaticamente pelo trigger.');
-        return { success: true, error: null };
-      }
-
-      return { success: false, error: 'Erro desconhecido no cadastro' };
+      return result;
     } catch (err) {
-      console.error('Erro no cadastro:', err);
-      return { success: false, error: 'Erro de conexão. Verifique a configuração do Supabase.' };
+      const errorInfo = processAuthError(err);
+      errorLogger.logError(err, 'register', email);
+      
+      return { 
+        success: false, 
+        error: errorInfo.userMessage 
+      };
     }
   };
 
   const loginAsDemo = async () => {
-    return login('demo@clubmanager.com', 'demo123456');
+    return login(AUTH_CONFIG.DEMO_USER.email, 'demo123456');
   };
 
   const logout = async () => {
@@ -264,17 +339,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       {!isSupabaseConfigured && (
         <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-black px-4 py-2 text-sm z-50">
           ⚠️ <strong>Modo Desenvolvimento:</strong> Supabase não configurado. 
-          Use: demo@clubmanager.com / demo123456
+          Use: {AUTH_CONFIG.DEMO_USER.email} / demo123456
         </div>
       )}
       
       {isLoading ? (
-         <div className="fixed inset-0 flex items-center justify-center bg-slate-900">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <p className="mt-4 text-white font-semibold">Carregando Sessão...</p>
-          </div>
-        </div>
+        <AuthLoader message="Verificando sessão de usuário..." />
       ) : (
         children
       )}

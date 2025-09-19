@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useMultitenantAuth } from '../../contexts/MultitenantAuthContext';
+import { useMultitenantAuth } from '../../contexts/MultitenantAuthContextSimple';
 import { supabase } from '../../lib/supabase';
 
 interface SenhaProvisionariaGuardProps {

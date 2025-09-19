@@ -181,10 +181,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
         // Carregar apenas itens de estoque baixo para dashboard
         const { data: lowStockData, error: lowStockError } = await supabase
-          .from('inventory_items')
-          .select('*')
-          .lte('current_stock', supabase.raw('min_stock'))
-          .limit(10);
+          .rpc('get_low_stock_items', { limit_count: 10 });
 
         if (lowStockError) {
           console.error('Erro ao carregar estoque baixo:', lowStockError);

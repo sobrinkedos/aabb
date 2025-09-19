@@ -4,7 +4,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import BalcaoView from '../BalcaoView';
 import { useMenuItems } from '../../../../hooks/useMenuItems';
 import { useBarAttendance } from '../../../../hooks/useBarAttendance';
-import { useAuth } from '../../../../contexts/AuthContext';
+import { useAuth } from '../../../../contexts/AuthContextSimple';
 
 // Mock dos hooks
 vi.mock('../../../../hooks/useMenuItems');
