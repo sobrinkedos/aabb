@@ -46,8 +46,27 @@ export const MultitenantAuthProvider: React.FC<MultitenantAuthProviderProps> = (
   };
 
   const registrarEmpresa = async (dados: RegistroEmpresaData): Promise<ApiResponse<{ empresa: Empresa; usuario: UsuarioEmpresa }>> => {
-    console.log('🔧 Modo simplificado - registrarEmpresa mock');
-    return { success: false, error: 'Registro não disponível no modo simplificado' };
+    console.log('🔧 Modo simplificado - registrarEmpresa redirecionando para serviço principal');
+    
+    // Importar dinamicamente para evitar dependência circular
+    const { RegistroEmpresaService } = await import('../services/registroEmpresaService');
+    
+    const resultado = await RegistroEmpresaService.registrarEmpresa(dados);
+    
+    if (resultado.success && resultado.empresa && resultado.usuario) {
+      return {
+        success: true,
+        data: {
+          empresa: resultado.empresa,
+          usuario: resultado.usuario
+        }
+      };
+    } else {
+      return {
+        success: false,
+        error: resultado.error || 'Erro desconhecido no registro'
+      };
+    }
   };
 
   const logout = async () => {

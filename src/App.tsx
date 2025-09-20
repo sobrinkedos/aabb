@@ -22,7 +22,7 @@ import MembersModule from './pages/Members';
 import BarAttendance from './pages/BarAttendance';
 import CashManagement from './pages/CashManagement';
 import TestNewModal from './components/debug/TestNewModal';
-import { ConfiguracoesEmpresa } from './pages/Auth/ConfiguracoesEmpresa';
+import { ConfiguracoesEmpresaSimples } from './pages/Auth/ConfiguracoesEmpresaSimples';
 import { TestTableDisplay } from './examples';
 import './utils/debug-transactions';
 
@@ -92,7 +92,7 @@ function App() {
             <Route path="members" element={<MembersModule />} />
             <Route path="bar/attendance" element={<BarAttendance />} />
 
-            <Route path="settings" element={<ConfiguracoesEmpresa />} />
+            <Route path="settings" element={<ConfiguracoesEmpresaSimples />} />
             <Route path="test-modal" element={<TestNewModal />} />
             <Route path="test-table-display" element={<TestTableDisplay />} />
           </Route>

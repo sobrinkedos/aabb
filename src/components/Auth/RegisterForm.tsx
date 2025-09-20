@@ -56,13 +56,13 @@ const RegisterForm: React.FC = () => {
     const result = await register(formData.name, formData.email, formData.password);
     
     if (result.success) {
-      setSuccess('Cadastro realizado com sucesso! Verifique seu email para confirmar a conta.');
+      setSuccess('🎉 Cadastro realizado com sucesso! Você foi registrado como ADMINISTRADOR PRINCIPAL com todos os poderes do sistema. Faça login para acessar.');
       setFormData({ name: '', email: '', password: '', confirmPassword: '' });
       
-      // Redirecionar para login após 2 segundos
+      // Redirecionar para login após 3 segundos
       setTimeout(() => {
         navigate('/login');
-      }, 2000);
+      }, 3000);
     } else {
       setError(result.error || 'Erro no cadastro. Tente novamente.');
     }
@@ -84,6 +84,12 @@ const RegisterForm: React.FC = () => {
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Criar Conta</h1>
           <p className="text-gray-600">ClubManager Pro</p>
+          
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-800">
+              <strong>🔐 Primeiro Usuário:</strong> Será automaticamente o administrador principal com todos os poderes do sistema.
+            </p>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

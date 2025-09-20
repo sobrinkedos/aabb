@@ -1,5 +1,60 @@
 # Implementation Plan
 
+- [x] 1. Implementar sistema de hierarquia de administradores
+
+
+  - Atualizar estrutura do banco para suportar papéis e primeiro usuário
+  - Criar sistema de privilégios administrativos
+  - Implementar controle de acesso baseado em papéis
+  - Configurar processo automático para primeiro usuário
+  - _Requirements: 1.4, 1.5, 1.7, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
+
+- [x] 1.1 Atualizar estrutura de usuários para hierarquia
+
+
+  - Adicionar campo `papel` (SUPER_ADMIN, ADMIN, MANAGER, USER) na tabela usuarios_empresa
+  - Adicionar campo `is_primeiro_usuario` para identificar o primeiro usuário
+  - Criar índice único para garantir apenas um primeiro usuário por empresa
+  - Atualizar interfaces TypeScript com novos tipos
+  - _Requirements: 1.4, 1.5, 4.1, 4.2_
+
+- [x] 1.2 Implementar sistema de privilégios administrativos
+
+
+
+  - Criar matriz de privilégios por papel (configurações, usuários, segurança, etc.)
+  - Implementar função `tem_privilegio_admin()` no banco de dados
+  - Criar interface TypeScript para definir privilégios por papel
+  - Configurar validação de privilégios no backend
+  - _Requirements: 4.1, 4.2, 4.3, 4.4_
+
+- [x] 1.3 Criar triggers para primeiro usuário
+
+
+  - Implementar trigger `validate_primeiro_usuario()` para garantir unicidade
+  - Criar trigger `setup_primeiro_usuario()` para configuração automática
+  - Configurar criação automática de permissões completas para SUPER_ADMIN
+  - Implementar criação de configurações padrão da empresa
+  - _Requirements: 1.4, 1.5, 1.7, 4.5, 4.6_
+
+- [x] 1.4 Atualizar políticas RLS para hierarquia
+
+
+  - Modificar políticas existentes para considerar papéis de usuário
+  - Criar política específica para configurações críticas (apenas SUPER_ADMIN)
+  - Implementar controle de acesso baseado em privilégios administrativos
+  - Configurar função `is_primeiro_usuario()` para verificações especiais
+  - _Requirements: 4.3, 4.4, 4.5_
+
+- [x] 1.5 Atualizar categorias de configurações
+
+
+  - Reorganizar configurações em categorias com controle de acesso
+  - Implementar configurações restritas ao SUPER_ADMIN (segurança, sistema, integração)
+  - Criar mapeamento de acesso por categoria e papel
+  - Atualizar interface de configurações para mostrar apenas categorias permitidas
+  - _Requirements: 4.2, 4.3, 4.4_
+
 -
   1. [x] Configurar estrutura base do banco de dados
   - ✅ Criar tabelas principais do sistema multitenant
@@ -75,6 +130,45 @@
   - ✅ Implementar função para logging automático
   - _Requirements: 2.1, 2.2, 7.1, 7.2, 7.3_
 
+- [x] 2. Atualizar processo de registro para primeiro usuário SUPER_ADMIN
+
+
+
+  - Modificar página de registro para criar automaticamente SUPER_ADMIN
+  - Implementar processo de onboarding específico para primeiro usuário
+  - Configurar criação automática de configurações e permissões
+  - Adicionar interface de boas-vindas com tour das funcionalidades
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7_
+
+- [x] 2.1 Atualizar formulário de registro
+
+
+  - Modificar formulário para destacar que será criado como administrador principal
+  - Adicionar informações sobre privilégios que serão concedidos
+  - Implementar validação específica para dados do SUPER_ADMIN
+  - Configurar termos de uso específicos para administradores
+  - _Requirements: 1.1, 1.2, 1.4_
+
+- [x] 2.2 Implementar criação automática de SUPER_ADMIN
+
+
+
+  - Modificar função de registro para marcar primeiro usuário
+  - Configurar atribuição automática do papel SUPER_ADMIN
+  - Implementar criação de configurações padrão da empresa
+  - Configurar permissões completas para todos os módulos
+  - _Requirements: 1.2, 1.3, 1.4, 1.5, 1.7_
+
+- [x] 2.3 Criar processo de onboarding para SUPER_ADMIN
+
+
+
+  - Implementar tela de boas-vindas com explicação de privilégios
+  - Criar tour guiado das funcionalidades administrativas
+  - Configurar assistente de configuração inicial da empresa
+  - Implementar opção de convite para primeiro funcionário
+  - _Requirements: 1.5, 1.7_
+
 -
   3. [x] Desenvolver página de registro de empresa
   - ✅ Criar formulário de registro com validações
@@ -139,6 +233,45 @@
   - Configurar links temporários seguros
   - _Requirements: 5.5, 5.6_
 
+- [-] 5. Atualizar gestão de usuários com hierarquia administrativa
+
+  - Modificar interface de usuários para mostrar papéis e privilégios
+  - Implementar controle de criação de administradores
+  - Configurar restrições baseadas no papel do usuário logado
+  - Adicionar auditoria específica para mudanças de papel
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 4.1, 4.2, 4.6_
+
+
+
+
+- [ ] 5.1 Atualizar interface de gestão de usuários
+  - Modificar listagem para mostrar papel de cada usuário
+  - Implementar filtros por papel (SUPER_ADMIN, ADMIN, MANAGER, USER)
+  - Criar indicadores visuais para diferentes níveis de acesso
+  - Configurar tooltips explicativos sobre cada papel
+  - _Requirements: 3.1, 4.1, 4.2_
+
+- [ ] 5.2 Implementar controle de criação de administradores
+  - Configurar que apenas SUPER_ADMIN pode criar outros SUPER_ADMINs
+  - Implementar restrição para ADMINs criarem apenas MANAGERs e USERs
+  - Criar validação para impedir auto-rebaixamento do último SUPER_ADMIN
+  - Configurar confirmação dupla para mudanças de papel críticas
+  - _Requirements: 4.2, 4.3, 4.4, 4.6_
+
+- [ ] 5.3 Criar sistema de delegação de privilégios
+  - Implementar interface para SUPER_ADMIN delegar privilégios específicos
+  - Configurar sistema de privilégios temporários
+  - Criar histórico de delegações e revogações
+  - Implementar notificações para mudanças de privilégios
+  - _Requirements: 4.2, 4.4, 4.6_
+
+- [ ] 5.4 Implementar auditoria de mudanças administrativas
+  - Configurar logs específicos para mudanças de papel
+  - Implementar alertas para criação de novos administradores
+  - Criar relatório de atividades administrativas
+  - Configurar notificações para o SUPER_ADMIN sobre mudanças críticas
+  - _Requirements: 4.6, 8.1, 8.2, 8.3_
+
 -
   5. [x] Desenvolver gestão de funcionários
   - ✅ Criar interface para cadastro de funcionários
@@ -171,6 +304,57 @@
   - ✅ Configurar logs de alterações de status
   - _Requirements: 3.6_
 
+- [-] 3. Implementar controle de acesso baseado em hierarquia
+
+
+  - Atualizar sistema de permissões para considerar papéis administrativos
+  - Criar interface diferenciada para cada nível de administrador
+  - Implementar restrições de acesso a funcionalidades críticas
+  - Configurar validação de privilégios em tempo real
+  - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
+
+- [x] 3.1 Atualizar hooks de autenticação e autorização
+
+
+
+
+  - Modificar hook `useAuth` para incluir papel e privilégios do usuário
+  - Criar hook `usePrivilegios` para verificar privilégios administrativos
+  - Implementar hook `usePermissoes` atualizado com hierarquia
+  - Configurar cache de privilégios para performance
+  - _Requirements: 4.1, 4.2, 4.3_
+
+
+- [x] 3.2 Criar componentes de proteção por hierarquia
+
+
+  - Implementar componente `ProtectedByRole` para controle por papel
+  - Criar componente `ProtectedByPrivilege` para funcionalidades específicas
+  - Atualizar componente `ProtectedRoute` para considerar hierarquia
+  - Configurar fallbacks para usuários sem privilégios
+  - _Requirements: 4.3, 4.4, 4.5_
+
+- [x] 3.3 Implementar interface administrativa diferenciada
+
+
+
+  - Criar menu administrativo com itens baseados em privilégios
+  - Implementar dashboard específico para cada nível de administrador
+  - Configurar alertas e notificações baseadas em papel
+  - Adicionar indicadores visuais de nível de acesso
+  - _Requirements: 4.2, 4.3, 4.4_
+
+- [x] 3.4 Atualizar middleware de autorização no backend
+
+
+
+
+  - Modificar middleware para verificar privilégios administrativos
+  - Implementar validação de acesso a endpoints críticos
+  - Configurar logs específicos para tentativas de acesso negado
+  - Criar sistema de rate limiting baseado em papel
+  - _Requirements: 4.4, 4.5, 4.6_
+
 -
   6. [x] Desenvolver sistema de permissões
   - ✅ Criar interface para definir permissões por módulo
@@ -202,6 +386,41 @@
   - Implementar invalidação de cache de permissões
   - Criar sistema de notificação de mudanças
   - _Requirements: 4.5_
+
+- [-] 4. Atualizar página de configurações com controle hierárquico
+
+  - Reorganizar configurações em categorias com controle de acesso
+  - Implementar interface diferenciada por nível de administrador
+  - Configurar validações específicas para configurações críticas
+  - Adicionar alertas sobre impacto das configurações
+  - _Requirements: 4.2, 4.3, 4.4, 7.1, 7.2, 7.3, 7.4, 7.5_
+
+- [x] 4.1 Reorganizar categorias de configurações
+
+
+  - Separar configurações em: Geral, Segurança, Sistema, Notificações, Integração
+  - Implementar controle de acesso por categoria baseado em papel
+  - Criar interface que mostra apenas categorias permitidas
+  - Configurar tooltips explicativos sobre restrições de acesso
+  - _Requirements: 4.2, 4.3, 7.1_
+
+- [x] 4.2 Implementar configurações restritas ao SUPER_ADMIN
+
+
+  - Criar seção de Configurações de Segurança (apenas SUPER_ADMIN)
+  - Implementar Configurações de Sistema (backup, logs, limites)
+  - Configurar Configurações de Integração (APIs, webhooks)
+  - Adicionar validação dupla para alterações críticas
+  - _Requirements: 4.3, 4.4, 7.2, 7.3_
+
+
+
+- [ ] 4.3 Criar interface de configurações por papel
+  - Implementar layout diferenciado para SUPER_ADMIN vs ADMIN
+  - Configurar alertas sobre configurações que afetam toda a empresa
+  - Criar sistema de aprovação para mudanças críticas
+  - Implementar histórico de alterações de configurações
+  - _Requirements: 4.2, 4.4, 7.4, 7.5_
 
 -
   7. [x] Desenvolver página de configurações
@@ -292,6 +511,41 @@
   - ✅ Implementar invalidação de sessões antigas
   - ✅ Adicionar log da alteração de senha
   - _Requirements: 3.5, 5.6_
+
+- [ ] 6. Implementar testes específicos para hierarquia administrativa
+  - Criar testes para validar privilégios por papel
+  - Implementar testes de segurança para configurações críticas
+  - Configurar testes de processo de primeiro usuário
+  - Adicionar testes de auditoria para mudanças administrativas
+  - _Requirements: 1.4, 1.5, 4.3, 4.4, 4.5, 4.6_
+
+- [ ] 6.1 Criar testes de privilégios administrativos
+  - Implementar testes para cada nível de papel (SUPER_ADMIN, ADMIN, MANAGER, USER)
+  - Verificar acesso correto a configurações por categoria
+  - Testar restrições de criação de usuários por papel
+  - Validar funcionamento da matriz de privilégios
+  - _Requirements: 4.1, 4.2, 4.3, 4.4_
+
+- [ ] 6.2 Implementar testes do processo de primeiro usuário
+  - Testar criação automática de SUPER_ADMIN no registro
+  - Verificar configuração automática de permissões e configurações
+  - Validar unicidade do primeiro usuário por empresa
+  - Testar processo de onboarding completo
+  - _Requirements: 1.4, 1.5, 1.7_
+
+- [ ] 6.3 Criar testes de segurança para configurações críticas
+  - Testar acesso negado a configurações restritas
+  - Verificar validação de privilégios em tempo real
+  - Testar tentativas de escalação de privilégios
+  - Validar logs de tentativas de acesso negado
+  - _Requirements: 4.3, 4.4, 4.5, 4.6_
+
+- [ ] 6.4 Implementar testes de auditoria administrativa
+  - Testar logging de mudanças de papel
+  - Verificar alertas para atividades administrativas críticas
+  - Testar relatórios de atividades por papel
+  - Validar notificações para SUPER_ADMIN
+  - _Requirements: 4.6, 8.1, 8.2, 8.3_
 
 -
   10. [x] Desenvolver testes de segurança e isolamento

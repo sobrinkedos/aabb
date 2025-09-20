@@ -4,6 +4,8 @@ import { useUserManagement } from '../../hooks/useUserManagement';
 import { PermissionMatrix } from './PermissionMatrix';
 import { RoleEditor } from './RoleEditor';
 import { AccessLogViewer } from './AccessLogViewer';
+import { ValidatedForm, ValidatedInput, ValidatedSelect, ValidatedCheckbox } from './ValidatedForm';
+import { UserFormSchema } from '../../schemas/admin.schemas';
 
 interface UserManagementPanelProps {
   className?: string;
@@ -39,13 +41,14 @@ export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ classN
     isActive: true
   });
 
-  const handleCreateUser = async () => {
+  const handleCreateUser = async (userData: any) => {
     try {
-      await createUser(userForm);
+      await createUser(userData);
       setShowUserForm(false);
       setUserForm({ name: '', email: '', department: '', roleId: '', isActive: true });
     } catch (error) {
       console.error('Erro ao criar usuário:', error);
+      throw error; // Re-throw para que o ValidatedForm possa capturar
     }
   };
 
@@ -255,66 +258,79 @@ export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ classN
             <div className="mt-3">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Novo Usuário</h3>
               
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Nome</label>
-                  <input
-                    type="text"
-                    value={userForm.name}
-                    onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <input
-                    type="email"
-                    value={userForm.email}
-                    onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Departamento</label>
-                  <input
-                    type="text"
-                    value={userForm.department}
-                    onChange={(e) => setUserForm({ ...userForm, department: e.target.value })}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Função</label>
-                  <select
-                    value={userForm.roleId}
-                    onChange={(e) => setUserForm({ ...userForm, roleId: e.target.value })}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Selecione uma função</option>
-                    {roles.map(role => (
-                      <option key={role.id} value={role.id}>{role.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  onClick={() => setShowUserForm(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleCreateUser}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                >
-                  Criar Usuário
-                </button>
-              </div>
+              <ValidatedForm
+                schema={UserFormSchema}
+                initialData={userForm}
+                onSubmit={handleCreateUser}
+              >
+                {({ data, updateField, getFieldError, isSubmitting, handleSubmit }) => (
+                  <>
+                    <ValidatedInput
+                      label="Nome"
+                      required
+                      value={data.name}
+                      onChange={(value) => updateField('name', value)}
+                      error={getFieldError('name')}
+                      placeholder="Digite o nome completo"
+                    />
+                    
+                    <ValidatedInput
+                      label="Email"
+                      type="email"
+                      required
+                      value={data.email}
+                      onChange={(value) => updateField('email', value)}
+                      error={getFieldError('email')}
+                      placeholder="Digite o email"
+                    />
+                    
+                    <ValidatedInput
+                      label="Departamento"
+                      value={data.department}
+                      onChange={(value) => updateField('department', value)}
+                      error={getFieldError('department')}
+                      placeholder="Digite o departamento"
+                    />
+                    
+                    <ValidatedSelect
+                      label="Função"
+                      required
+                      value={data.roleId}
+                      onChange={(value) => updateField('roleId', value)}
+                      error={getFieldError('roleId')}
+                      options={roles.map(role => ({ value: role.id, label: role.name }))}
+                      placeholder="Selecione uma função"
+                    />
+                    
+                    <ValidatedCheckbox
+                      label="Usuário ativo"
+                      description="Usuário pode fazer login no sistema"
+                      checked={data.isActive || false}
+                      onChange={(checked) => updateField('isActive', checked)}
+                      error={getFieldError('isActive')}
+                    />
+                    
+                    <div className="flex justify-end space-x-3 mt-6">
+                      <button
+                        type="button"
+                        onClick={() => setShowUserForm(false)}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                        disabled={isSubmitting}
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSubmitting ? 'Criando...' : 'Criar Usuário'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </ValidatedForm>
             </div>
           </div>
         </div>

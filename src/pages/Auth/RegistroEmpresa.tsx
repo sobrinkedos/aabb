@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useMultitenantAuth } from '../../contexts/MultitenantAuthContextSimple';
 import { RegistroEmpresaData } from '../../types/multitenant';
+import { useRegistroEmpresa } from '../../hooks/useRegistroEmpresa';
 
 interface FormErrors {
   [key: string]: string;
@@ -9,7 +9,7 @@ interface FormErrors {
 
 export const RegistroEmpresa: React.FC = () => {
   const navigate = useNavigate();
-  const { registrarEmpresa, isLoading } = useMultitenantAuth();
+  const { registrarEmpresa, isLoading, error: registroError, clearError } = useRegistroEmpresa();
   
   const [formData, setFormData] = useState<RegistroEmpresaData>({
     nome_empresa: '',
@@ -199,13 +199,18 @@ export const RegistroEmpresa: React.FC = () => {
       return;
     }
 
+    // Limpar erros anteriores
+    clearError();
+    setErrors({});
+
     const result = await registrarEmpresa(formData);
     
     if (result.success) {
-      navigate('/login', {
+      navigate('/dashboard', {
         state: {
-          message: 'Empresa registrada com sucesso! Verifique seu email para ativar a conta.',
-          type: 'success'
+          message: 'Empresa registrada com sucesso! Você foi automaticamente logado como Administrador Principal.',
+          type: 'success',
+          showOnboarding: true // Flag para mostrar onboarding
         }
       });
     } else {
@@ -225,6 +230,32 @@ export const RegistroEmpresa: React.FC = () => {
             faça login se já tem uma conta
           </Link>
         </p>
+        
+        {/* Informação sobre privilégios do administrador principal */}
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-blue-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">
+                Administrador Principal
+              </h3>
+              <div className="mt-1 text-sm text-blue-700">
+                <p>Você será o <strong>Administrador Principal</strong> da empresa com acesso total a:</p>
+                <ul className="mt-2 list-disc list-inside space-y-1 text-xs">
+                  <li>Configurações da empresa e segurança</li>
+                  <li>Gerenciamento completo de usuários</li>
+                  <li>Relatórios avançados e auditoria</li>
+                  <li>Integrações externas e backup</li>
+                  <li>Todos os módulos do sistema</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
@@ -423,7 +454,66 @@ export const RegistroEmpresa: React.FC = () => {
 
             {step === 2 && (
               <>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Dados do Administrador</h3>
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Dados do Administrador Principal</h3>
+                  
+                  {/* Destaque dos privilégios */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h4 className="text-sm font-semibold text-blue-900">
+                          🎯 Você terá privilégios totais como Administrador Principal
+                        </h4>
+                        <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-blue-800">
+                          <div className="flex items-center">
+                            <svg className="h-3 w-3 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Configurações críticas
+                          </div>
+                          <div className="flex items-center">
+                            <svg className="h-3 w-3 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Gerenciar administradores
+                          </div>
+                          <div className="flex items-center">
+                            <svg className="h-3 w-3 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Integrações externas
+                          </div>
+                          <div className="flex items-center">
+                            <svg className="h-3 w-3 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Backup e segurança
+                          </div>
+                          <div className="flex items-center">
+                            <svg className="h-3 w-3 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Auditoria completa
+                          </div>
+                          <div className="flex items-center">
+                            <svg className="h-3 w-3 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Todos os módulos
+                          </div>
+                        </div>
+                        <p className="mt-2 text-xs text-blue-700 font-medium">
+                          💡 Após o registro, você poderá criar outros administradores com privilégios limitados.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 
                 <div>
                   <label htmlFor="nome_admin" className="block text-sm font-medium text-gray-700">
@@ -550,7 +640,32 @@ export const RegistroEmpresa: React.FC = () => {
                   )}
                 </div>
 
-                {errors.submit && (
+                {/* Termos específicos para administradores */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-yellow-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h4 className="text-sm font-medium text-yellow-800">
+                        Responsabilidades do Administrador Principal
+                      </h4>
+                      <div className="mt-1 text-sm text-yellow-700">
+                        <p className="mb-2">Ao se registrar como Administrador Principal, você concorda em:</p>
+                        <ul className="list-disc list-inside space-y-1 text-xs">
+                          <li>Ser responsável pela segurança e configurações da empresa</li>
+                          <li>Gerenciar adequadamente os acessos de outros usuários</li>
+                          <li>Manter as informações da empresa atualizadas e seguras</li>
+                          <li>Usar os privilégios administrativos de forma responsável</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {(errors.submit || registroError) && (
                   <div className="rounded-md bg-red-50 p-4">
                     <div className="flex">
                       <div className="flex-shrink-0">
@@ -560,7 +675,7 @@ export const RegistroEmpresa: React.FC = () => {
                       </div>
                       <div className="ml-3">
                         <h3 className="text-sm font-medium text-red-800">
-                          {errors.submit}
+                          {errors.submit || registroError}
                         </h3>
                       </div>
                     </div>

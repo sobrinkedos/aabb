@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useMultitenantAuth } from '../contexts/MultitenantAuthContextSimple';
 import { User, Role, Permission, UserFormData, UserManagementHook } from '../types/admin';
 import { AuthorizationMiddleware } from '../services/authorization-middleware';
+import { validateUserForm, validateCreateRole } from '../schemas/admin.schemas';
 
 export const useUserManagement = (): UserManagementHook => {
   const { empresa, user } = useMultitenantAuth();
@@ -107,6 +108,13 @@ export const useUserManagement = (): UserManagementHook => {
   // Criar usuário
   const createUser = async (userData: UserFormData): Promise<User> => {
     if (!empresa?.id) throw new Error('Empresa não identificada');
+
+    // Validar dados do usuário
+    const validation = validateUserForm(userData);
+    if (!validation.success) {
+      const errorMessage = validation.error.errors.map(e => e.message).join(', ');
+      throw new Error(`Dados inválidos: ${errorMessage}`);
+    }
 
     try {
       setError(null);
@@ -242,6 +250,13 @@ export const useUserManagement = (): UserManagementHook => {
   // Criar função
   const createRole = async (roleData: Omit<Role, 'id'>): Promise<Role> => {
     if (!empresa?.id) throw new Error('Empresa não identificada');
+
+    // Validar dados da função
+    const validation = validateCreateRole(roleData);
+    if (!validation.success) {
+      const errorMessage = validation.error.errors.map(e => e.message).join(', ');
+      throw new Error(`Dados inválidos: ${errorMessage}`);
+    }
 
     try {
       setError(null);

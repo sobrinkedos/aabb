@@ -1,6 +1,13 @@
 // Tipos para o sistema de autenticação multitenant
 
 // Enums
+export enum PapelUsuario {
+  SUPER_ADMIN = 'SUPER_ADMIN',    // Primeiro usuário - privilégios totais
+  ADMIN = 'ADMIN',                // Administrador com algumas restrições
+  MANAGER = 'MANAGER',            // Gerente com acesso limitado
+  USER = 'USER'                   // Usuário comum
+}
+
 export enum ModuloSistema {
   DASHBOARD = 'dashboard',
   MONITOR_BAR = 'monitor_bar',
@@ -15,6 +22,7 @@ export enum ModuloSistema {
 }
 
 export enum CategoriaConfiguracao {
+  GERAL = 'geral',
   SEGURANCA = 'seguranca',
   SISTEMA = 'sistema',
   NOTIFICACOES = 'notificacoes',
@@ -51,13 +59,80 @@ export interface UsuarioEmpresa {
   email: string;
   telefone?: string;
   cargo?: string;
-  tipo_usuario: 'administrador' | 'funcionario';
+  tipo_usuario: 'administrador' | 'funcionario'; // Mantido para compatibilidade
+  papel: PapelUsuario;
+  is_primeiro_usuario: boolean;
   status: 'ativo' | 'inativo' | 'bloqueado';
   senha_provisoria: boolean;
   ultimo_login?: string;
   created_at: string;
   updated_at: string;
 }
+
+// Interface para Privilégios Administrativos
+export interface PrivilegiosAdmin {
+  configuracoes_empresa: boolean;
+  gerenciar_usuarios: boolean;
+  configuracoes_seguranca: boolean;
+  integracao_externa: boolean;
+  backup_restauracao: boolean;
+  relatorios_avancados: boolean;
+  auditoria_completa: boolean;
+  configuracoes_sistema: boolean;
+}
+
+// Matriz de privilégios por papel
+export const PRIVILEGIOS_POR_PAPEL: Record<PapelUsuario, PrivilegiosAdmin> = {
+  [PapelUsuario.SUPER_ADMIN]: {
+    configuracoes_empresa: true,
+    gerenciar_usuarios: true,
+    configuracoes_seguranca: true,
+    integracao_externa: true,
+    backup_restauracao: true,
+    relatorios_avancados: true,
+    auditoria_completa: true,
+    configuracoes_sistema: true
+  },
+  [PapelUsuario.ADMIN]: {
+    configuracoes_empresa: true,
+    gerenciar_usuarios: true,
+    configuracoes_seguranca: false,  // Restrito ao SUPER_ADMIN
+    integracao_externa: false,       // Restrito ao SUPER_ADMIN
+    backup_restauracao: true,
+    relatorios_avancados: true,
+    auditoria_completa: false,       // Restrito ao SUPER_ADMIN
+    configuracoes_sistema: false     // Restrito ao SUPER_ADMIN
+  },
+  [PapelUsuario.MANAGER]: {
+    configuracoes_empresa: false,
+    gerenciar_usuarios: true,
+    configuracoes_seguranca: false,
+    integracao_externa: false,
+    backup_restauracao: false,
+    relatorios_avancados: true,
+    auditoria_completa: false,
+    configuracoes_sistema: false
+  },
+  [PapelUsuario.USER]: {
+    configuracoes_empresa: false,
+    gerenciar_usuarios: false,
+    configuracoes_seguranca: false,
+    integracao_externa: false,
+    backup_restauracao: false,
+    relatorios_avancados: false,
+    auditoria_completa: false,
+    configuracoes_sistema: false
+  }
+};
+
+// Mapeamento de acesso por categoria de configuração
+export const ACESSO_CONFIGURACAO: Record<string, PapelUsuario[]> = {
+  geral: [PapelUsuario.SUPER_ADMIN, PapelUsuario.ADMIN],
+  seguranca: [PapelUsuario.SUPER_ADMIN],
+  sistema: [PapelUsuario.SUPER_ADMIN],
+  notificacoes: [PapelUsuario.SUPER_ADMIN, PapelUsuario.ADMIN],
+  integracao: [PapelUsuario.SUPER_ADMIN]
+};
 
 // Interface para Permissões de Módulo
 export interface PermissaoModulo {
@@ -89,29 +164,51 @@ export interface ConfiguracaoEmpresa {
 }
 
 // Interfaces específicas para cada categoria de configuração
-export interface ConfiguracaoSeguranca {
-  tempo_sessao: number; // em minutos
-  tentativas_login: number;
-  bloqueio_temporario: number; // em minutos
-  exigir_2fa: boolean;
-}
-
-export interface ConfiguracaoSistema {
+export interface ConfiguracaoGeral {
+  nome_empresa: string;
+  logo_url?: string;
   tema: 'claro' | 'escuro' | 'auto';
   idioma: string;
   timezone: string;
   formato_data: string;
 }
 
+export interface ConfiguracaoSeguranca {
+  tempo_sessao: number; // em minutos
+  tentativas_login: number;
+  bloqueio_temporario: number; // em minutos
+  exigir_2fa: boolean;
+  whitelist_ips?: string[];
+  politica_senha: {
+    min_caracteres: number;
+    exigir_maiuscula: boolean;
+    exigir_numero: boolean;
+    exigir_simbolo: boolean;
+  };
+}
+
+export interface ConfiguracaoSistema {
+  backup_automatico: boolean;
+  retencao_logs_dias: number;
+  limite_usuarios: number;
+  modulos_habilitados: string[];
+}
+
 export interface ConfiguracaoNotificacoes {
   email_novos_usuarios: boolean;
   email_tentativas_login: boolean;
   email_alteracoes_config: boolean;
+  webhook_eventos: string[];
 }
 
 export interface ConfiguracaoIntegracao {
   webhook_url?: string;
   api_keys: Record<string, string>;
+  integracao_externa: {
+    erp_ativo: boolean;
+    api_endpoint?: string;
+    token_acesso?: string;
+  };
 }
 
 // Interface para Logs de Auditoria
@@ -154,12 +251,15 @@ export interface AuthContextMultitenant {
   user: UsuarioEmpresa | null;
   empresa: Empresa | null;
   permissoes: Record<ModuloSistema, PermissaoModulo>;
+  privilegios: PrivilegiosAdmin;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isPrimeiroUsuario: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   registrarEmpresa: (data: RegistroEmpresaData) => Promise<{ success: boolean; error?: string }>;
   verificarPermissao: (modulo: ModuloSistema, acao: keyof PermissaoModulo) => boolean;
+  verificarPrivilegio: (privilegio: keyof PrivilegiosAdmin) => boolean;
   atualizarPermissoes: () => Promise<void>;
 }
 
