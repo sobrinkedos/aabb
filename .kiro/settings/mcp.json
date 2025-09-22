@@ -18,7 +18,8 @@
         "list_projects",
         "get_project",
         "apply_migration",
-        "list_migrations"
+        "list_migrations",
+        "get_logs"
       ]
     }
   }

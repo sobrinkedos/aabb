@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, User, Phone, Mail, Calendar, Badge, Eye, Edit, Trash2, Save, X } from 'lucide-react';
 import { useBarEmployees, NewBarEmployeeData, UpdateBarEmployeeData } from '../../hooks/useBarEmployees';
+import { useEmployeeCreation } from '../../hooks/useEmployeeCreation';
 import { BarEmployee } from '../../types';
 import { EmployeeModal } from '../../components/EmployeeModal';
 import { NetworkNotification } from '../../components/NetworkNotification';
@@ -22,6 +23,9 @@ const BarEmployeesModule: React.FC = () => {
     filterEmployees,
     getStats
   } = useBarEmployees();
+
+  // Hook para criação completa de funcionários com credenciais
+  const { createEmployeeWithDefaultPermissions, loading: creationLoading } = useEmployeeCreation();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'atendente' | 'garcom' | 'cozinheiro' | 'barman' | 'gerente'>('all');
@@ -93,24 +97,72 @@ const BarEmployeesModule: React.FC = () => {
     };
   };
 
-  // Funções do formulário de novo funcionário
+  // Função auxiliar para converter roles
+  const convertRoleToBarRole = (role: EmployeeRole): 'atendente' | 'garcom' | 'cozinheiro' | 'barman' | 'gerente' => {
+    const roleMap: Record<EmployeeRole, 'atendente' | 'garcom' | 'cozinheiro' | 'barman' | 'gerente'> = {
+      waiter: 'garcom',
+      cook: 'cozinheiro',
+      cashier: 'atendente',
+      supervisor: 'barman',
+      manager: 'gerente',
+      admin: 'gerente'
+    };
+    return roleMap[role] || 'garcom';
+  };
+
+  // Funções do formulário de novo funcionário - VERSÃO CORRIGIDA
   const handleCreateEmployee = async (employee: Employee, credentials?: any) => {
-    const barEmployeeData = convertEmployeeToBarEmployee(employee);
-    
     setProcessing(true);
     try {
-      await createEmployee(barEmployeeData);
+      console.log('🚀 Criando funcionário com fluxo completo:', employee.name);
       
-      // Se há credenciais, mostrar modal elegante
-      if (credentials) {
-        setGeneratedCredentials(credentials);
-        setCredentialsEmployeeName(employee.name);
-        setShowCredentialsModal(true);
+      // Usar o novo serviço que cria TUDO (bar_employees + usuarios_empresa + Auth + permissões)
+      const result = await createEmployeeWithDefaultPermissions({
+        nome_completo: employee.name,
+        email: employee.email,
+        telefone: employee.phone,
+        cpf: employee.cpf,
+        bar_role: convertRoleToBarRole(employee.role),
+        shift_preference: 'qualquer', // Default
+        specialties: [], // Default
+        commission_rate: 0, // Default
+        observacoes: employee.observations,
+        tem_acesso_sistema: true // IMPORTANTE: Sempre criar credenciais
+      });
+      
+      if (result.success) {
+        console.log('✅ Funcionário criado com sucesso:', result);
+        
+        if (result.credentials) {
+          // Mostrar credenciais REAIS geradas pelo sistema
+          setGeneratedCredentials({
+            system: {
+              email: result.credentials.email,
+              password: result.credentials.senha_temporaria,
+              temporaryPassword: result.credentials.deve_alterar_senha,
+              username: result.credentials.email.split('@')[0] // Extrair username do email
+            }
+          });
+          setCredentialsEmployeeName(employee.name);
+          setShowCredentialsModal(true);
+          
+          console.log('🔑 Credenciais geradas:', {
+            email: result.credentials.email,
+            senha: '[OCULTA]',
+            temporaria: result.credentials.deve_alterar_senha
+          });
+        } else {
+          alert('Funcionário cadastrado com sucesso!');
+        }
+        
+        // Recarregar lista de funcionários
+        window.location.reload(); // Força reload para mostrar o novo funcionário
+        
       } else {
-        alert('Funcionário cadastrado com sucesso!');
+        throw new Error(result.error || 'Erro ao criar funcionário');
       }
     } catch (error) {
-      console.error('Erro ao criar funcionário:', error);
+      console.error('❌ Erro ao criar funcionário:', error);
       throw error; // Re-throw para o modal tratar
     } finally {
       setProcessing(false);

@@ -27,6 +27,7 @@ export const CredentialsSection: React.FC<CredentialsSectionProps> = ({
   const [customPassword, setCustomPassword] = useState('');
   const [useCustomCredentials, setUseCustomCredentials] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [hasSystemAccess, setHasSystemAccess] = useState(true); // Toggle para acesso ao sistema
 
   const generateCredentials = async () => {
     if (!employee.name) {
@@ -117,10 +118,55 @@ export const CredentialsSection: React.FC<CredentialsSectionProps> = ({
         <h3 className="text-lg font-semibold text-gray-900">Credenciais de Acesso</h3>
       </div>
 
-      {mode === 'create' && (
+      {/* Toggle de acesso ao sistema */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <User className="h-5 w-5 text-gray-600" />
+            <div>
+              <h4 className="font-medium text-gray-900">Acesso ao Sistema</h4>
+              <p className="text-sm text-gray-600">
+                Permitir que este funcionário faça login no sistema
+              </p>
+            </div>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hasSystemAccess}
+              onChange={(e) => {
+                setHasSystemAccess(e.target.checked);
+                if (!e.target.checked) {
+                  setCredentials(null);
+                  onCredentialsGenerated(null);
+                }
+              }}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          </label>
+        </div>
+        
+        {!hasSystemAccess && (
+          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+            <div className="flex items-start space-x-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-yellow-900">Sem Acesso ao Sistema</p>
+                <p className="text-yellow-700">
+                  Este funcionário será cadastrado apenas para controle interno, 
+                  sem capacidade de fazer login no sistema.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {hasSystemAccess && mode === 'create' && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start space-x-2">
-            <User className="h-5 w-5 text-blue-600 mt-0.5" />
+            <Key className="h-5 w-5 text-blue-600 mt-0.5" />
             <div>
               <h4 className="font-medium text-blue-900">Geração de Credenciais</h4>
               <p className="text-sm text-blue-700 mt-1">
@@ -137,29 +183,30 @@ export const CredentialsSection: React.FC<CredentialsSectionProps> = ({
         </div>
       )}
 
-      {/* Opções de geração */}
-      <div className="space-y-4">
-        <div className="flex items-center space-x-4">
-          <label className="flex items-center space-x-2">
-            <input
-              type="radio"
-              checked={!useCustomCredentials}
-              onChange={() => setUseCustomCredentials(false)}
-              className="text-blue-600"
-            />
-            <span>Gerar automaticamente</span>
-          </label>
-          
-          <label className="flex items-center space-x-2">
-            <input
-              type="radio"
-              checked={useCustomCredentials}
-              onChange={() => setUseCustomCredentials(true)}
-              className="text-blue-600"
-            />
-            <span>Definir manualmente</span>
-          </label>
-        </div>
+      {/* Opções de geração - apenas se tem acesso ao sistema */}
+      {hasSystemAccess && (
+        <div className="space-y-4">
+          <div className="flex items-center space-x-4">
+            <label className="flex items-center space-x-2">
+              <input
+                type="radio"
+                checked={!useCustomCredentials}
+                onChange={() => setUseCustomCredentials(false)}
+                className="text-blue-600"
+              />
+              <span>Gerar automaticamente</span>
+            </label>
+            
+            <label className="flex items-center space-x-2">
+              <input
+                type="radio"
+                checked={useCustomCredentials}
+                onChange={() => setUseCustomCredentials(true)}
+                className="text-blue-600"
+              />
+              <span>Definir manualmente</span>
+            </label>
+          </div>
 
         {!useCustomCredentials ? (
           <div className="space-y-3">
@@ -270,9 +317,10 @@ export const CredentialsSection: React.FC<CredentialsSectionProps> = ({
           </div>
         )}
       </div>
+      )}
 
       {/* Exibição das credenciais geradas */}
-      {credentials && (
+      {hasSystemAccess && credentials && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="font-medium text-gray-900">Credenciais Geradas</h4>

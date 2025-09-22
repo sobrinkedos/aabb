@@ -1,353 +1,362 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { User, AuthContextType } from '../types/auth';
-import { AUTH_CONFIG } from '../config/auth';
-import { SUPABASE_CONFIG } from '../config/supabase';
-import { Session } from '@supabase/supabase-js';
-import AuthLoader from '../components/Auth/AuthLoader';
-import { processAuthError, AuthRetryManager, AuthErrorLogger } from '../utils/authErrors';
+/**
+ * Contexto de Autenticação
+ * 
+ * Gerencia o estado global de autenticação e permissões
+ */
 
-// Estendendo o tipo para incluir funcionalidades adicionais
-interface ExtendedAuthContextType extends AuthContextType {
-  register: (name: string, email: string, password: string) => Promise<{ success: boolean; error: string | null }>;
-  isOffline: boolean;
-  checkOnlineStatus: () => Promise<boolean>;
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
+import { 
+  loadUserPermissions, 
+  UserPermissions, 
+  logout as authLogout,
+  validateSession
+} from '../middleware/authMiddleware';
+import { auditLogger } from '../utils/auditLogger';
+
+// ============================================================================
+// INTERFACES
+// ============================================================================
+
+interface AuthContextType {
+  // Estado
+  user: any | null;
+  permissions: UserPermissions | null;
+  loading: boolean;
+  error: string | null;
+  
+  // Ações
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  refreshPermissions: () => Promise<void>;
+  
+  // Utilitários
+  hasPermission: (module: string, action?: string) => boolean;
+  isAdmin: () => boolean;
+  canManageEmployees: () => boolean;
 }
-
-const AuthContext = createContext<ExtendedAuthContextType | undefined>(undefined);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
+// ============================================================================
+// CONTEXTO
+// ============================================================================
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// ============================================================================
+// PROVIDER
+// ============================================================================
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isOffline, setIsOffline] = useState(false);
-  const retryManager = new AuthRetryManager();
-  const errorLogger = AuthErrorLogger.getInstance();
+  const [user, setUser] = useState<any | null>(null);
+  const [permissions, setPermissions] = useState<UserPermissions | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Função para detectar se está offline
-  const checkOnlineStatus = async () => {
-    if (!isSupabaseConfigured) {
-      setIsOffline(false); // Modo demo sempre online
-      return true;
-    }
-
-    try {
-      // Verificação simples de conectividade com timeout agressivo
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 segundos timeout
-      
-      // Tentar uma requisição simples ao Supabase
-      const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/`, {
-        method: 'HEAD',
-        signal: controller.signal,
-        headers: {
-          'apikey': SUPABASE_CONFIG.anonKey
-        }
-      });
-      
-      clearTimeout(timeoutId);
-      
-      const isOnline = response.ok || response.status === 401; // 401 é esperado sem auth
-      setIsOffline(!isOnline);
-      return isOnline;
-    } catch (error) {
-      console.log('Verificação de conectividade falhou:', error);
-      setIsOffline(true);
-      return false;
-    }
-  };
-
-  // Efeito #1: Lida APENAS com a sessão de autenticação do Supabase.
-  // É rápido e não depende do banco de dados.
+  // Inicializar autenticação
   useEffect(() => {
-    // Função para limpar tokens corrompidos
-    const clearCorruptedTokens = () => {
-      try {
-        // Limpar todos os tokens relacionados ao Supabase do localStorage
-        const keys = Object.keys(localStorage);
-        keys.forEach(key => {
-          if (key.includes('supabase') || key.includes('sb-')) {
-            localStorage.removeItem(key);
-          }
-        });
-        console.log('🧹 Tokens corrompidos limpos do localStorage');
-      } catch (error) {
-        console.warn('Erro ao limpar localStorage:', error);
-      }
-    };
-
-    // Função de inicialização com timeout forçado
-    const initializeAuth = async () => {
-      // Se Supabase não está configurado, usar modo demo
-      if (!isSupabaseConfigured) {
-        console.log('🔧 Supabase não configurado, usando modo demo');
-        setIsLoading(false);
-        return;
-      }
-
-      // Timeout global para toda a inicialização
-      const globalTimeout = setTimeout(() => {
-        console.log('⏰ Timeout na inicialização, forçando modo offline');
-        setIsOffline(true);
-        setIsLoading(false);
-      }, 5000); // 5 segundos máximo
-
-      try {
-        // Verificar conectividade rapidamente
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
-        
-        const connectivityCheck = fetch(`${SUPABASE_CONFIG.url}/rest/v1/`, {
-          method: 'HEAD',
-          headers: { 'apikey': SUPABASE_CONFIG.anonKey },
-          signal: controller.signal
-        }).then(response => {
-          clearTimeout(timeoutId);
-          return response.ok || response.status === 401; // 401 é esperado
-        }).catch(() => {
-          clearTimeout(timeoutId);
-          return false;
-        });
-
-        const isOnline = await connectivityCheck;
-        
-        if (!isOnline) {
-          console.log('🔌 Sem conectividade, usando modo offline');
-          setIsOffline(true);
-          clearTimeout(globalTimeout);
-          setIsLoading(false);
-          return;
-        }
-
-        // Tentar obter sessão
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.warn('Erro ao verificar sessão:', error);
-          
-          // Se erro de token, limpar e tentar novamente
-          if (error.message?.includes('refresh') || error.message?.includes('Invalid')) {
-            console.log('🔄 Limpando tokens corrompidos...');
-            clearCorruptedTokens();
-            
-            // Segunda tentativa
-            const { data: { session: retrySession } } = await supabase.auth.getSession();
-            setSession(retrySession);
-          } else {
-            setSession(null);
-          }
-        } else {
-          setSession(session);
-        }
-
-        clearTimeout(globalTimeout);
-        setIsLoading(false);
-        
-      } catch (error) {
-        console.error('Erro na inicialização:', error);
-        clearTimeout(globalTimeout);
-        setIsOffline(true);
-        setIsLoading(false);
-      }
-    };
-    
     initializeAuth();
-
-    // Ouve por futuras mudanças na autenticação (login/logout).
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('🔐 Auth state changed:', event, session ? 'Session ativa' : 'Sem sessão');
+    
+    // Escutar mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
         
-        // Se houver erro de token, limpar e tentar novamente
-        if (event === 'TOKEN_REFRESHED' && !session) {
-          console.log('🔄 Token refresh falhou, limpando tokens...');
-          clearCorruptedTokens();
+        if (event === 'SIGNED_IN' && session?.user) {
+          setUser(session.user);
+          await loadPermissions(session.user);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setPermissions(null);
+          setError(null);
         }
         
-        setSession(session);
+        setLoading(false);
       }
     );
 
     return () => {
-      authListener.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
-  // Efeito #2: Lida com a busca do perfil no banco de dados.
-  // Roda sempre que a sessão mudar.
-  useEffect(() => {
-    // Se Supabase não está configurado, não tentar buscar perfil
-    if (!isSupabaseConfigured) {
-      return;
-    }
-    
-    if (session) {
-      console.log('AuthContext: Sessão encontrada, buscando perfil:', session.user.id);
-      // Se há uma sessão, buscamos o perfil do usuário.
-      supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
-        .then(({ data: profile, error }) => {
-          console.log('AuthContext: Resultado da busca de perfil:', { profile, error });
-          if (error || !profile) {
-            console.error('Perfil não encontrado ou erro na busca, deslogando.', error);
-            // Se o perfil não existe, algo está errado. Forçamos o logout.
-            supabase.auth.signOut();
-          } else {
-            // Perfil encontrado, montamos o objeto de usuário da aplicação.
-            const appUser: User = {
-              id: profile.id,
-              name: profile.name || session.user.email || 'Usuário',
-          email: session.user.email!,
-          role: profile.role || 'employee',
-          avatar: profile.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${profile.name || session.user.email}`,
-            };
-            console.log('AuthContext: Usuário da aplicação criado:', appUser);
-            setUser(appUser);
-          }
-        });
-    } else {
-      // Se não há sessão, não há usuário.
-      setUser(null);
-    }
-  }, [session]); // Depende apenas da sessão.
+  const initializeAuth = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const login = async (email: string, password: string) => {
-    // Se o Supabase não está configurado, simular login local para desenvolvimento
-    if (!isSupabaseConfigured) {
-      console.info('🔑 Usando autenticação mock para desenvolvimento');
+      // Verificar sessão atual
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      // Simular usuário demo usando configuração
-      if (email === AUTH_CONFIG.DEMO_USER.email && password === 'demo123456') {
-        const mockUser: User = {
-          id: 'demo-user-id',
-          name: AUTH_CONFIG.DEMO_USER.name,
-          email: AUTH_CONFIG.DEMO_USER.email,
-          role: AUTH_CONFIG.DEMO_USER.role,
-          avatar: 'https://api.dicebear.com/8.x/initials/svg?seed=Demo'
-        };
-        setUser(mockUser);
-        return { success: true, error: null };
-      } else {
-        return { success: false, error: `Credenciais inválidas. Use: ${AUTH_CONFIG.DEMO_USER.email} / demo123456` };
+      if (sessionError) {
+        console.error('Erro ao verificar sessão:', sessionError);
+        setError('Erro ao verificar sessão');
+        return;
       }
-    }
-    
-    // Login normal com Supabase configurado usando retry
-    try {
-      const result = await retryManager.executeWithRetry(
-        async () => {
-          const { error } = await supabase.auth.signInWithPassword({ email, password });
-          if (error) throw error;
-          return { success: true, error: null };
-        },
-        (attempt, error) => {
-          console.warn(`Tentativa de login ${attempt} falhou:`, error);
-          errorLogger.logError(error, 'login_retry', email);
-        }
-      );
-      
-      return result;
+
+      if (session?.user) {
+        setUser(session.user);
+        await loadPermissions(session.user);
+      }
     } catch (err) {
-      const errorInfo = processAuthError(err);
-      errorLogger.logError(err, 'login', email);
-      
-      return { 
-        success: false, 
-        error: errorInfo.userMessage 
-      };
+      console.error('Erro na inicialização da auth:', err);
+      setError(err instanceof Error ? err.message : 'Erro de inicialização');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const register = async (name: string, email: string, password: string) => {
-    if (!isSupabaseConfigured) {
-      return { success: false, error: 'Cadastro não disponível no modo demonstração' };
-    }
-
+  const loadPermissions = async (currentUser?: any) => {
     try {
-      const result = await retryManager.executeWithRetry(
-        async () => {
-          const { data, error: authError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              data: { name }
-            }
-          });
+      const userToLoad = currentUser || user;
+      if (!userToLoad) return;
 
-          if (authError) throw authError;
-
-          if (data.user) {
-            // O perfil é criado automaticamente pelo trigger handle_new_user()
-            // Aguardar um pouco para o trigger processar
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            console.log('✅ Usuário registrado com sucesso. Perfil criado automaticamente pelo trigger.');
-            return { success: true, error: null };
-          }
-
-          throw new Error('Erro desconhecido no cadastro');
-        },
-        (attempt, error) => {
-          console.warn(`Tentativa de cadastro ${attempt} falhou:`, error);
-          errorLogger.logError(error, 'register_retry', email);
-        }
-      );
-
-      return result;
-    } catch (err) {
-      const errorInfo = processAuthError(err);
-      errorLogger.logError(err, 'register', email);
+      const userPermissions = await loadUserPermissions();
+      setPermissions(userPermissions);
       
-      return { 
-        success: false, 
-        error: errorInfo.userMessage 
-      };
+      if (!userPermissions) {
+        setError('Usuário sem permissões configuradas');
+      } else if (!userPermissions.isActive) {
+        setError('Usuário inativo');
+      } else if (!userPermissions.hasSystemAccess) {
+        setError('Usuário sem acesso ao sistema');
+      } else {
+        setError(null);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar permissões:', err);
+      setError('Erro ao carregar permissões do usuário');
     }
   };
 
-  const loginAsDemo = async () => {
-    return login(AUTH_CONFIG.DEMO_USER.email, 'demo123456');
+  // ============================================================================
+  // AÇÕES DE AUTENTICAÇÃO
+  // ============================================================================
+
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (loginError) {
+        const errorMessage = getLoginErrorMessage(loginError.message);
+        setError(errorMessage);
+        
+        // Log da tentativa de login falhada
+        await auditLogger.logLoginAttempt(email, false, errorMessage);
+        
+        return { success: false, error: errorMessage };
+      }
+
+      if (data.user) {
+        setUser(data.user);
+        await loadPermissions(data.user);
+        
+        // Verificar se o usuário tem acesso
+        const userPermissions = await loadUserPermissions();
+        if (!userPermissions) {
+          await authLogout();
+          const error = 'Usuário não encontrado no sistema';
+          setError(error);
+          return { success: false, error };
+        }
+        
+        if (!userPermissions.isActive) {
+          await authLogout();
+          const error = 'Usuário inativo';
+          setError(error);
+          return { success: false, error };
+        }
+        
+        if (!userPermissions.hasSystemAccess) {
+          await authLogout();
+          const error = 'Usuário sem acesso ao sistema';
+          setError(error);
+          
+          // Log da tentativa de login sem acesso
+          await auditLogger.logLoginAttempt(email, false, error);
+          
+          return { success: false, error };
+        }
+
+        // Log do login bem-sucedido
+        await auditLogger.logLoginAttempt(email, true);
+        
+        return { success: true };
+      }
+
+      return { success: false, error: 'Erro desconhecido no login' };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro no login';
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const logout = async () => {
-    if (!isSupabaseConfigured) {
-      // Logout local no modo mock
+  const logout = async (): Promise<void> => {
+    try {
+      setLoading(true);
+      await authLogout();
       setUser(null);
-      return;
+      setPermissions(null);
+      setError(null);
+    } catch (err) {
+      console.error('Erro no logout:', err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const refreshPermissions = async (): Promise<void> => {
+    if (user) {
+      await loadPermissions();
+    }
+  };
+
+  // ============================================================================
+  // UTILITÁRIOS DE PERMISSÃO
+  // ============================================================================
+
+  const hasPermission = (module: string, action: string = 'visualizar'): boolean => {
+    if (!permissions || !permissions.isActive || !permissions.hasSystemAccess) {
+      return false;
+    }
+
+    const modulePermission = permissions.permissions[module as keyof typeof permissions.permissions];
+    if (!modulePermission) {
+      return false;
+    }
+
+    return modulePermission[action as keyof typeof modulePermission] || false;
+  };
+
+  const isAdmin = (): boolean => {
+    if (!permissions) return false;
     
-    await supabase.auth.signOut();
+    return permissions.role === 'gerente' || 
+           hasPermission('configuracoes', 'administrar') || 
+           hasPermission('funcionarios', 'administrar');
+  };
+
+  const canManageEmployees = (): boolean => {
+    if (!permissions) return false;
+    
+    return permissions.role === 'gerente' || 
+           hasPermission('funcionarios', 'administrar') ||
+           hasPermission('funcionarios', 'editar');
+  };
+
+  // ============================================================================
+  // UTILITÁRIOS
+  // ============================================================================
+
+  const getLoginErrorMessage = (error: string): string => {
+    const errorMessages: Record<string, string> = {
+      'Invalid login credentials': 'Email ou senha incorretos',
+      'Email not confirmed': 'Email não confirmado',
+      'Too many requests': 'Muitas tentativas. Tente novamente mais tarde',
+      'User not found': 'Usuário não encontrado',
+      'Invalid email': 'Email inválido'
+    };
+
+    return errorMessages[error] || 'Erro no login. Tente novamente';
+  };
+
+  // ============================================================================
+  // VALOR DO CONTEXTO
+  // ============================================================================
+
+  const contextValue: AuthContextType = {
+    // Estado
+    user,
+    permissions,
+    loading,
+    error,
+    
+    // Ações
+    login,
+    logout,
+    refreshPermissions,
+    
+    // Utilitários
+    hasPermission,
+    isAdmin,
+    canManageEmployees
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, loginAsDemo, logout, isLoading, isOffline, checkOnlineStatus }}>
-      {!isSupabaseConfigured && (
-        <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-black px-4 py-2 text-sm z-50">
-          ⚠️ <strong>Modo Desenvolvimento:</strong> Supabase não configurado. 
-          Use: {AUTH_CONFIG.DEMO_USER.email} / demo123456
-        </div>
-      )}
-      
-      {isLoading ? (
-        <AuthLoader message="Verificando sessão de usuário..." />
-      ) : (
-        children
-      )}
+    <AuthContext.Provider value={contextValue}>
+      {children}
     </AuthContext.Provider>
   );
 };
+
+// ============================================================================
+// HOOK
+// ============================================================================
+
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  
+  if (context === undefined) {
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
+  }
+  
+  return context;
+};
+
+// ============================================================================
+// COMPONENTE DE PROTEÇÃO SIMPLES
+// ============================================================================
+
+interface RequireAuthProps {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+export const RequireAuth: React.FC<RequireAuthProps> = ({ children, fallback }) => {
+  const { user, loading, error } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!user || error) {
+    return fallback || (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Acesso Restrito
+          </h2>
+          <p className="text-gray-600 mb-4">
+            {error || 'Você precisa estar logado para acessar esta página'}
+          </p>
+          <button
+            onClick={() => window.location.href = '/login'}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Fazer Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
+
+export default AuthContext;

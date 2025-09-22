@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Debug - Criação do Moises</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .debug-section {
+            background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+            border: 1px solid #ff9800;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .success-card {
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+            border: 1px solid #4caf50;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .error-card {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border: 1px solid #f44336;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            color: #c62828;
+        }
+        button {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+            padding: 18px 35px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            width: 100%;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: linear-gradient(135deg, #cccccc, #999999);
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .data-table {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug - Criação do Moises</h1>
+        
+        <div class="debug-section">
+            <h3>🎯 Problema Relatado</h3>
+            <ul>
+                <li>✅ Funcionário "Moises" foi criado no sistema</li>
+                <li>❌ Não aparece em nenhuma tabela</li>
+                <li>❌ Não consegue fazer login com as credenciais</li>
+                <li>❌ Erro 400 (Bad Request) no login</li>
+            </ul>
+        </div>
+
+        <div class="debug-section">
+            <h3>🔍 Investigações</h3>
+            <button onclick="searchMoisesInAllTables()">🔎 Procurar Moises em Todas as Tabelas</button>
+            <button onclick="testMoisesLogin()">🔑 Testar Login do Moises</button>
+            <button onclick="listAllEmployees()">📋 Listar Todos os Funcionários</button>
+            <button onclick="checkAuthUsers()">👥 Verificar Usuários no Auth</button>
+        </div>
+
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        const empresaId = '142f9c74-bec6-447f-9f8f-c68d7c1d7958'; // AABB Garanhuns
+
+        function addMessage(message, type = 'info') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            
+            let className = 'debug-section';
+            if (type === 'success') className = 'success-card';
+            if (type === 'error') className = 'error-card';
+            
+            messageDiv.className = className;
+            messageDiv.innerHTML = message;
+            messagesDiv.appendChild(messageDiv);
+            
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function searchMoisesInAllTables() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Procurando Moises...';
+
+            try {
+                let foundData = [];
+
+                // 1. Procurar na tabela bar_employees
+                addMessage('🔍 Procurando na tabela bar_employees...', 'info');
+                const { data: barEmployees, error: barError } = await supabase
+                    .from('bar_employees')
+                    .select('*')
+                    .or('notes.ilike.%moises%,notes.ilike.%Moises%');
+
+                if (barError) {
+                    addMessage(`❌ Erro ao buscar em bar_employees: ${barError.message}`, 'error');
+                } else if (barEmployees && barEmployees.length > 0) {
+                    foundData.push({ table: 'bar_employees', data: barEmployees });
+                    addMessage(`✅ Encontrado ${barEmployees.length} registro(s) em bar_employees`, 'success');
+                } else {
+                    addMessage('❌ Nenhum registro encontrado em bar_employees', 'error');
+                }
+
+                // 2. Procurar na tabela usuarios_empresa
+                addMessage('🔍 Procurando na tabela usuarios_empresa...', 'info');
+                const { data: usuariosEmpresa, error: usuariosError } = await supabase
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .or('nome_completo.ilike.%moises%,email.ilike.%moises%,nome_completo.ilike.%Moises%,email.ilike.%moises@teste.com%');
+
+                if (usuariosError) {
+                    addMessage(`❌ Erro ao buscar em usuarios_empresa: ${usuariosError.message}`, 'error');
+                } else if (usuariosEmpresa && usuariosEmpresa.length > 0) {
+                    foundData.push({ table: 'usuarios_empresa', data: usuariosEmpresa });
+                    addMessage(`✅ Encontrado ${usuariosEmpresa.length} registro(s) em usuarios_empresa`, 'success');
+                } else {
+                    addMessage('❌ Nenhum registro encontrado em usuarios_empresa', 'error');
+                }
+
+                // 3. Procurar na tabela profiles
+                addMessage('🔍 Procurando na tabela profiles...', 'info');
+                const { data: profiles, error: profilesError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .or('name.ilike.%moises%,name.ilike.%Moises%');
+
+                if (profilesError) {
+                    addMessage(`❌ Erro ao buscar em profiles: ${profilesError.message}`, 'error');
+                } else if (profiles && profiles.length > 0) {
+                    foundData.push({ table: 'profiles', data: profiles });
+                    addMessage(`✅ Encontrado ${profiles.length} registro(s) em profiles`, 'success');
+                } else {
+                    addMessage('❌ Nenhum registro encontrado em profiles', 'error');
+                }
+
+                // 4. Mostrar resultados
+                if (foundData.length > 0) {
+                    let html = '<h3>📊 Dados Encontrados:</h3>';
+                    
+                    foundData.forEach(item => {
+                        html += `<h4>Tabela: ${item.table}</h4>`;
+                        html += '<div class="data-table">';
+                        html += `<pre>${JSON.stringify(item.data, null, 2)}</pre>`;
+                        html += '</div>';
+                    });
+                    
+                    addMessage(html, 'success');
+                } else {
+                    addMessage(`
+                        <h3>❌ Moises não encontrado em nenhuma tabela!</h3>
+                        <p>Isso indica que a criação falhou silenciosamente.</p>
+                        <p><strong>Possíveis causas:</strong></p>
+                        <ul>
+                            <li>Erro na criação do usuário no Auth</li>
+                            <li>Rollback por falha em alguma etapa</li>
+                            <li>Problema de permissões</li>
+                            <li>Transação não commitada</li>
+                        </ul>
+                    `, 'error');
+                }
+
+            } catch (error) {
+                addMessage(`❌ Erro geral: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔎 Procurar Moises em Todas as Tabelas';
+            }
+        }
+
+        async function testMoisesLogin() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando login...';
+
+            try {
+                // Tentar diferentes combinações de credenciais
+                const possibleCredentials = [
+                    { email: 'moises@teste.com', password: 'senha123' },
+                    { email: 'moises@teste.com', password: 'Senha123' },
+                    { email: 'moises@teste.com', password: 'TempPass123' },
+                    { email: 'moises@teste.com', password: 'Moises123' }
+                ];
+
+                for (let cred of possibleCredentials) {
+                    addMessage(`🔑 Tentando login com: ${cred.email} / ${cred.password}`, 'info');
+                    
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email: cred.email,
+                        password: cred.password
+                    });
+
+                    if (error) {
+                        addMessage(`❌ Falha: ${error.message}`, 'error');
+                    } else {
+                        addMessage(`✅ Login bem-sucedido!`, 'success');
+                        addMessage(`<div class="data-table"><pre>${JSON.stringify(data.user, null, 2)}</pre></div>`, 'success');
+                        
+                        // Fazer logout
+                        await supabase.auth.signOut();
+                        break;
+                    }
+                }
+
+            } catch (error) {
+                addMessage(`❌ Erro geral: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔑 Testar Login do Moises';
+            }
+        }
+
+        async function listAllEmployees() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Listando funcionários...';
+
+            try {
+                const { data: employees, error } = await supabase
+                    .from('bar_employees')
+                    .select(`
+                        id,
+                        employee_id,
+                        bar_role,
+                        is_active,
+                        notes,
+                        created_at,
+                        profiles:employee_id (
+                            name
+                        ),
+                        usuarios_empresa:employee_id (
+                            nome_completo,
+                            email
+                        )
+                    `)
+                    .eq('empresa_id', empresaId)
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    addMessage(`❌ Erro: ${error.message}`, 'error');
+                } else {
+                    let html = `<h3>📋 Todos os Funcionários (${employees.length}):</h3>`;
+                    
+                    if (employees.length > 0) {
+                        employees.forEach((emp, index) => {
+                            const profile = emp.profiles || {};
+                            const usuario = emp.usuarios_empresa || {};
+                            
+                            html += `
+                                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid ${emp.is_active ? '#4caf50' : '#f44336'};">
+                                    <div><strong>${usuario.nome_completo || profile.name || 'Nome não encontrado'}</strong></div>
+                                    <div style="color: #666; font-size: 14px;">
+                                        Email: ${usuario.email || 'Email não encontrado'} | 
+                                        Cargo: ${emp.bar_role} | 
+                                        Status: ${emp.is_active ? 'ATIVO' : 'INATIVO'}
+                                    </div>
+                                    <div style="color: #666; font-size: 12px;">
+                                        ID: ${emp.id} | Employee ID: ${emp.employee_id || 'N/A'} | 
+                                        Criado: ${new Date(emp.created_at).toLocaleString('pt-BR')}
+                                    </div>
+                                    <div style="color: #666; font-size: 12px;">
+                                        Notes: ${emp.notes || 'Sem observações'}
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        html += '<p>Nenhum funcionário encontrado.</p>';
+                    }
+                    
+                    addMessage(html, 'success');
+                }
+
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '📋 Listar Todos os Funcionários';
+            }
+        }
+
+        async function checkAuthUsers() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Verificando Auth...';
+
+            try {
+                // Não podemos listar usuários do Auth com anon key
+                // Mas podemos tentar verificar se o usuário existe tentando resetar senha
+                
+                addMessage('🔍 Tentando verificar se moises@teste.com existe no Auth...', 'info');
+                
+                const { data, error } = await supabase.auth.resetPasswordForEmail('moises@teste.com', {
+                    redirectTo: 'http://localhost:3000/reset-password'
+                });
+
+                if (error) {
+                    if (error.message.includes('User not found')) {
+                        addMessage('❌ Usuário moises@teste.com NÃO existe no Supabase Auth', 'error');
+                    } else {
+                        addMessage(`⚠️ Erro ao verificar: ${error.message}`, 'error');
+                    }
+                } else {
+                    addMessage('✅ Email de reset enviado - usuário existe no Auth', 'success');
+                }
+
+                // Verificar se conseguimos obter o usuário atual
+                const { data: currentUser } = await supabase.auth.getUser();
+                if (currentUser.user) {
+                    addMessage(`ℹ️ Usuário atual logado: ${currentUser.user.email}`, 'info');
+                } else {
+                    addMessage('ℹ️ Nenhum usuário logado atualmente', 'info');
+                }
+
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '👥 Verificar Usuários no Auth';
+            }
+        }
+    </script>
+</body>
+</html>

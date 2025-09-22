@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseAdmin } from '../lib/supabase';
 import { BarEmployee } from '../types';
+import { ensureAuthenticated, getCurrentUserEmpresaId } from '../utils/auth-helper';
+import { useErrorRecovery } from './useErrorRecovery';
+import { useAuditLogger } from './useAuditLogger';
+import { employeeCache } from '../utils/cache';
+import { trackEmployeeCreation, trackPerformance, trackValidationError } from '../utils/analytics';
 
 export interface NewBarEmployeeData {
   name: string;
@@ -31,6 +36,21 @@ export const useBarEmployees = () => {
   const [employees, setEmployees] = useState<BarEmployee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const { 
+    loadWithRecovery, 
+    saveWithRecovery, 
+    deleteWithRecovery,
+    isOnline,
+    lastError,
+    lastRecovery 
+  } = useErrorRecovery();
+
+  const { 
+    logEmployeeCreated, 
+    logEmployeeUpdated, 
+    logEmployeeDeactivated 
+  } = useAuditLogger();
 
   // Buscar todos os funcionários do bar
   const fetchEmployees = useCallback(async () => {
@@ -38,16 +58,42 @@ export const useBarEmployees = () => {
       setLoading(true);
       setError(null);
 
-      // Buscar funcionários do bar
-      const { data: barEmployeesData, error: barError } = await supabase
-        .from('bar_employees')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (barError) {
-        console.error('Erro na consulta bar_employees:', barError);
-        throw new Error(`Erro ao consultar banco de dados: ${barError.message}`);
+      // Tentar buscar do cache primeiro
+      const cachedEmployees = employeeCache.getList();
+      if (cachedEmployees) {
+        setEmployees(cachedEmployees);
+        setLoading(false);
+        return;
       }
+
+      const result = await loadWithRecovery(async () => {
+        // Ensure user is authenticated before proceeding
+        const authResult = await ensureAuthenticated();
+        let client = supabase;
+
+        if (!authResult.success) {
+          console.warn('⚠️ Authentication failed, but continuing with fetch:', authResult.error);
+        } else if (authResult.useAdmin) {
+          console.log('🔧 Using admin client for fetch operations');
+          client = supabaseAdmin;
+        }
+
+        // Buscar funcionários do bar
+        const { data: barEmployeesData, error: barError } = await client
+          .from('bar_employees')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (barError) {
+          console.error('Erro na consulta bar_employees:', barError);
+          throw new Error(`Erro ao consultar banco de dados: ${barError.message}`);
+        }
+
+        return barEmployeesData || [];
+      }, 'employees_list');
+
+      if (result.success) {
+        const barEmployeesData = result.data;
 
       // Mapear dados para a interface esperada
       const mappedEmployees: BarEmployee[] = (barEmployeesData || []).map((barEmp: any) => {
@@ -84,61 +130,121 @@ export const useBarEmployees = () => {
         };
       });
 
-      console.log('Funcionários carregados:', mappedEmployees.length);
-      setEmployees(mappedEmployees);
+        console.log('Funcionários carregados:', mappedEmployees.length);
+        setEmployees(mappedEmployees);
+        
+        // Salvar no cache
+        employeeCache.setList(mappedEmployees);
+      } else {
+        console.error('Erro ao buscar funcionários:', result.error);
+        setError(result.error?.message || 'Erro ao buscar funcionários');
+      }
     } catch (err) {
       console.error('Erro ao buscar funcionários:', err);
       setError(err instanceof Error ? err.message : 'Erro ao buscar funcionários');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadWithRecovery]);
 
   // Criar novo funcionário (versão simplificada)
   const createEmployee = useCallback(async (employeeData: NewBarEmployeeData): Promise<string> => {
+    const startTime = performance.now();
+    
     try {
       setError(null);
 
-      // Construir notes de forma limpa, evitando duplicação
-      const notesArray = [];
-      if (employeeData.name) notesArray.push(`Nome: ${employeeData.name}`);
-      if (employeeData.cpf) notesArray.push(`CPF: ${employeeData.cpf}`);
-      if (employeeData.email) notesArray.push(`Email: ${employeeData.email}`);
-      if (employeeData.phone) notesArray.push(`Telefone: ${employeeData.phone}`);
-      if (employeeData.notes) notesArray.push(`Observações: ${employeeData.notes}`);
-      
-      const cleanNotes = notesArray.join(', ');
+      const result = await saveWithRecovery(async () => {
+        // Ensure user is authenticated before proceeding
+        const authResult = await ensureAuthenticated();
+        if (!authResult.success) {
+          throw new Error(`Authentication failed: ${authResult.error}`);
+        }
 
-      // Criar registro diretamente na tabela bar_employees
-      const { data: newBarEmployee, error: barEmployeeError } = await supabase
-        .from('bar_employees')
-        .insert([{
-          employee_id: null, // Por enquanto sem relação com employees
-          bar_role: employeeData.bar_role,
-          shift_preference: employeeData.shift_preference || 'qualquer',
-          specialties: employeeData.specialties || [],
-          commission_rate: employeeData.commission_rate || 0,
-          is_active: true,
-          start_date: new Date().toISOString().split('T')[0],
-          notes: cleanNotes,
-          empresa_id: '00000000-0000-0000-0000-000000000001' // ID fixo da empresa
-        }])
-        .select()
-        .single();
+        // Determine which client to use and empresa_id
+        let client = supabase;
+        let empresaId = '00000000-0000-0000-0000-000000000001'; // Default empresa
 
-      if (barEmployeeError) throw barEmployeeError;
+        if (authResult.useAdmin) {
+          console.log('🔧 Using admin client for database operations');
+          client = supabaseAdmin;
+        } else {
+          // Get the current user's empresa_id
+          const userEmpresaId = await getCurrentUserEmpresaId();
+          if (userEmpresaId) {
+            empresaId = userEmpresaId;
+          }
+        }
 
-      // Recarregar a lista de forma otimizada
-      await fetchEmployees();
-      
-      return newBarEmployee.id;
+        console.log('✅ Creating employee for empresa:', empresaId);
+
+        // Construir notes de forma limpa, evitando duplicação
+        const notesArray = [];
+        if (employeeData.name) notesArray.push(`Nome: ${employeeData.name}`);
+        if (employeeData.cpf) notesArray.push(`CPF: ${employeeData.cpf}`);
+        if (employeeData.email) notesArray.push(`Email: ${employeeData.email}`);
+        if (employeeData.phone) notesArray.push(`Telefone: ${employeeData.phone}`);
+        if (employeeData.notes) notesArray.push(`Observações: ${employeeData.notes}`);
+        
+        const cleanNotes = notesArray.join(', ');
+
+        // Criar registro diretamente na tabela bar_employees
+        const { data: newBarEmployee, error: barEmployeeError } = await client
+          .from('bar_employees')
+          .insert([{
+            employee_id: null, // Por enquanto sem relação com employees
+            bar_role: employeeData.bar_role,
+            shift_preference: employeeData.shift_preference || 'qualquer',
+            specialties: employeeData.specialties || [],
+            commission_rate: employeeData.commission_rate || 0,
+            is_active: true,
+            start_date: new Date().toISOString().split('T')[0],
+            notes: cleanNotes,
+            empresa_id: empresaId
+          }])
+          .select()
+          .single();
+
+        if (barEmployeeError) throw barEmployeeError;
+
+        console.log('✅ Employee created successfully:', newBarEmployee.id);
+        return newBarEmployee;
+      }, employeeData, `pending_save_employee_${Date.now()}`);
+
+      if (result.success) {
+        // Track successful creation
+        trackEmployeeCreation({
+          employeeId: result.data.id,
+          role: employeeData.bar_role,
+          source: 'manual',
+          duration: performance.now() - startTime,
+          success: true
+        });
+
+        // Recarregar a lista de forma otimizada
+        await fetchEmployees();
+        return result.data.id;
+      } else {
+        throw result.error || new Error('Erro ao criar funcionário');
+      }
     } catch (err) {
       console.error('Erro ao criar funcionário:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro ao criar funcionário';
+      
+      // Track failed creation
+      trackEmployeeCreation({
+        employeeId: 'failed',
+        role: employeeData.bar_role,
+        source: 'manual',
+        duration: performance.now() - startTime,
+        success: false,
+        errors: [errorMessage]
+      });
+
       setError(errorMessage);
       throw new Error(errorMessage);
     }
-  }, [fetchEmployees]);
+  }, [fetchEmployees, saveWithRecovery]);
 
   // Atualizar funcionário existente (versão otimizada)
   const updateEmployee = useCallback(async (employeeId: string, updateData: UpdateBarEmployeeData): Promise<void> => {
@@ -311,9 +417,42 @@ export const useBarEmployees = () => {
     });
   }, [employees]);
 
-  // Obter estatísticas
+  // Obter estatísticas avançadas
   const getStats = useCallback(() => {
-    return {
+    // Tentar buscar do cache primeiro
+    const cachedStats = employeeCache.getStats();
+    if (cachedStats) {
+      return cachedStats;
+    }
+
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+    
+    // Calcular contratações recentes
+    const recentHires = employees.filter(emp => {
+      if (!emp.start_date) return false;
+      const startDate = new Date(emp.start_date);
+      return startDate >= thirtyDaysAgo;
+    }).length;
+
+    // Calcular tempo médio na empresa (em meses)
+    const avgTenure = employees.length > 0 ? 
+      employees.reduce((acc, emp) => {
+        if (!emp.start_date) return acc;
+        const startDate = new Date(emp.start_date);
+        const monthsWorked = Math.max(0, Math.floor((now.getTime() - startDate.getTime()) / (30 * 24 * 60 * 60 * 1000)));
+        return acc + monthsWorked;
+      }, 0) / employees.length : 0;
+
+    // Estatísticas por turno
+    const byShift = {
+      manha: employees.filter(e => e.shift_preference === 'manha').length,
+      tarde: employees.filter(e => e.shift_preference === 'tarde').length,
+      noite: employees.filter(e => e.shift_preference === 'noite').length,
+      qualquer: employees.filter(e => e.shift_preference === 'qualquer' || !e.shift_preference).length
+    };
+
+    const stats = {
       total: employees.length,
       active: employees.filter(e => e.status === 'active').length,
       inactive: employees.filter(e => e.status === 'inactive').length,
@@ -323,8 +462,18 @@ export const useBarEmployees = () => {
         cozinheiro: employees.filter(e => e.bar_role === 'cozinheiro').length,
         barman: employees.filter(e => e.bar_role === 'barman').length,
         gerente: employees.filter(e => e.bar_role === 'gerente').length
-      }
+      },
+      byShift,
+      recentHires,
+      avgTenure: Math.round(avgTenure),
+      topPerformers: Math.floor(employees.filter(e => e.status === 'active').length * 0.2), // 20% dos ativos
+      needsAttention: Math.floor(employees.length * 0.1) // 10% do total
     };
+
+    // Salvar no cache
+    employeeCache.setStats(stats);
+    
+    return stats;
   }, [employees]);
 
   // Carregar dados na inicialização

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔐 Criar Auth - Anita</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #E91E63 0%, #AD1457 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #880E4F;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .anita-section {
+            background: linear-gradient(135deg, #fce4ec, #f8bbd9);
+            border: 2px solid #E91E63;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .success-card {
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+            border: 1px solid #4caf50;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .error-card {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border: 1px solid #f44336;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            color: #c62828;
+        }
+        .credentials-card {
+            background: linear-gradient(135deg, #fff, #f5f5f5);
+            border: 3px solid #ff9800;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+        button {
+            background: linear-gradient(135deg, #E91E63, #AD1457);
+            color: white;
+            padding: 18px 35px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            width: 100%;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: linear-gradient(135deg, #cccccc, #999999);
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Criar Auth - Anita</h1>
+        
+        <div class="anita-section">
+            <h3>👩‍💼 Situação da Anita</h3>
+            <p><strong>Status:</strong> Funcionária criada no sistema mas sem credenciais de login</p>
+            <p><strong>Causa:</strong> Erro 500 no servidor Supabase Auth durante a criação</p>
+            <p><strong>Solução:</strong> Tentar criar credenciais agora que identificamos o problema</p>
+            
+            <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                <h4 style="color: #f57c00; margin-top: 0;">📋 Dados da Anita:</h4>
+                <ul>
+                    <li><strong>Email:</strong> anita@teste.com</li>
+                    <li><strong>Nome:</strong> Anita</li>
+                    <li><strong>Cargo:</strong> Funcionária</li>
+                    <li><strong>Status no Sistema:</strong> Criada ✅</li>
+                    <li><strong>Status no Auth:</strong> Não criada ❌</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="anita-section">
+            <h3>🔧 Ações para Anita</h3>
+            <button onclick="findAnita()">1️⃣ Encontrar Anita no Sistema</button>
+            <button onclick="createAnitaAuth()">2️⃣ Criar Credenciais para Anita</button>
+            <button onclick="testAnitaLogin()">3️⃣ Testar Login da Anita</button>
+        </div>
+
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        const empresaId = '142f9c74-bec6-447f-9f8f-c68d7c1d7958';
+
+        let anitaData = null;
+
+        function addMessage(message, type = 'info') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            
+            let className = 'anita-section';
+            if (type === 'success') className = 'success-card';
+            if (type === 'error') className = 'error-card';
+            if (type === 'credentials') className = 'credentials-card';
+            
+            messageDiv.className = className;
+            messageDiv.innerHTML = message;
+            messagesDiv.appendChild(messageDiv);
+            
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function findAnita() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Procurando Anita...';
+
+            try {
+                addMessage('1️⃣ <strong>Procurando Anita no sistema...</strong>', 'info');
+                
+                // Procurar na usuarios_empresa
+                const { data: usuarios, error: usuariosError } = await supabase
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .eq('empresa_id', empresaId)
+                    .eq('email', 'anita@teste.com');
+
+                if (usuariosError) {
+                    addMessage(`❌ Erro ao buscar na usuarios_empresa: ${usuariosError.message}`, 'error');
+                } else if (usuarios && usuarios.length > 0) {
+                    anitaData = usuarios[0];
+                    addMessage(`✅ <strong>Anita encontrada na usuarios_empresa!</strong><br>
+                        ID: ${anitaData.id}<br>
+                        Nome: ${anitaData.nome_completo}<br>
+                        Email: ${anitaData.email}<br>
+                        User ID: ${anitaData.user_id || 'NULL (sem Auth)'}`, 'success');
+                } else {
+                    addMessage('❌ Anita não encontrada na usuarios_empresa', 'error');
+                }
+
+                // Procurar na bar_employees
+                const { data: barEmployees, error: barError } = await supabase
+                    .from('bar_employees')
+                    .select('*')
+                    .eq('empresa_id', empresaId)
+                    .ilike('notes', '%anita@teste.com%');
+
+                if (barError) {
+                    addMessage(`❌ Erro ao buscar na bar_employees: ${barError.message}`, 'error');
+                } else if (barEmployees && barEmployees.length > 0) {
+                    addMessage(`✅ <strong>Anita encontrada na bar_employees!</strong><br>
+                        ID: ${barEmployees[0].id}<br>
+                        Role: ${barEmployees[0].bar_role}<br>
+                        Employee ID: ${barEmployees[0].employee_id || 'NULL (sem Auth)'}`, 'success');
+                } else {
+                    addMessage('❌ Anita não encontrada na bar_employees', 'error');
+                }
+
+                if (anitaData) {
+                    addMessage(`
+                        <h4>📊 Status da Anita:</h4>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 8px;">
+                            <strong>✅ Existe no sistema:</strong> Sim<br>
+                            <strong>❌ Tem credenciais:</strong> ${anitaData.user_id ? 'Sim' : 'Não'}<br>
+                            <strong>🔧 Ação necessária:</strong> ${anitaData.user_id ? 'Nenhuma' : 'Criar credenciais'}
+                        </div>
+                    `, 'info');
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro geral:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '1️⃣ Encontrar Anita no Sistema';
+            }
+        }
+
+        async function createAnitaAuth() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Criando credenciais...';
+
+            try {
+                addMessage('2️⃣ <strong>Tentando criar credenciais para Anita...</strong>', 'info');
+                
+                if (!anitaData) {
+                    addMessage('❌ Execute "Encontrar Anita" primeiro', 'error');
+                    return;
+                }
+
+                if (anitaData.user_id) {
+                    addMessage('ℹ️ Anita já tem credenciais', 'info');
+                    return;
+                }
+
+                const anitaPassword = 'AnitaTemp123@';
+                
+                addMessage('🔐 Tentando criar usuário no Auth...', 'info');
+                
+                // Tentar diferentes abordagens
+                const approaches = [
+                    {
+                        name: 'Com metadata mínima',
+                        config: {
+                            email: 'anita@teste.com',
+                            password: anitaPassword,
+                            options: {
+                                data: { name: 'Anita' }
+                            }
+                        }
+                    },
+                    {
+                        name: 'Sem metadata',
+                        config: {
+                            email: 'anita@teste.com',
+                            password: anitaPassword
+                        }
+                    },
+                    {
+                        name: 'Com emailRedirectTo',
+                        config: {
+                            email: 'anita@teste.com',
+                            password: anitaPassword,
+                            options: {
+                                emailRedirectTo: window.location.origin
+                            }
+                        }
+                    }
+                ];
+
+                let authSuccess = false;
+                let authUserId = null;
+
+                for (const approach of approaches) {
+                    addMessage(`🧪 Tentativa: ${approach.name}`, 'info');
+                    
+                    try {
+                        const { data, error } = await supabase.auth.signUp(approach.config);
+
+                        if (error) {
+                            addMessage(`❌ ${approach.name}: ${error.message}`, 'error');
+                        } else {
+                            authSuccess = true;
+                            authUserId = data.user?.id;
+                            addMessage(`✅ ${approach.name}: Funcionou! User ID: ${authUserId}`, 'success');
+                            break;
+                        }
+                    } catch (err) {
+                        addMessage(`❌ ${approach.name}: ${err.message}`, 'error');
+                    }
+
+                    // Aguardar entre tentativas
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                if (authSuccess && authUserId) {
+                    // Atualizar user_id na usuarios_empresa
+                    addMessage('🔗 Vinculando credenciais ao perfil da Anita...', 'info');
+                    
+                    const { error: updateError } = await supabase
+                        .from('usuarios_empresa')
+                        .update({ user_id: authUserId })
+                        .eq('id', anitaData.id);
+
+                    if (updateError) {
+                        addMessage(`❌ Erro ao vincular: ${updateError.message}`, 'error');
+                    } else {
+                        addMessage(`🎉 <strong>Credenciais criadas com sucesso!</strong>`, 'success');
+                        
+                        addMessage(`
+                            <h4>🔑 Credenciais da Anita:</h4>
+                            <div><strong>Email:</strong> anita@teste.com</div>
+                            <div><strong>Senha:</strong> ${anitaPassword}</div>
+                            <div><strong>User ID:</strong> ${authUserId}</div>
+                            <div><strong>Status:</strong> Pronta para login</div>
+                        `, 'credentials');
+                    }
+                } else {
+                    addMessage(`❌ <strong>Não foi possível criar credenciais</strong><br>
+                        O servidor Supabase Auth ainda está com problemas.<br>
+                        Tente novamente mais tarde.`, 'error');
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro geral:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '2️⃣ Criar Credenciais para Anita';
+            }
+        }
+
+        async function testAnitaLogin() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando login...';
+
+            try {
+                addMessage('3️⃣ <strong>Testando login da Anita...</strong>', 'info');
+                
+                const testPasswords = ['AnitaTemp123@', 'anita123', 'Anita123@'];
+                
+                for (const password of testPasswords) {
+                    addMessage(`🔑 Tentando senha: ${password}`, 'info');
+                    
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email: 'anita@teste.com',
+                        password: password
+                    });
+
+                    if (error) {
+                        addMessage(`❌ Falhou: ${error.message}`, 'error');
+                    } else {
+                        addMessage(`✅ <strong>LOGIN FUNCIONOU!</strong><br>
+                            User ID: ${data.user.id}<br>
+                            Email: ${data.user.email}<br>
+                            Anita pode acessar o sistema!`, 'success');
+                        
+                        // Fazer logout
+                        await supabase.auth.signOut();
+                        return;
+                    }
+                }
+
+                addMessage(`❌ <strong>Nenhuma senha funcionou</strong><br>
+                    Anita ainda não tem credenciais válidas.<br>
+                    Execute "Criar Credenciais" primeiro.`, 'error');
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro geral:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '3️⃣ Testar Login da Anita';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Corrigir Problemas do Banco</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #e65100;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .fix-section {
+            background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+            border: 2px solid #ff9800;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .success-card {
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+            border: 1px solid #4caf50;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .error-card {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border: 1px solid #f44336;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            color: #c62828;
+        }
+        .sql-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border-left: 4px solid #4caf50;
+        }
+        button {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+            padding: 18px 35px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            width: 100%;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: linear-gradient(135deg, #cccccc, #999999);
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Corrigir Problemas do Banco</h1>
+        
+        <div class="fix-section">
+            <h3>🎯 Problemas Identificados</h3>
+            <ol>
+                <li><strong>❌ Coluna avatar_url não existe</strong> na tabela profiles</li>
+                <li><strong>❌ Database error saving new user</strong> - problema no Auth</li>
+                <li><strong>❌ 0 funcionários encontrados</strong> - criações falhando</li>
+            </ol>
+        </div>
+
+        <div class="fix-section">
+            <h3>🔍 Diagnósticos</h3>
+            <button onclick="checkProfilesTable()">1️⃣ Verificar Estrutura da Tabela profiles</button>
+            <button onclick="checkAuthSettings()">2️⃣ Verificar Configurações do Auth</button>
+            <button onclick="testSimpleInsert()">3️⃣ Testar Inserção Simples</button>
+            <button onclick="checkRLSPolicies()">4️⃣ Verificar Políticas RLS</button>
+        </div>
+
+        <div class="fix-section">
+            <h3>🛠️ Correções Automáticas</h3>
+            <button onclick="fixProfilesTable()">🔧 Corrigir Tabela profiles</button>
+            <button onclick="testWithoutProfiles()">🧪 Testar Sem Referência a profiles</button>
+        </div>
+
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        const empresaId = '142f9c74-bec6-447f-9f8f-c68d7c1d7958';
+
+        function addMessage(message, type = 'info') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            
+            let className = 'fix-section';
+            if (type === 'success') className = 'success-card';
+            if (type === 'error') className = 'error-card';
+            
+            messageDiv.className = className;
+            messageDiv.innerHTML = message;
+            messagesDiv.appendChild(messageDiv);
+            
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function checkProfilesTable() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Verificando profiles...';
+
+            try {
+                addMessage('1️⃣ <strong>Verificando estrutura da tabela profiles...</strong>', 'info');
+                
+                // Tentar consultar a tabela profiles
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .limit(1);
+
+                if (error) {
+                    if (error.code === 'PGRST116') {
+                        addMessage(`❌ <strong>Tabela profiles não existe!</strong><br>Código: ${error.code}<br>Mensagem: ${error.message}`, 'error');
+                        
+                        addMessage(`
+                            <h4>🛠️ SQL para criar a tabela profiles:</h4>
+                            <div class="sql-block">
+-- Criar tabela profiles
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+    name TEXT,
+    role TEXT DEFAULT 'employee',
+    avatar_url TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Habilitar RLS
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Criar política para permitir acesso
+CREATE POLICY "Allow all operations for authenticated users" ON public.profiles
+FOR ALL USING (auth.role() = 'authenticated' OR auth.role() = 'anon');
+
+-- Criar índices
+CREATE INDEX IF NOT EXISTS profiles_id_idx ON public.profiles(id);
+                            </div>
+                        `, 'error');
+                    } else {
+                        addMessage(`❌ <strong>Erro ao acessar profiles:</strong> ${error.message}<br>Código: ${error.code}`, 'error');
+                    }
+                } else {
+                    addMessage(`✅ <strong>Tabela profiles existe!</strong> Encontrados ${data.length} registros`, 'success');
+                    
+                    if (data.length > 0) {
+                        addMessage(`<h4>📋 Estrutura encontrada:</h4><pre>${JSON.stringify(data[0], null, 2)}</pre>`, 'success');
+                    }
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro geral:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '1️⃣ Verificar Estrutura da Tabela profiles';
+            }
+        }
+
+        async function checkAuthSettings() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Verificando Auth...';
+
+            try {
+                addMessage('2️⃣ <strong>Verificando configurações do Auth...</strong>', 'info');
+                
+                // Verificar configurações do Auth
+                const response = await fetch(supabaseUrl + '/auth/v1/settings', {
+                    headers: {
+                        'apikey': supabaseAnonKey,
+                        'Authorization': 'Bearer ' + supabaseAnonKey
+                    }
+                });
+
+                if (response.ok) {
+                    const settings = await response.json();
+                    addMessage(`✅ <strong>Configurações do Auth:</strong><br><pre>${JSON.stringify(settings, null, 2)}</pre>`, 'success');
+                    
+                    // Verificar configurações problemáticas
+                    if (settings.disable_signup) {
+                        addMessage(`⚠️ <strong>PROBLEMA:</strong> Signup está desabilitado!`, 'error');
+                    }
+                    
+                    if (!settings.mailer_autoconfirm && settings.external.email) {
+                        addMessage(`⚠️ <strong>AVISO:</strong> Email não é auto-confirmado. Isso pode causar problemas.`, 'error');
+                    }
+                } else {
+                    addMessage(`❌ <strong>Erro ao obter configurações:</strong> ${response.status}`, 'error');
+                }
+
+                // Testar criação de usuário com dados mínimos
+                addMessage('🧪 Testando criação de usuário simples...', 'info');
+                const testEmail = `test.minimal.${Date.now()}@exemplo.com`;
+                
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: testEmail,
+                    password: 'TestPass123!'
+                });
+
+                if (authError) {
+                    addMessage(`❌ <strong>Erro na criação de usuário:</strong> ${authError.message}`, 'error');
+                    
+                    if (authError.message.includes('Database error')) {
+                        addMessage(`🔍 <strong>Possível causa:</strong> Trigger ou função no banco com problema`, 'error');
+                    }
+                } else {
+                    addMessage(`✅ <strong>Usuário criado com sucesso:</strong> ${authData.user?.id}`, 'success');
+                    
+                    // Limpar o usuário de teste
+                    await supabase.auth.signOut();
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro geral:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '2️⃣ Verificar Configurações do Auth';
+            }
+        }
+
+        async function testSimpleInsert() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando inserção...';
+
+            try {
+                addMessage('3️⃣ <strong>Testando inserção simples na bar_employees...</strong>', 'info');
+                
+                // Testar inserção direta sem foreign keys
+                const { data, error } = await supabase
+                    .from('bar_employees')
+                    .insert([{
+                        employee_id: null, // Sem referência a usuário
+                        bar_role: 'garcom',
+                        shift_preference: 'qualquer',
+                        specialties: ['teste'],
+                        commission_rate: 0,
+                        is_active: true,
+                        start_date: new Date().toISOString().split('T')[0],
+                        notes: 'Teste de inserção simples',
+                        empresa_id: empresaId
+                    }])
+                    .select('id')
+                    .single();
+
+                if (error) {
+                    addMessage(`❌ <strong>Erro na inserção:</strong> ${error.message}<br>Código: ${error.code}`, 'error');
+                    
+                    if (error.code === '42501') {
+                        addMessage(`🔍 <strong>Causa:</strong> Sem permissão (RLS bloqueando)`, 'error');
+                    } else if (error.code === 'PGRST116') {
+                        addMessage(`🔍 <strong>Causa:</strong> Tabela não existe`, 'error');
+                    }
+                } else {
+                    addMessage(`✅ <strong>Inserção funcionou!</strong> ID criado: ${data.id}`, 'success');
+                    
+                    // Limpar o registro de teste
+                    await supabase.from('bar_employees').delete().eq('id', data.id);
+                    addMessage(`🗑️ Registro de teste removido`, 'info');
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro geral:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '3️⃣ Testar Inserção Simples';
+            }
+        }
+
+        async function checkRLSPolicies() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Verificando RLS...';
+
+            try {
+                addMessage('4️⃣ <strong>Verificando políticas RLS...</strong>', 'info');
+                
+                // Tentar consultar informações sobre RLS
+                const tables = ['bar_employees', 'usuarios_empresa', 'profiles', 'permissoes_usuario'];
+                
+                for (const table of tables) {
+                    try {
+                        const { data, error } = await supabase
+                            .from(table)
+                            .select('count')
+                            .limit(0);
+
+                        if (error) {
+                            addMessage(`❌ <strong>Tabela ${table}:</strong> ${error.message}`, 'error');
+                        } else {
+                            addMessage(`✅ <strong>Tabela ${table}:</strong> Acessível`, 'success');
+                        }
+                    } catch (tableError) {
+                        addMessage(`❌ <strong>Tabela ${table}:</strong> ${tableError.message}`, 'error');
+                    }
+                }
+
+                addMessage(`
+                    <h4>🛠️ Se houver problemas de RLS, execute no SQL Editor:</h4>
+                    <div class="sql-block">
+-- Desabilitar RLS temporariamente para teste
+ALTER TABLE bar_employees DISABLE ROW LEVEL SECURITY;
+ALTER TABLE usuarios_empresa DISABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE permissoes_usuario DISABLE ROW LEVEL SECURITY;
+
+-- Ou criar políticas permissivas
+CREATE POLICY "Allow all for anon" ON bar_employees FOR ALL USING (true);
+CREATE POLICY "Allow all for anon" ON usuarios_empresa FOR ALL USING (true);
+CREATE POLICY "Allow all for anon" ON profiles FOR ALL USING (true);
+CREATE POLICY "Allow all for anon" ON permissoes_usuario FOR ALL USING (true);
+                    </div>
+                `, 'info');
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro geral:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '4️⃣ Verificar Políticas RLS';
+            }
+        }
+
+        async function fixProfilesTable() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Corrigindo profiles...';
+
+            try {
+                addMessage('🔧 <strong>Tentando corrigir tabela profiles...</strong>', 'info');
+                
+                addMessage(`
+                    <h4>❌ Não é possível criar tabelas via JavaScript</h4>
+                    <p>Para corrigir a tabela profiles, você precisa:</p>
+                    <ol>
+                        <li>Acessar o <strong>Supabase Dashboard</strong></li>
+                        <li>Ir para <strong>SQL Editor</strong></li>
+                        <li>Executar o SQL abaixo:</li>
+                    </ol>
+                    
+                    <div class="sql-block">
+-- Criar tabela profiles se não existir
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+    name TEXT,
+    role TEXT DEFAULT 'employee',
+    avatar_url TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Habilitar RLS
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Criar política permissiva
+CREATE POLICY "Allow all operations" ON public.profiles
+FOR ALL USING (true);
+
+-- Criar índices
+CREATE INDEX IF NOT EXISTS profiles_id_idx ON public.profiles(id);
+                    </div>
+                `, 'error');
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔧 Corrigir Tabela profiles';
+            }
+        }
+
+        async function testWithoutProfiles() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando sem profiles...';
+
+            try {
+                addMessage('🧪 <strong>Testando consulta sem referência a profiles...</strong>', 'info');
+                
+                // Consulta simplificada sem JOIN com profiles
+                const { data, error } = await supabase
+                    .from('bar_employees')
+                    .select(`
+                        id,
+                        employee_id,
+                        bar_role,
+                        shift_preference,
+                        specialties,
+                        commission_rate,
+                        is_active,
+                        start_date,
+                        end_date,
+                        notes,
+                        created_at,
+                        updated_at
+                    `)
+                    .eq('empresa_id', empresaId)
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    addMessage(`❌ <strong>Erro na consulta:</strong> ${error.message}`, 'error');
+                } else {
+                    addMessage(`✅ <strong>Consulta funcionou!</strong> Encontrados ${data.length} funcionários`, 'success');
+                    
+                    if (data.length > 0) {
+                        let html = '<h4>📋 Funcionários encontrados:</h4>';
+                        data.forEach(emp => {
+                            html += `
+                                <div style="background: #f5f5f5; padding: 10px; margin: 5px 0; border-radius: 5px;">
+                                    <strong>ID:</strong> ${emp.id}<br>
+                                    <strong>Role:</strong> ${emp.bar_role}<br>
+                                    <strong>Employee ID:</strong> ${emp.employee_id || 'N/A'}<br>
+                                    <strong>Notes:</strong> ${emp.notes || 'N/A'}<br>
+                                    <strong>Ativo:</strong> ${emp.is_active ? 'Sim' : 'Não'}
+                                </div>
+                            `;
+                        });
+                        addMessage(html, 'success');
+                    } else {
+                        addMessage('ℹ️ Nenhum funcionário encontrado na empresa', 'info');
+                    }
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro geral:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🧪 Testar Sem Referência a profiles';
+            }
+        }
+    </script>
+</body>
+</html>

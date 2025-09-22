@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Funcionária Stela - Fluxo Completo</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 32px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        .flow-step {
+            background: #f8f9fa;
+            border-left: 5px solid #007bff;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 0 10px 10px 0;
+            position: relative;
+        }
+        .flow-step::before {
+            content: attr(data-step);
+            position: absolute;
+            left: -15px;
+            top: 15px;
+            background: #007bff;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .flow-step h4 {
+            margin: 0 0 10px 20px;
+            color: #495057;
+        }
+        .flow-step p {
+            margin: 0 0 0 20px;
+            color: #6c757d;
+        }
+        .info-card {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border: 1px solid #2196f3;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            box-shadow: 0 4px 8px rgba(33, 150, 243, 0.1);
+        }
+        .info-card h3 {
+            color: #1976d2;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .permissions-card {
+            background: linear-gradient(135deg, #fff3e0, #ffcc02);
+            border: 1px solid #ff9800;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            box-shadow: 0 4px 8px rgba(255, 152, 0, 0.1);
+        }
+        .permissions-card h3 {
+            color: #f57c00;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .success-card {
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+            border: 1px solid #4caf50;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.1);
+        }
+        .error-card {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border: 1px solid #f44336;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            color: #c62828;
+            box-shadow: 0 4px 8px rgba(244, 67, 54, 0.1);
+        }
+        .credentials-card {
+            background: linear-gradient(135deg, #fff, #f5f5f5);
+            border: 3px solid #ff9800;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 6px 12px rgba(255, 152, 0, 0.2);
+        }
+        .credentials-card h4 {
+            color: #f57c00;
+            margin-top: 0;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        button {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            padding: 18px 35px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            width: 100%;
+            margin: 25px 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+        button:disabled {
+            background: linear-gradient(135deg, #cccccc, #999999);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        ul {
+            padding-left: 25px;
+        }
+        li {
+            margin: 10px 0;
+            position: relative;
+        }
+        li::marker {
+            color: #007bff;
+        }
+        .loading {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .progress-bar {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 8px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background: linear-gradient(90deg, #4caf50, #45a049);
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+            padding: 8px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.5);
+        }
+        .detail-item.success {
+            background: rgba(76, 175, 80, 0.1);
+            color: #2e7d32;
+        }
+        .detail-item.pending {
+            background: rgba(255, 193, 7, 0.1);
+            color: #f57c00;
+        }
+        .detail-item.error {
+            background: rgba(244, 67, 54, 0.1);
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>👩‍💼 Criar Funcionária Stela - Fluxo Completo</h1>
+        
+        <div class="info-card">
+            <h3>📋 Fluxo de Criação Completo</h3>
+            <div class="flow-step" data-step="1">
+                <h4>Verificação de Email</h4>
+                <p>Verifica se o email já existe no sistema</p>
+            </div>
+            <div class="flow-step" data-step="2">
+                <h4>Geração de Credenciais</h4>
+                <p>Gera email e senha temporária automaticamente</p>
+            </div>
+            <div class="flow-step" data-step="3">
+                <h4>Criação no Supabase Auth</h4>
+                <p>Cria usuário no sistema de autenticação</p>
+            </div>
+            <div class="flow-step" data-step="4">
+                <h4>Criação de Perfil</h4>
+                <p>Cria perfil na tabela profiles</p>
+            </div>
+            <div class="flow-step" data-step="5">
+                <h4>Registro como Funcionária do Bar</h4>
+                <p>Cria registro na tabela bar_employees</p>
+            </div>
+            <div class="flow-step" data-step="6">
+                <h4>Vínculo com Empresa</h4>
+                <p>Cria registro na tabela usuarios_empresa</p>
+            </div>
+            <div class="flow-step" data-step="7">
+                <h4>Configuração de Permissões</h4>
+                <p>Define permissões específicas para módulo de caixa</p>
+            </div>
+        </div>
+
+        <div class="info-card">
+            <h3>👤 Dados da Funcionária</h3>
+            <ul>
+                <li><strong>Nome:</strong> Stela Silva</li>
+                <li><strong>Email:</strong> stela@teste.com</li>
+                <li><strong>CPF:</strong> 123.456.789-00</li>
+                <li><strong>Telefone:</strong> (11) 99999-9999</li>
+                <li><strong>Função:</strong> Atendente de Caixa</li>
+                <li><strong>Turno:</strong> Manhã</li>
+                <li><strong>Especialidades:</strong> Atendimento, Caixa, Vendas</li>
+                <li><strong>Comissão:</strong> 2,5%</li>
+                <li><strong>Acesso ao Sistema:</strong> Sim</li>
+                <li><strong>Senha:</strong> Temporária (deve alterar no primeiro login)</li>
+            </ul>
+        </div>
+
+        <div class="permissions-card">
+            <h3>🔐 Permissões que serão configuradas</h3>
+            <ul>
+                <li>✅ <strong>Dashboard:</strong> Visualizar métricas gerais</li>
+                <li>✅ <strong>Gestão de Caixa:</strong> Acesso completo (visualizar, criar, editar, administrar)</li>
+                <li>✅ <strong>Clientes:</strong> Visualizar, criar e editar clientes</li>
+                <li>✅ <strong>Atendimento Bar:</strong> Visualizar pedidos</li>
+            </ul>
+        </div>
+
+        <button id="createBtn" onclick="createStelaComplete()">
+            🚀 Criar Funcionária com Fluxo Completo
+        </button>
+
+        <div class="progress-bar" id="progressBar" style="display: none;">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+        let currentStep = 0;
+        const totalSteps = 7;
+
+        function updateProgress(step) {
+            currentStep = step;
+            const percentage = (step / totalSteps) * 100;
+            document.getElementById('progressFill').style.width = percentage + '%';
+        }
+
+        function addMessage(message, type = 'info') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            
+            let className = 'info-card';
+            if (type === 'success') className = 'success-card';
+            if (type === 'error') className = 'error-card';
+            
+            messageDiv.className = className;
+            messageDiv.innerHTML = message;
+            messagesDiv.appendChild(messageDiv);
+            
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+        }
+
+        function generateTemporaryPassword() {
+            const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$%';
+            let password = '';
+            for (let i = 0; i < 10; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return password;
+        }
+
+        async function createStelaComplete() {
+            const btn = document.getElementById('createBtn');
+            const progressBar = document.getElementById('progressBar');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Criando funcionária...';
+            progressBar.style.display = 'block';
+            
+            clearMessages();
+            updateProgress(0);
+            
+            const details = {
+                bar_employee_created: false,
+                auth_user_created: false,
+                profile_created: false,
+                usuario_empresa_created: false,
+                permissions_created: false
+            };
+
+            let authUserId = null;
+            let barEmployeeId = null;
+            let usuarioEmpresaId = null;
+            let credentials = null;
+
+            try {
+                // 1. Verificar se email já existe
+                addMessage('🔍 <strong>Passo 1:</strong> Verificando se email já existe...', 'info');
+                updateProgress(1);
+                
+                const { data: existingUser, error: checkError } = await supabase
+                    .from('usuarios_empresa')
+                    .select('id')
+                    .eq('email', 'stela@teste.com')
+                    .limit(1);
+
+                if (checkError) {
+                    throw new Error(`Erro ao verificar email: ${checkError.message}`);
+                }
+
+                if (existingUser && existingUser.length > 0) {
+                    throw new Error('Email stela@teste.com já está em uso no sistema');
+                }
+
+                addMessage('✅ Email disponível para uso', 'success');
+
+                // 2. Gerar credenciais
+                addMessage('🔑 <strong>Passo 2:</strong> Gerando credenciais automáticas...', 'info');
+                updateProgress(2);
+                
+                const password = generateTemporaryPassword();
+                credentials = {
+                    email: 'stela@teste.com',
+                    senha_temporaria: password,
+                    deve_alterar_senha: true
+                };
+
+                addMessage('✅ Credenciais geradas com sucesso', 'success');
+
+                // 3. Criar usuário no Supabase Auth
+                addMessage('🔐 <strong>Passo 3:</strong> Criando usuário no Supabase Auth...', 'info');
+                updateProgress(3);
+                
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: 'stela@teste.com',
+                    password: password,
+                    options: {
+                        data: {
+                            name: 'Stela Silva',
+                            role: 'funcionario',
+                            cargo: 'Atendente de Caixa',
+                            temporary_password: true,
+                            created_by: 'system'
+                        }
+                    }
+                });
+
+                if (authError) {
+                    throw new Error(`Erro ao criar usuário no Auth: ${authError.message}`);
+                }
+
+                if (!authData.user) {
+                    throw new Error('Usuário não foi criado no Auth');
+                }
+
+                authUserId = authData.user.id;
+                details.auth_user_created = true;
+                addMessage(`✅ Usuário criado no Auth: ${authUserId}`, 'success');
+
+                // 4. Aguardar processamento
+                addMessage('⏳ Aguardando processamento do Auth...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // 5. Criar perfil
+                addMessage('👤 <strong>Passo 4:</strong> Criando perfil do usuário...', 'info');
+                updateProgress(4);
+                
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .insert([{
+                        id: authUserId,
+                        name: 'Stela Silva',
+                        role: 'employee',
+                        avatar_url: 'https://api.dicebear.com/8.x/initials/svg?seed=Stela Silva',
+                        updated_at: new Date().toISOString()
+                    }]);
+
+                if (profileError) {
+                    console.warn('Erro ao criar perfil:', profileError);
+                    addMessage(`⚠️ Aviso - Erro ao criar perfil: ${profileError.message}`, 'error');
+                } else {
+                    details.profile_created = true;
+                    addMessage('✅ Perfil criado com sucesso', 'success');
+                }
+
+                // 6. Criar registro na tabela bar_employees
+                addMessage('👔 <strong>Passo 5:</strong> Criando registro na tabela bar_employees...', 'info');
+                updateProgress(5);
+                
+                const { data: barEmployee, error: barError } = await supabase
+                    .from('bar_employees')
+                    .insert([{
+                        employee_id: authUserId,
+                        bar_role: 'atendente',
+                        shift_preference: 'manha',
+                        specialties: ['atendimento', 'caixa', 'vendas'],
+                        commission_rate: 2.5,
+                        is_active: true,
+                        start_date: new Date().toISOString().split('T')[0],
+                        notes: 'Nome: Stela Silva, CPF: 123.456.789-00, Email: stela@teste.com, Telefone: (11) 99999-9999, Observações: Funcionária responsável pelo caixa matutino',
+                        empresa_id: '00000000-0000-0000-0000-000000000001'
+                    }])
+                    .select('id')
+                    .single();
+
+                if (barError) {
+                    throw new Error(`Erro ao criar funcionária: ${barError.message}`);
+                }
+
+                barEmployeeId = barEmployee.id;
+                details.bar_employee_created = true;
+                addMessage(`✅ Funcionária criada na tabela bar_employees: ${barEmployeeId}`, 'success');
+
+                // 7. Criar registro na tabela usuarios_empresa
+                addMessage('🏢 <strong>Passo 6:</strong> Criando vínculo com empresa...', 'info');
+                updateProgress(6);
+                
+                const { data: usuarioEmpresa, error: empresaError } = await supabase
+                    .from('usuarios_empresa')
+                    .insert([{
+                        user_id: authUserId,
+                        empresa_id: '00000000-0000-0000-0000-000000000001',
+                        nome_completo: 'Stela Silva',
+                        email: 'stela@teste.com',
+                        telefone: '(11) 99999-9999',
+                        cargo: 'Atendente de Caixa',
+                        tipo_usuario: 'funcionario',
+                        status: 'ativo',
+                        senha_provisoria: true, // IMPORTANTE: Sempre true para novos funcionários
+                        ativo: true,
+                        tem_acesso_sistema: true,
+                        papel: 'USER',
+                        is_primeiro_usuario: false,
+                        tentativas_login_falhadas: 0,
+                        total_logins: 0,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }])
+                    .select('id')
+                    .single();
+
+                if (empresaError) {
+                    console.warn('Erro ao criar usuario_empresa:', empresaError);
+                    addMessage(`⚠️ Aviso - Erro ao criar vínculo com empresa: ${empresaError.message}`, 'error');
+                } else {
+                    usuarioEmpresaId = usuarioEmpresa.id;
+                    details.usuario_empresa_created = true;
+                    addMessage(`✅ Vínculo com empresa criado: ${usuarioEmpresaId}`, 'success');
+
+                    // 8. Criar permissões
+                    addMessage('🔐 <strong>Passo 7:</strong> Configurando permissões específicas...', 'info');
+                    updateProgress(7);
+                    
+                    const permissoes = [
+                        {
+                            usuario_empresa_id: usuarioEmpresaId,
+                            modulo: 'dashboard',
+                            permissoes: {
+                                visualizar: true,
+                                criar: false,
+                                editar: false,
+                                excluir: false,
+                                administrar: false
+                            }
+                        },
+                        {
+                            usuario_empresa_id: usuarioEmpresaId,
+                            modulo: 'gestao_caixa',
+                            permissoes: {
+                                visualizar: true,
+                                criar: true,
+                                editar: true,
+                                excluir: false,
+                                administrar: true
+                            }
+                        },
+                        {
+                            usuario_empresa_id: usuarioEmpresaId,
+                            modulo: 'clientes',
+                            permissoes: {
+                                visualizar: true,
+                                criar: true,
+                                editar: true,
+                                excluir: false,
+                                administrar: false
+                            }
+                        },
+                        {
+                            usuario_empresa_id: usuarioEmpresaId,
+                            modulo: 'atendimento_bar',
+                            permissoes: {
+                                visualizar: true,
+                                criar: false,
+                                editar: false,
+                                excluir: false,
+                                administrar: false
+                            }
+                        }
+                    ];
+
+                    const { error: permError } = await supabase
+                        .from('permissoes_usuario')
+                        .insert(permissoes);
+
+                    if (permError) {
+                        console.warn('Erro ao criar permissões:', permError);
+                        addMessage(`⚠️ Aviso - Erro ao criar permissões: ${permError.message}`, 'error');
+                    } else {
+                        details.permissions_created = true;
+                        addMessage('✅ Permissões configuradas com sucesso', 'success');
+                    }
+                }
+
+                // Resultado final
+                addMessage(`
+                    <h3>🎉 Funcionária Stela criada com sucesso!</h3>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 15px 0;">
+                        <h4>📊 Resumo da Criação:</h4>
+                        <div class="detail-item ${details.auth_user_created ? 'success' : 'error'}">
+                            ${details.auth_user_created ? '✅' : '❌'} Usuário no Supabase Auth
+                        </div>
+                        <div class="detail-item ${details.profile_created ? 'success' : 'error'}">
+                            ${details.profile_created ? '✅' : '❌'} Perfil do usuário
+                        </div>
+                        <div class="detail-item ${details.bar_employee_created ? 'success' : 'error'}">
+                            ${details.bar_employee_created ? '✅' : '❌'} Registro como funcionária do bar
+                        </div>
+                        <div class="detail-item ${details.usuario_empresa_created ? 'success' : 'error'}">
+                            ${details.usuario_empresa_created ? '✅' : '❌'} Vínculo com empresa
+                        </div>
+                        <div class="detail-item ${details.permissions_created ? 'success' : 'error'}">
+                            ${details.permissions_created ? '✅' : '❌'} Permissões configuradas
+                        </div>
+                    </div>
+                    
+                    <div class="credentials-card">
+                        <h4>🔑 Credenciais de Acesso:</h4>
+                        <div><strong>Email:</strong> ${credentials.email}</div>
+                        <div><strong>Senha Temporária:</strong> ${credentials.senha_temporaria}</div>
+                        <div><strong>Deve Alterar Senha:</strong> ${credentials.deve_alterar_senha ? 'Sim' : 'Não'}</div>
+                        <div><strong>Campo senha_provisoria:</strong> true</div>
+                    </div>
+                    
+                    <div style="background: #fff3e0; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                        <h4 style="color: #f57c00; margin-top: 0;">⚠️ IMPORTANTE - Fluxo de Login:</h4>
+                        <ol style="margin: 10px 0;">
+                            <li>A funcionária deve fazer login com: <strong>stela@teste.com</strong></li>
+                            <li>Usar a senha temporária gerada acima</li>
+                            <li>O sistema detectará que <code>senha_provisoria = true</code></li>
+                            <li>Será forçada a alteração da senha no primeiro login</li>
+                            <li>Após alterar a senha, <code>senha_provisoria</code> será definido como <code>false</code></li>
+                            <li>Ela terá acesso às funcionalidades conforme as permissões configuradas</li>
+                        </ol>
+                    </div>
+                    
+                    <div style="background: #f0f8ff; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                        <h4 style="color: #1976d2; margin-top: 0;">📝 Próximos Passos:</h4>
+                        <ol style="margin: 10px 0;">
+                            <li>Anote as credenciais em local seguro</li>
+                            <li>Informe as credenciais para a funcionária Stela</li>
+                            <li>Teste o login e alteração de senha</li>
+                            <li>Verifique se as permissões estão funcionando corretamente</li>
+                            <li>Confirme acesso ao módulo de caixa</li>
+                        </ol>
+                    </div>
+                `, 'success');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                
+                // Tentar limpar usuário do Auth se foi criado
+                if (authUserId) {
+                    try {
+                        // Note: Não podemos deletar via client normal, apenas via admin
+                        console.log('Usuário criado no Auth mas processo falhou:', authUserId);
+                    } catch (cleanupError) {
+                        console.error('Erro ao limpar usuário:', cleanupError);
+                    }
+                }
+                
+                addMessage(`
+                    <h3>❌ Erro na criação da funcionária</h3>
+                    <p><strong>Erro:</strong> ${error.message}</p>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                        <h4>📊 Status do Processo:</h4>
+                        <div class="detail-item ${details.auth_user_created ? 'success' : 'error'}">
+                            ${details.auth_user_created ? '✅' : '❌'} Usuário no Supabase Auth
+                        </div>
+                        <div class="detail-item ${details.profile_created ? 'success' : 'error'}">
+                            ${details.profile_created ? '✅' : '❌'} Perfil do usuário
+                        </div>
+                        <div class="detail-item ${details.bar_employee_created ? 'success' : 'error'}">
+                            ${details.bar_employee_created ? '✅' : '❌'} Registro como funcionária do bar
+                        </div>
+                        <div class="detail-item ${details.usuario_empresa_created ? 'success' : 'error'}">
+                            ${details.usuario_empresa_created ? '✅' : '❌'} Vínculo com empresa
+                        </div>
+                        <div class="detail-item ${details.permissions_created ? 'success' : 'error'}">
+                            ${details.permissions_created ? '✅' : '❌'} Permissões configuradas
+                        </div>
+                    </div>
+                `, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🚀 Criar Funcionária com Fluxo Completo';
+                progressBar.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
