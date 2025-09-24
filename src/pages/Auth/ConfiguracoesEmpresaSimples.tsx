@@ -45,21 +45,33 @@ export const ConfiguracoesEmpresaSimples: React.FC = () => {
         setIsLoading(true);
         setError('');
 
-        // Primeiro, obter a empresa do usuário
+        // Primeiro, tentar obter a empresa do usuário
+        let empresaId: string | null = null;
+        
+        // Tentar buscar na tabela usuarios_empresa
         const { data: usuarioEmpresa, error: userError } = await supabase
           .from('usuarios_empresa')
           .select('empresa_id')
           .eq('user_id', user.id)
           .single();
 
-        if (userError) {
-          console.error('Erro ao obter empresa do usuário:', userError);
-          setError('Erro ao carregar dados do usuário');
-          return;
+        if (usuarioEmpresa?.empresa_id) {
+          empresaId = usuarioEmpresa.empresa_id;
+        } else {
+          // Se não encontrou, tentar buscar empresas onde o email_admin é o email do usuário
+          const { data: empresasPorEmail, error: emailError } = await supabase
+            .from('empresas')
+            .select('id')
+            .eq('email_admin', user.email)
+            .limit(1);
+
+          if (empresasPorEmail && empresasPorEmail.length > 0) {
+            empresaId = empresasPorEmail[0].id;
+          }
         }
 
-        if (!usuarioEmpresa?.empresa_id) {
-          setError('Usuário não está associado a nenhuma empresa');
+        if (!empresaId) {
+          setError('Usuário não está associado a nenhuma empresa. Entre em contato com o suporte.');
           return;
         }
 
@@ -67,7 +79,7 @@ export const ConfiguracoesEmpresaSimples: React.FC = () => {
         const { data: empresaData, error: empresaError } = await supabase
           .from('empresas')
           .select('nome, cnpj, email_admin, telefone, endereco')
-          .eq('id', usuarioEmpresa.empresa_id)
+          .eq('id', empresaId)
           .single();
 
         if (empresaError) {
@@ -112,13 +124,31 @@ export const ConfiguracoesEmpresaSimples: React.FC = () => {
       setSuccessMessage('');
 
       // Obter empresa do usuário
+      let empresaId: string | null = null;
+      
+      // Tentar buscar na tabela usuarios_empresa
       const { data: usuarioEmpresa, error: userError } = await supabase
         .from('usuarios_empresa')
         .select('empresa_id')
         .eq('user_id', user.id)
         .single();
 
-      if (userError || !usuarioEmpresa?.empresa_id) {
+      if (usuarioEmpresa?.empresa_id) {
+        empresaId = usuarioEmpresa.empresa_id;
+      } else {
+        // Se não encontrou, tentar buscar empresas onde o email_admin é o email do usuário
+        const { data: empresasPorEmail, error: emailError } = await supabase
+          .from('empresas')
+          .select('id')
+          .eq('email_admin', user.email)
+          .limit(1);
+
+        if (empresasPorEmail && empresasPorEmail.length > 0) {
+          empresaId = empresasPorEmail[0].id;
+        }
+      }
+
+      if (!empresaId) {
         setError('Erro ao identificar empresa do usuário');
         return;
       }
@@ -153,7 +183,7 @@ export const ConfiguracoesEmpresaSimples: React.FC = () => {
       const { error: updateError } = await supabase
         .from('empresas')
         .update(dadosAtualizacao)
-        .eq('id', usuarioEmpresa.empresa_id);
+        .eq('id', empresaId);
 
       if (updateError) {
         console.error('Erro ao atualizar empresa:', updateError);

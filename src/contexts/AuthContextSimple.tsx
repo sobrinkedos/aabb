@@ -57,11 +57,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initAuth = async () => {
       console.log('🚀 Inicializando autenticação simples...');
       
-      // Timeout de segurança - força carregamento após 3 segundos
+      // Timeout de segurança - força carregamento após 2 segundos
       const safetyTimeout = setTimeout(() => {
         console.log('⏰ Safety timeout - forçando carregamento');
         setIsLoading(false);
-      }, 3000);
+      }, 2000);
 
       try {
         if (!isSupabaseConfigured) {
@@ -71,24 +71,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
-        // Tentar verificar sessão com timeout curto
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 2000)
-        );
-
-        const result = await Promise.race([sessionPromise, timeoutPromise]);
+        // Limpar tokens inválidos primeiro
+        await supabase.auth.signOut();
         
-        if (result && 'data' in result) {
-          console.log('✅ Sessão verificada');
-          // Se há sessão, não precisamos fazer mais nada agora
-        }
-        
+        console.log('✅ Sessão limpa, pronto para login');
         clearTimeout(safetyTimeout);
         setIsLoading(false);
         
       } catch (error) {
-        console.log('⚠️ Erro na verificação de sessão, continuando...', error);
+        console.log('⚠️ Erro na inicialização, continuando...', error);
         clearTimeout(safetyTimeout);
         setIsLoading(false);
       }
@@ -157,19 +148,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     try {
-      // Verificar se é o primeiro usuário (administrador principal)
-      const { data: existingUsers, error: countError } = await supabase
-        .from('profiles')
-        .select('id', { count: 'exact' });
-
-      if (countError) {
-        console.warn('Erro ao verificar usuários existentes:', countError);
-      }
-
-      const isFirstUser = !existingUsers || existingUsers.length === 0;
-      const userRole = isFirstUser ? 'admin' : 'employee';
-
-      console.log(`🔐 Registrando ${isFirstUser ? 'PRIMEIRO USUÁRIO (ADMIN)' : 'usuário comum'}:`, email);
+      console.log(`🔐 Registrando usuário:`, email);
 
       // Criar usuário no Supabase Auth
       const { data, error } = await supabase.auth.signUp({
@@ -177,171 +156,135 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         password,
         options: {
           data: {
-            name: name,
-            role: userRole
+            name: name
           }
         }
       });
 
       if (error) {
+        console.error('Erro no signup:', error);
         return { success: false, error: error.message };
       }
 
       if (data.user) {
-        // Criar perfil do usuário com permissões apropriadas
-        const profileData = {
-          id: data.user.id,
-          name: name,
-          email: email,
-          role: userRole,
-          avatar_url: `https://api.dicebear.com/8.x/initials/svg?seed=${name}`,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([profileData]);
-
-        if (profileError) {
-          console.error('Erro ao criar perfil:', profileError);
-          // Não falhar o registro por causa do perfil
+        console.log(`✅ Usuário registrado com sucesso`);
+        
+        // Aguardar um pouco para garantir que o perfil foi criado
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Criar empresa e dados complementares
+        try {
+          console.log('🔄 Iniciando criação da empresa...');
+          await createCompanyForUser(data.user.id, name, email);
+          console.log(`✅ Empresa criada com sucesso`);
+        } catch (companyError) {
+          console.error('❌ Erro ao criar empresa:', companyError);
+          console.error('Stack trace:', companyError);
+          // Não falhar o registro por causa da empresa, mas mostrar o erro
+          alert(`Usuário criado, mas houve erro ao criar empresa: ${companyError.message || companyError}`);
         }
-
-        // Se for o primeiro usuário (admin), criar empresa padrão e configurações
-        if (isFirstUser) {
-          await createDefaultCompanyAndPermissions(data.user.id, name, email);
-        }
-
-        console.log(`✅ Usuário registrado com sucesso como ${userRole}`);
+        
+        return { success: true, error: null };
       }
 
-      return { success: true, error: null };
+      return { success: false, error: 'Erro desconhecido no registro' };
     } catch (error) {
       console.error('Erro no registro:', error);
       return { success: false, error: 'Erro de conexão' };
     }
   };
 
-  // Função para criar empresa padrão e configurações para o primeiro usuário
-  const createDefaultCompanyAndPermissions = async (userId: string, userName: string, userEmail: string) => {
+  // Função para criar empresa após o registro do usuário
+  const createCompanyForUser = async (userId: string, userName: string, userEmail: string) => {
     try {
-      console.log('🏢 Criando empresa padrão para administrador principal...');
+      console.log('🏢 Criando empresa para o usuário...', { userId, userName, userEmail });
 
-      // Criar empresa padrão
-      const empresaData = {
-        id: `empresa-${userId}`,
-        nome: 'Minha Empresa',
-        razao_social: 'Minha Empresa Ltda',
-        cnpj: '00.000.000/0001-00',
-        email: userEmail,
-        telefone: '(11) 99999-9999',
-        endereco: 'Endereço da empresa',
-        cidade: 'São Paulo',
-        estado: 'SP',
-        cep: '00000-000',
-        plano: 'premium',
-        status: 'ativo',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
+      // Gerar CNPJ único
+      const timestamp = Date.now();
+      const cnpjUnico = String(timestamp).slice(-14).padStart(14, '0');
+      console.log('📋 CNPJ gerado:', cnpjUnico);
 
-      const { error: empresaError } = await supabase
+      // Criar empresa
+      console.log('🏭 Inserindo empresa na tabela...');
+      const { data: empresa, error: empresaError } = await supabase
         .from('empresas')
-        .insert([empresaData]);
+        .insert([{
+          nome: `Empresa de ${userName}`,
+          cnpj: cnpjUnico,
+          email_admin: userEmail,
+          telefone: '',
+          plano: 'premium',
+          status: 'ativo'
+        }])
+        .select()
+        .single();
 
       if (empresaError) {
-        console.error('Erro ao criar empresa:', empresaError);
+        console.error('❌ Erro ao criar empresa:', empresaError);
+        throw new Error(`Erro ao criar empresa: ${empresaError.message}`);
       }
 
-      // Criar vínculo usuário-empresa com permissões de admin
-      const usuarioEmpresaData = {
-        user_id: userId,
-        empresa_id: empresaData.id,
-        nome: userName,
-        email: userEmail,
-        cargo: 'Administrador',
-        departamento: 'Administração',
-        is_admin: true,
-        is_active: true,
-        permissoes: {
-          admin: {
-            usuarios: { ler: true, criar: true, editar: true, excluir: true },
-            configuracoes: { ler: true, criar: true, editar: true, excluir: true },
-            relatorios: { ler: true, criar: true, editar: true, excluir: true },
-            integracao: { ler: true, criar: true, editar: true, excluir: true },
-            backup: { ler: true, criar: true, editar: true, excluir: true },
-            auditoria: { ler: true, criar: true, editar: true, excluir: true }
-          },
-          bar: { ler: true, criar: true, editar: true, excluir: true },
-          cozinha: { ler: true, criar: true, editar: true, excluir: true },
-          caixa: { ler: true, criar: true, editar: true, excluir: true },
-          estoque: { ler: true, criar: true, editar: true, excluir: true },
-          clientes: { ler: true, criar: true, editar: true, excluir: true },
-          funcionarios: { ler: true, criar: true, editar: true, excluir: true }
-        },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
+      console.log('✅ Empresa criada:', empresa);
 
-      const { error: vinculoError } = await supabase
+      // Criar registro na tabela usuarios_empresa
+      console.log('👤 Criando registro na tabela usuarios_empresa...');
+      const { data: usuarioEmpresa, error: usuarioEmpresaError } = await supabase
         .from('usuarios_empresa')
-        .insert([usuarioEmpresaData]);
+        .insert([{
+          user_id: userId,
+          empresa_id: empresa.id,
+          nome_completo: userName,
+          email: userEmail,
+          tipo_usuario: 'administrador',
+          papel: 'SUPER_ADMIN',
+          is_primeiro_usuario: true,
+          ativo: true,
+          tem_acesso_sistema: true
+        }])
+        .select()
+        .single();
 
-      if (vinculoError) {
-        console.error('Erro ao criar vínculo usuário-empresa:', vinculoError);
+      if (usuarioEmpresaError) {
+        console.error('❌ Erro ao criar usuário empresa:', usuarioEmpresaError);
+        throw new Error(`Erro ao criar usuário empresa: ${usuarioEmpresaError.message}`);
       }
 
-      // Criar configurações padrão da empresa
-      const configuracoesPadrao = [
-        {
-          empresa_id: empresaData.id,
-          categoria: 'geral',
-          chave: 'nome_sistema',
-          valor: 'ClubManager Pro',
-          descricao: 'Nome do sistema',
-          tipo: 'string'
-        },
-        {
-          empresa_id: empresaData.id,
-          categoria: 'geral',
-          chave: 'timezone',
-          valor: 'America/Sao_Paulo',
-          descricao: 'Fuso horário',
-          tipo: 'string'
-        },
-        {
-          empresa_id: empresaData.id,
-          categoria: 'seguranca',
-          chave: 'senha_min_length',
-          valor: '6',
-          descricao: 'Tamanho mínimo da senha',
-          tipo: 'number'
-        },
-        {
-          empresa_id: empresaData.id,
-          categoria: 'backup',
-          chave: 'backup_automatico',
-          valor: 'true',
-          descricao: 'Backup automático habilitado',
-          tipo: 'boolean'
-        }
+      console.log('✅ Usuário empresa criado:', usuarioEmpresa);
+
+      // Criar permissões básicas
+      console.log('🔐 Criando permissões básicas...');
+      const permissoes = [
+        { modulo: 'dashboard', permissoes: { visualizar: true, criar: true, editar: true, excluir: true, administrar: true } },
+        { modulo: 'configuracoes', permissoes: { visualizar: true, criar: true, editar: true, excluir: true, administrar: true } }
       ];
 
-      const { error: configError } = await supabase
-        .from('configuracoes_empresa')
-        .insert(configuracoesPadrao);
+      const { error: permissoesError } = await supabase
+        .from('permissoes_usuario')
+        .insert(
+          permissoes.map(p => ({
+            usuario_empresa_id: usuarioEmpresa.id,
+            modulo: p.modulo,
+            permissoes: p.permissoes
+          }))
+        );
 
-      if (configError) {
-        console.error('Erro ao criar configurações padrão:', configError);
+      if (permissoesError) {
+        console.error('⚠️ Erro ao criar permissões:', permissoesError);
+        // Não falhar por causa das permissões
+      } else {
+        console.log('✅ Permissões criadas com sucesso');
       }
 
-      console.log('✅ Empresa padrão e configurações criadas com sucesso!');
-
+      console.log('✅ Empresa e dados complementares criados com sucesso!');
     } catch (error) {
-      console.error('Erro ao criar empresa padrão:', error);
+      console.error('Erro ao criar empresa:', error);
+      throw error;
     }
   };
+
+
+
+
 
   const loginAsDemo = async () => {
     const mockUser: User = {

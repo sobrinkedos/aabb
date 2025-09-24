@@ -14,12 +14,14 @@ interface CredentialsSectionProps {
   employee: Partial<Employee>;
   onCredentialsGenerated: (credentials: any) => void;
   mode: 'create' | 'edit';
+  showCredentialsStep?: boolean; // Nova prop para controlar se mostra a seção
 }
 
 export const CredentialsSection: React.FC<CredentialsSectionProps> = ({
   employee,
   onCredentialsGenerated,
-  mode
+  mode,
+  showCredentialsStep = false
 }) => {
   const [credentials, setCredentials] = useState<UserCredentials | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -63,7 +65,7 @@ export const CredentialsSection: React.FC<CredentialsSectionProps> = ({
     const passwordStrength = validatePasswordStrength(customPassword);
     if (passwordStrength.strength === 'weak') {
       const confirm = window.confirm(
-        `Senha fraca detectada. Sugestões:\n${passwordStrength.feedback.join('\n')}\n\nDeseja continuar mesmo assim?`
+        'Senha fraca detectada. Sugestões:\n' + passwordStrength.feedback.join('\n') + '\n\nDeseja continuar mesmo assim?'
       );
       if (!confirm) return;
     }
@@ -110,6 +112,11 @@ export const CredentialsSection: React.FC<CredentialsSectionProps> = ({
   };
 
   const passwordStrength = customPassword ? validatePasswordStrength(customPassword) : null;
+
+  // Se showCredentialsStep for false, não renderizar nada
+  if (!showCredentialsStep) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">

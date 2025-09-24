@@ -3,6 +3,7 @@ import { useMultitenantAuth } from '../../contexts/MultitenantAuthContextSimple'
 import { ProtectedRoute } from '../../components/Auth/ProtectedRoute';
 import { ModuloSistema, UsuarioEmpresa, PermissaoModulo } from '../../types/multitenant';
 import { supabase } from '../../lib/supabase';
+import { criarFuncionarioComCredenciais, verificarEmailExistente } from '../../services/funcionarioService';
 
 interface NovoFuncionario {
   nome_completo: string;
@@ -97,7 +98,7 @@ export const GestaoFuncionarios: React.FC = () => {
   };
 
   // Validar formulário
-  const validarFormulario = (): boolean => {
+  const validarFormulario = async (): Promise<boolean> => {
     const newErrors: FormErrors = {};
 
     if (!novoFuncionario.nome_completo.trim()) {
@@ -108,174 +109,89 @@ export const GestaoFuncionarios: React.FC = () => {
       newErrors.email = 'Email é obrigatório';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(novoFuncionario.email)) {
       newErrors.email = 'Email inválido';
-    }
-
-    // Verificar se email já existe
-    const emailExiste = funcionarios.some(f => 
-      f.email.toLowerCase() === novoFuncionario.email.toLowerCase() && 
-      (!editingFuncionario || f.id !== editingFuncionario.id)
-    );
-    
-    if (emailExiste) {
-      newErrors.email = 'Este email já está cadastrado';
+    } else if (empresa?.id) {
+      // Verificar se email já existe no banco
+      const emailExiste = await verificarEmailExistente(
+        novoFuncionario.email, 
+        empresa.id, 
+        editingFuncionario?.id
+      );
+      
+      if (emailExiste) {
+        newErrors.email = 'Este email já está cadastrado';
+      }
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Gerar senha provisória
-  const gerarSenhaProvisoria = (): string => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
-    let senha = '';
-    for (let i = 0; i < 12; i++) {
-      senha += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return senha;
-  };
+
+
+  // Estado para mostrar senha provisória
+  const [senhaProvisionaria, setSenhaProvisionaria] = useState<string | null>(null);
+  const [showSenhaModal, setShowSenhaModal] = useState(false);
 
   // Salvar funcionário
   const salvarFuncionario = async () => {
     console.log('🔍 DEBUG: Iniciando salvamento do funcionário');
     console.log('🔍 DEBUG: Estado completo:', novoFuncionario);
     
-    if (!validarFormulario()) {
+    setIsSubmitting(true);
+    setErrors({}); // Limpar erros anteriores
+    
+    if (!(await validarFormulario())) {
       console.log('❌ DEBUG: Validação falhou');
+      setIsSubmitting(false);
       return;
     }
 
     console.log('✅ DEBUG: Validação passou');
-    setIsSubmitting(true);
-    setErrors({}); // Limpar erros anteriores
     
     try {
-      let usuarioAuth = null;
-      
-      // Se tem acesso ao sistema e é um novo funcionário, criar usuário no Supabase Auth
-      if (novoFuncionario.tem_acesso_sistema && !editingFuncionario) {
-        const senhaProvisoria = gerarSenhaProvisoria();
-        
-        try {
-          const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: novoFuncionario.email,
-            password: senhaProvisoria,
-            options: {
-              data: {
-                nome_completo: novoFuncionario.nome_completo
-              }
-            }
-          });
-
-          if (authError) {
-            setErrors({ submit: `Erro ao criar usuário: ${authError.message}` });
-            return;
-          }
-
-          usuarioAuth = authData.user;
-        } catch (error) {
-          setErrors({ submit: 'Erro ao criar usuário no sistema de autenticação' });
-          return;
-        }
-      } else if (editingFuncionario && novoFuncionario.tem_acesso_sistema) {
-        // Para edição, manter o user_id existente se já tem acesso
-        usuarioAuth = { id: editingFuncionario.user_id };
+      if (!empresa?.id) {
+        setErrors({ submit: 'ID da empresa não encontrado' });
+        return;
       }
 
-      // Criar ou atualizar funcionário
-      const funcionarioData = {
-        nome_completo: novoFuncionario.nome_completo,
-        email: novoFuncionario.email,
-        telefone: novoFuncionario.telefone || null,
-        cargo: novoFuncionario.cargo || null,
-        user_id: novoFuncionario.tem_acesso_sistema ? (usuarioAuth?.id || editingFuncionario?.user_id) : null,
-        empresa_id: empresa?.id,
-        tipo_usuario: 'funcionario' as const,
-        status: editingFuncionario?.status || 'ativo' as const,
-        senha_provisoria: novoFuncionario.tem_acesso_sistema && !editingFuncionario
-      };
-
-      console.log('🔍 DEBUG: Dados do funcionário a salvar:', funcionarioData);
-      console.log('🔍 DEBUG: tem_acesso_sistema:', novoFuncionario.tem_acesso_sistema);
-
-      let funcionarioId: string;
-
       if (editingFuncionario) {
-        // Atualizar funcionário existente
-        console.log('🔍 DEBUG: Atualizando funcionário existente:', editingFuncionario.id);
+        // Lógica de edição (mantém a lógica atual por enquanto)
+        console.log('🔍 DEBUG: Editando funcionário existente - usando lógica antiga');
         
+        const funcionarioData = {
+          nome_completo: novoFuncionario.nome_completo,
+          email: novoFuncionario.email,
+          telefone: novoFuncionario.telefone || null,
+          cargo: novoFuncionario.cargo || null,
+          tem_acesso_sistema: novoFuncionario.tem_acesso_sistema
+        };
+
         const { error } = await supabase
           .from('usuarios_empresa')
           .update(funcionarioData)
           .eq('id', editingFuncionario.id);
 
         if (error) {
-          console.error('❌ DEBUG: Erro ao atualizar funcionário:', error);
           setErrors({ submit: `Erro ao atualizar funcionário: ${error.message}` });
           return;
         }
-        
-        console.log('✅ DEBUG: Funcionário atualizado com sucesso');
-        funcionarioId = editingFuncionario.id;
-      } else {
-        // Criar novo funcionário
-        console.log('🔍 DEBUG: Criando novo funcionário');
-        
-        const { data, error } = await supabase
-          .from('usuarios_empresa')
-          .insert(funcionarioData)
-          .select()
-          .single();
 
-        if (error) {
-          console.error('❌ DEBUG: Erro ao criar funcionário:', error);
-          setErrors({ submit: error.message });
-          return;
-        }
-        
-        console.log('✅ DEBUG: Funcionário criado com sucesso:', data);
-        funcionarioId = data.id;
-      }
-
-      // Salvar permissões se tem acesso ao sistema
-      if (novoFuncionario.tem_acesso_sistema) {
-        console.log('🔍 DEBUG: Iniciando salvamento de permissões');
-        console.log('🔍 DEBUG: FuncionarioId:', funcionarioId);
-        console.log('🔍 DEBUG: Permissões do estado:', novoFuncionario.permissoes);
-        
-        try {
-          // Primeiro, remover permissões existentes
-          const { error: deleteError } = await supabase
+        // Atualizar permissões se tem acesso ao sistema
+        if (novoFuncionario.tem_acesso_sistema) {
+          // Remover permissões existentes
+          await supabase
             .from('permissoes_usuario')
             .delete()
-            .eq('usuario_empresa_id', funcionarioId);
+            .eq('usuario_empresa_id', editingFuncionario.id);
 
-          if (deleteError) {
-            console.error('❌ DEBUG: Erro ao remover permissões existentes:', deleteError);
-          } else {
-            console.log('✅ DEBUG: Permissões existentes removidas');
-          }
-
-          // Garantir que temos permissões inicializadas
-          const permissoesParaSalvar = novoFuncionario.permissoes && Object.keys(novoFuncionario.permissoes).length > 0 
-            ? novoFuncionario.permissoes 
-            : inicializarPermissoes();
-
-          console.log('🔍 DEBUG: Permissões para salvar:', permissoesParaSalvar);
-
-          // Inserir apenas permissões que têm pelo menos uma ação marcada como true
+          // Inserir novas permissões
           const permissoesArray: any[] = [];
-          
-          Object.entries(permissoesParaSalvar).forEach(([modulo, permissoes]) => {
-            console.log(`🔍 DEBUG: Processando módulo ${modulo}:`, permissoes);
-            
-            // Verificar se há pelo menos uma permissão ativa
+          Object.entries(novoFuncionario.permissoes || {}).forEach(([modulo, permissoes]: [string, any]) => {
             const temPermissaoAtiva = Object.values(permissoes).some(valor => valor === true);
-            console.log(`🔍 DEBUG: Módulo ${modulo} tem permissão ativa:`, temPermissaoAtiva);
-            
             if (temPermissaoAtiva) {
-              const permissaoItem = {
-                usuario_empresa_id: funcionarioId,
-                modulo: modulo as ModuloSistema,
+              permissoesArray.push({
+                usuario_empresa_id: editingFuncionario.id,
+                modulo: modulo,
                 permissoes: {
                   visualizar: Boolean(permissoes.visualizar),
                   criar: Boolean(permissoes.criar),
@@ -283,47 +199,41 @@ export const GestaoFuncionarios: React.FC = () => {
                   excluir: Boolean(permissoes.excluir),
                   administrar: Boolean(permissoes.administrar)
                 }
-              };
-              console.log(`🔍 DEBUG: Adicionando permissão para ${modulo}:`, permissaoItem);
-              permissoesArray.push(permissaoItem);
+              });
             }
           });
 
-          console.log('🔍 DEBUG: Array final de permissões:', permissoesArray);
-
-          // Inserir permissões apenas se houver alguma
           if (permissoesArray.length > 0) {
-            console.log('🔍 DEBUG: Inserindo permissões no banco...');
-            
-            const { data, error: permError } = await supabase
-              .from('permissoes_usuario')
-              .insert(permissoesArray)
-              .select();
-
-            if (permError) {
-              console.error('❌ DEBUG: Erro ao salvar permissões:', permError);
-              setErrors({ submit: `Erro ao salvar permissões: ${permError.message}` });
-              return;
-            }
-            
-            console.log('✅ DEBUG: Permissões salvas com sucesso:', data);
-          } else {
-            console.log('⚠️ DEBUG: Nenhuma permissão para salvar');
+            await supabase.from('permissoes_usuario').insert(permissoesArray);
           }
-        } catch (error) {
-          console.error('❌ DEBUG: Erro no salvamento de permissões:', error);
-          setErrors({ submit: 'Erro ao salvar permissões' });
+        }
+
+        console.log('✅ Funcionário atualizado com sucesso');
+      } else {
+        // Criar novo funcionário usando o serviço
+        console.log('🔍 DEBUG: Criando novo funcionário com serviço');
+        
+        const result = await criarFuncionarioComCredenciais({
+          nome_completo: novoFuncionario.nome_completo,
+          email: novoFuncionario.email,
+          telefone: novoFuncionario.telefone,
+          cargo: novoFuncionario.cargo,
+          empresa_id: empresa.id,
+          tem_acesso_sistema: novoFuncionario.tem_acesso_sistema,
+          permissoes: novoFuncionario.permissoes
+        });
+
+        if (!result.success) {
+          setErrors({ submit: result.error || 'Erro ao criar funcionário' });
           return;
         }
-      } else {
-        // Se não tem mais acesso ao sistema, remover todas as permissões
-        const { error: deleteError } = await supabase
-          .from('permissoes_usuario')
-          .delete()
-          .eq('usuario_empresa_id', funcionarioId);
 
-        if (deleteError) {
-          console.error('Erro ao remover permissões:', deleteError);
+        console.log('✅ Funcionário criado com sucesso via serviço');
+
+        // Se foi criado com acesso ao sistema, mostrar a senha
+        if (result.senha_provisoria) {
+          setSenhaProvisionaria(result.senha_provisoria);
+          setShowSenhaModal(true);
         }
       }
 
@@ -950,5 +860,86 @@ export const GestaoFuncionarios: React.FC = () => {
         </div>
       )}
     </ProtectedRoute>
+
+      {/* Modal de Senha Provisória */}
+      {showSenhaModal && senhaProvisionaria && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900">
+                  🔑 Credenciais de Acesso Criadas
+                </h3>
+              </div>
+            </div>
+            
+            <div className="px-6 py-4">
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-4">
+                  O funcionário foi cadastrado com sucesso! Anote as credenciais abaixo para fornecer ao funcionário:
+                </p>
+                
+                <div className="bg-gray-50 rounded-lg p-4 border">
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email de acesso:
+                    </label>
+                    <div className="flex items-center justify-between bg-white border rounded px-3 py-2">
+                      <span className="text-sm font-mono">{novoFuncionario.email}</span>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(novoFuncionario.email)}
+                        className="text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        Copiar
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Senha provisória:
+                    </label>
+                    <div className="flex items-center justify-between bg-white border rounded px-3 py-2">
+                      <span className="text-sm font-mono font-bold text-red-600">{senhaProvisionaria}</span>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(senhaProvisionaria)}
+                        className="text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        Copiar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex">
+                    <svg className="h-5 w-5 text-yellow-400 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <div>
+                      <h4 className="text-sm font-medium text-yellow-800">Importante:</h4>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        Anote essas credenciais em local seguro. O funcionário deve fazer login com esses dados na primeira vez.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowSenhaModal(false);
+                  setSenhaProvisionaria(null);
+                }}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Entendi, fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
   );
-};
+};    

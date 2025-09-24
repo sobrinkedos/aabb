@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Diagnóstico de Isolamento entre Empresas</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 { 
+            color: #2c3e50; 
+            text-align: center; 
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .section {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 5px solid #3498db;
+        }
+        .error-section {
+            background: #fff5f5;
+            border-left-color: #e53e3e;
+        }
+        .success-section {
+            background: #f0fff4;
+            border-left-color: #38a169;
+        }
+        .warning-section {
+            background: #fffaf0;
+            border-left-color: #d69e2e;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .user-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .empresa-info {
+            background: #e6f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #3498db;
+        }
+        .isolation-test {
+            background: #fff5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 2px solid #e53e3e;
+        }
+        .config-section {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #cbd5e0;
+        }
+        .config-section input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        pre {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Diagnóstico de Isolamento entre Empresas</h1>
+        
+        <div class="config-section">
+            <h3>⚙️ Configuração do Supabase</h3>
+            <input type="text" id="supabaseUrl" placeholder="URL do Supabase" value="">
+            <input type="password" id="serviceKey" placeholder="Service Role Key" value="">
+            <button onclick="initializeSupabase()">🔧 Configurar Supabase</button>
+        </div>
+
+        <div class="section">
+            <h2>📋 Testes Disponíveis</h2>
+            <button onclick="listAllUsers()" disabled id="listUsersBtn">👥 1. Listar Todos os Usuários</button>
+            <button onclick="listAllCompanies()" disabled id="listCompaniesBtn">🏢 2. Listar Todas as Empresas</button>
+            <button onclick="testUserIsolation()" disabled id="testIsolationBtn">🔒 3. Testar Isolamento por Usuário</button>
+            <button onclick="testCrossCompanyAccess()" disabled id="testCrossBtn">⚠️ 4. Testar Acesso Entre Empresas</button>
+            <button onclick="generateIsolationReport()" disabled id="reportBtn">📊 5. Gerar Relatório Completo</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        let supabase = null;
+        let allUsers = [];
+        let allCompanies = [];
+
+        function addMessage(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const messageDiv = document.createElement('div');
+            
+            let className = 'section';
+            if (type === 'success') className = 'section success-section';
+            if (type === 'error') className = 'section error-section';
+            if (type === 'warning') className = 'section warning-section';
+            
+            messageDiv.className = className;
+            messageDiv.innerHTML = message;
+            resultsDiv.appendChild(messageDiv);
+            
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function initializeSupabase() {
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('serviceKey').value;
+
+            if (!url || !key) {
+                addMessage('❌ <strong>Erro:</strong> Preencha URL e Service Role Key', 'error');
+                return;
+            }
+
+            try {
+                supabase = window.supabase.createClient(url, key);
+                addMessage('✅ <strong>Supabase configurado com sucesso!</strong>', 'success');
+                
+                // Habilitar botões
+                document.querySelectorAll('button[disabled]').forEach(btn => {
+                    btn.disabled = false;
+                });
+                
+            } catch (error) {
+                addMessage(`❌ <strong>Erro ao configurar Supabase:</strong> ${error.message}`, 'error');
+            }
+        }
+
+        async function listAllUsers() {
+            if (!supabase) {
+                addMessage('❌ Configure o Supabase primeiro', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('listUsersBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Carregando usuários...';
+
+            try {
+                addMessage('👥 <strong>Listando todos os usuários do sistema...</strong>', 'info');
+                
+                // Buscar todos os usuários da tabela usuarios_empresa
+                const { data: usuarios, error: usuariosError } = await supabase
+                    .from('usuarios_empresa')
+                    .select(`
+                        id,
+                        user_id,
+                        empresa_id,
+                        nome_completo,
+                        email,
+                        tipo_usuario,
+                        status,
+                        ativo,
+                        tem_acesso_sistema,
+                        created_at,
+                        empresas!inner(nome, cnpj)
+                    `)
+                    .order('created_at', { ascending: false });
+
+                if (usuariosError) {
+                    addMessage(`❌ <strong>Erro:</strong> ${usuariosError.message}`, 'error');
+                    return;
+                }
+
+                allUsers = usuarios || [];
+                
+                let html = `<h3>👥 Total de usuários encontrados: ${allUsers.length}</h3>`;
+                
+                if (allUsers.length > 0) {
+                    // Agrupar por empresa
+                    const usuariosPorEmpresa = {};
+                    allUsers.forEach(user => {
+                        const empresaId = user.empresa_id;
+                        if (!usuariosPorEmpresa[empresaId]) {
+                            usuariosPorEmpresa[empresaId] = [];
+                        }
+                        usuariosPorEmpresa[empresaId].push(user);
+                    });
+
+                    html += '<div style="margin-top: 20px;">';
+                    Object.keys(usuariosPorEmpresa).forEach(empresaId => {
+                        const usuarios = usuariosPorEmpresa[empresaId];
+                        const empresa = usuarios[0].empresas;
+                        
+                        html += `
+                            <div class="empresa-info">
+                                <h4>🏢 ${empresa.nome} (${empresa.cnpj})</h4>
+                                <p><strong>ID da Empresa:</strong> ${empresaId}</p>
+                                <p><strong>Usuários nesta empresa:</strong> ${usuarios.length}</p>
+                                
+                                <div style="margin-left: 20px;">
+                        `;
+                        
+                        usuarios.forEach(user => {
+                            const statusIcon = user.ativo ? '✅' : '❌';
+                            const acessoIcon = user.tem_acesso_sistema ? '🔓' : '🔒';
+                            
+                            html += `
+                                <div class="user-card">
+                                    <strong>${user.nome_completo}</strong> (${user.email})<br>
+                                    <span style="color: #666;">
+                                        ${statusIcon} Status: ${user.status} | 
+                                        ${acessoIcon} Acesso: ${user.tem_acesso_sistema ? 'Sim' : 'Não'} | 
+                                        Tipo: ${user.tipo_usuario}
+                                    </span><br>
+                                    <small>User ID: ${user.user_id || 'Não vinculado'}</small>
+                                </div>
+                            `;
+                        });
+                        
+                        html += '</div></div>';
+                    });
+                    html += '</div>';
+                }
+                
+                addMessage(html, 'success');
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro inesperado:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '👥 1. Listar Todos os Usuários';
+            }
+        }
+
+        async function listAllCompanies() {
+            if (!supabase) {
+                addMessage('❌ Configure o Supabase primeiro', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('listCompaniesBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Carregando empresas...';
+
+            try {
+                addMessage('🏢 <strong>Listando todas as empresas...</strong>', 'info');
+                
+                const { data: empresas, error } = await supabase
+                    .from('empresas')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    addMessage(`❌ <strong>Erro:</strong> ${error.message}`, 'error');
+                    return;
+                }
+
+                allCompanies = empresas || [];
+                
+                let html = `<h3>🏢 Total de empresas: ${allCompanies.length}</h3>`;
+                
+                if (allCompanies.length > 0) {
+                    html += '<div style="margin-top: 20px;">';
+                    allCompanies.forEach(empresa => {
+                        html += `
+                            <div class="empresa-info">
+                                <h4>${empresa.nome}</h4>
+                                <p><strong>CNPJ:</strong> ${empresa.cnpj}</p>
+                                <p><strong>Email Admin:</strong> ${empresa.email_admin}</p>
+                                <p><strong>Status:</strong> ${empresa.status}</p>
+                                <p><strong>ID:</strong> ${empresa.id}</p>
+                                <p><strong>Criada em:</strong> ${new Date(empresa.created_at).toLocaleString('pt-BR')}</p>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+                
+                addMessage(html, 'success');
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro inesperado:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🏢 2. Listar Todas as Empresas';
+            }
+        }
+
+        async function testUserIsolation() {
+            if (!supabase) {
+                addMessage('❌ Configure o Supabase primeiro', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('testIsolationBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando isolamento...';
+
+            try {
+                addMessage('🔒 <strong>Testando isolamento de dados por usuário...</strong>', 'info');
+                
+                // Pegar dois usuários de empresas diferentes
+                if (allUsers.length < 2) {
+                    await listAllUsers();
+                }
+
+                const empresasUnicas = [...new Set(allUsers.map(u => u.empresa_id))];
+                
+                if (empresasUnicas.length < 2) {
+                    addMessage('⚠️ <strong>Aviso:</strong> Apenas uma empresa encontrada. Não é possível testar isolamento.', 'warning');
+                    return;
+                }
+
+                addMessage(`📊 <strong>Empresas detectadas:</strong> ${empresasUnicas.length}`, 'info');
+                
+                // Testar se cada usuário vê apenas funcionários da sua empresa
+                for (let i = 0; i < Math.min(2, empresasUnicas.length); i++) {
+                    const empresaId = empresasUnicas[i];
+                    const usuariosDaEmpresa = allUsers.filter(u => u.empresa_id === empresaId);
+                    
+                    if (usuariosDaEmpresa.length > 0) {
+                        const usuario = usuariosDaEmpresa[0];
+                        
+                        addMessage(`🔍 <strong>Testando isolamento para:</strong> ${usuario.nome_completo} (${usuario.empresas.nome})`, 'info');
+                        
+                        // Tentar buscar funcionários com o filtro de empresa
+                        const { data: funcionarios, error } = await supabase
+                            .from('bar_employees')
+                            .select('*')
+                            .eq('empresa_id', empresaId);
+
+                        if (error) {
+                            addMessage(`❌ <strong>Erro ao buscar funcionários:</strong> ${error.message}`, 'error');
+                        } else {
+                            const count = funcionarios?.length || 0;
+                            addMessage(`✅ <strong>Funcionários encontrados para ${usuario.empresas.nome}:</strong> ${count}`, 'success');
+                            
+                            if (count > 0) {
+                                let html = '<div style="margin-left: 20px;">';
+                                funcionarios.slice(0, 3).forEach(func => {
+                                    html += `<div>• ${func.nome || 'Nome não informado'} (${func.email || 'Email não informado'})</div>`;
+                                });
+                                if (count > 3) {
+                                    html += `<div>... e mais ${count - 3} funcionários</div>`;
+                                }
+                                html += '</div>';
+                                addMessage(html, 'success');
+                            }
+                        }
+                    }
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro inesperado:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔒 3. Testar Isolamento por Usuário';
+            }
+        }
+
+        async function testCrossCompanyAccess() {
+            if (!supabase) {
+                addMessage('❌ Configure o Supabase primeiro', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('testCrossBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando acesso cruzado...';
+
+            try {
+                addMessage('⚠️ <strong>Testando se existe vazamento entre empresas...</strong>', 'warning');
+                
+                if (allUsers.length === 0) {
+                    await listAllUsers();
+                }
+
+                const empresasUnicas = [...new Set(allUsers.map(u => u.empresa_id))];
+                
+                if (empresasUnicas.length < 2) {
+                    addMessage('⚠️ <strong>Aviso:</strong> Apenas uma empresa. Teste não aplicável.', 'warning');
+                    return;
+                }
+
+                // Teste: tentar buscar dados de uma empresa usando ID de outra
+                const empresa1 = empresasUnicas[0];
+                const empresa2 = empresasUnicas[1];
+                
+                addMessage(`🔍 <strong>Testando cruzamento:</strong> Empresa A (${empresa1.slice(0,8)}...) vs Empresa B (${empresa2.slice(0,8)}...)`, 'info');
+                
+                // Buscar funcionários da empresa1
+                const { data: func1, error: err1 } = await supabase
+                    .from('bar_employees')
+                    .select('*')
+                    .eq('empresa_id', empresa1);
+                
+                // Buscar funcionários da empresa2  
+                const { data: func2, error: err2 } = await supabase
+                    .from('bar_employees')
+                    .select('*')
+                    .eq('empresa_id', empresa2);
+
+                if (err1 || err2) {
+                    addMessage(`❌ <strong>Erro na consulta:</strong> ${err1?.message || err2?.message}`, 'error');
+                    return;
+                }
+
+                const count1 = func1?.length || 0;
+                const count2 = func2?.length || 0;
+                
+                addMessage(`📊 <strong>Resultados:</strong><br>
+                    • Empresa A: ${count1} funcionários<br>
+                    • Empresa B: ${count2} funcionários`, 'info');
+
+                // Verificar se há sobreposição (vazamento)
+                if (count1 > 0 && count2 > 0) {
+                    const emails1 = new Set((func1 || []).map(f => f.email));
+                    const emails2 = new Set((func2 || []).map(f => f.email));
+                    
+                    const overlap = [...emails1].filter(email => emails2.has(email));
+                    
+                    if (overlap.length > 0) {
+                        addMessage(`🚨 <strong>VAZAMENTO DETECTADO!</strong><br>
+                            Funcionários compartilhados entre empresas: ${overlap.join(', ')}`, 'error');
+                    } else {
+                        addMessage(`✅ <strong>Isolamento OK!</strong> Não há funcionários compartilhados.`, 'success');
+                    }
+                } else {
+                    addMessage(`✅ <strong>Isolamento OK!</strong> Empresas têm conjuntos separados.`, 'success');
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro inesperado:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '⚠️ 4. Testar Acesso Entre Empresas';
+            }
+        }
+
+        async function generateIsolationReport() {
+            if (!supabase) {
+                addMessage('❌ Configure o Supabase primeiro', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('reportBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Gerando relatório...';
+
+            try {
+                addMessage('📊 <strong>Gerando relatório completo de isolamento...</strong>', 'info');
+                
+                // Garantir que temos os dados
+                if (allUsers.length === 0) await listAllUsers();
+                if (allCompanies.length === 0) await listAllCompanies();
+
+                let report = `
+                    <h2>📊 Relatório de Isolamento Multitenant</h2>
+                    <p><strong>Data/Hora:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+                    
+                    <h3>📈 Estatísticas Gerais</h3>
+                    <ul>
+                        <li><strong>Total de Empresas:</strong> ${allCompanies.length}</li>
+                        <li><strong>Total de Usuários:</strong> ${allUsers.length}</li>
+                        <li><strong>Usuários com Acesso:</strong> ${allUsers.filter(u => u.tem_acesso_sistema).length}</li>
+                        <li><strong>Usuários Ativos:</strong> ${allUsers.filter(u => u.ativo).length}</li>
+                    </ul>
+                `;
+
+                // Análise por empresa
+                const empresasUnicas = [...new Set(allUsers.map(u => u.empresa_id))];
+                report += `<h3>🏢 Análise por Empresa</h3>`;
+                
+                for (const empresaId of empresasUnicas) {
+                    const usuariosDaEmpresa = allUsers.filter(u => u.empresa_id === empresaId);
+                    const empresa = allCompanies.find(e => e.id === empresaId);
+                    
+                    if (empresa && usuariosDaEmpresa.length > 0) {
+                        report += `
+                            <div class="empresa-info">
+                                <h4>${empresa.nome}</h4>
+                                <ul>
+                                    <li>ID: ${empresaId.slice(0,8)}...</li>
+                                    <li>Usuários: ${usuariosDaEmpresa.length}</li>
+                                    <li>Administradores: ${usuariosDaEmpresa.filter(u => u.tipo_usuario === 'administrador').length}</li>
+                                    <li>Funcionários: ${usuariosDaEmpresa.filter(u => u.tipo_usuario === 'funcionario').length}</li>
+                                </ul>
+                            </div>
+                        `;
+                    }
+                }
+
+                // Verificações de segurança
+                report += `<h3>🔒 Verificações de Segurança</h3>`;
+                
+                // 1. Usuários sem empresa_id
+                const usuariosSemEmpresa = allUsers.filter(u => !u.empresa_id);
+                if (usuariosSemEmpresa.length > 0) {
+                    report += `<div class="isolation-test">⚠️ <strong>Problema:</strong> ${usuariosSemEmpresa.length} usuários sem empresa_id</div>`;
+                } else {
+                    report += `<div class="success-section">✅ Todos os usuários têm empresa_id definido</div>`;
+                }
+
+                // 2. Empresas sem usuários
+                const empresasSemUsuarios = allCompanies.filter(e => !allUsers.some(u => u.empresa_id === e.id));
+                if (empresasSemUsuarios.length > 0) {
+                    report += `<div class="warning-section">⚠️ ${empresasSemUsuarios.length} empresas sem usuários</div>`;
+                }
+
+                // 3. Múltiplos administradores por empresa
+                empresasUnicas.forEach(empresaId => {
+                    const admins = allUsers.filter(u => u.empresa_id === empresaId && u.tipo_usuario === 'administrador');
+                    if (admins.length > 1) {
+                        const empresa = allCompanies.find(e => e.id === empresaId);
+                        report += `<div class="warning-section">⚠️ ${empresa?.nome}: ${admins.length} administradores</div>`;
+                    }
+                });
+
+                report += `
+                    <h3>💡 Recomendações</h3>
+                    <ul>
+                        <li>✅ Implementar verificação de empresa_id em todas as consultas</li>
+                        <li>✅ Usar RLS (Row Level Security) no Supabase</li>
+                        <li>✅ Validar permissões no backend antes de retornar dados</li>
+                        <li>✅ Auditar logs de acesso entre empresas</li>
+                        <li>✅ Implementar testes automatizados de isolamento</li>
+                    </ul>
+                `;
+
+                addMessage(report, 'info');
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro inesperado:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '📊 5. Gerar Relatório Completo';
+            }
+        }
+
+        // Carregar configurações salvas
+        window.addEventListener('load', () => {
+            const savedUrl = localStorage.getItem('supabase_url');
+            const savedKey = localStorage.getItem('supabase_key');
+            
+            if (savedUrl) document.getElementById('supabaseUrl').value = savedUrl;
+            if (savedKey) document.getElementById('serviceKey').value = savedKey;
+        });
+
+        // Salvar configurações
+        document.getElementById('supabaseUrl').addEventListener('change', (e) => {
+            localStorage.setItem('supabase_url', e.target.value);
+        });
+        
+        document.getElementById('serviceKey').addEventListener('change', (e) => {
+            localStorage.setItem('supabase_key', e.target.value);
+        });
+    </script>
+</body>
+</html>

@@ -35,18 +35,26 @@ export const getCurrentUserEmpresaId = async (): Promise<string | null> => {
     }
 
     // Query the usuarios_empresa table to get the empresa_id
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('usuarios_empresa')
       .select('empresa_id')
       .eq('user_id', session.user.id)
-      .single();
+      .eq('ativo', true) // Apenas usuários ativos
+      .limit(1);
 
     if (error) {
       console.error('❌ Error getting empresa_id:', error.message);
       return null;
     }
 
-    return data?.empresa_id || null;
+    if (!data || data.length === 0) {
+      console.warn('⚠️ No empresa found for user:', session.user.id);
+      return null;
+    }
+
+    const empresaId = data[0]?.empresa_id;
+    console.log('✅ User empresa_id:', empresaId);
+    return empresaId || null;
   } catch (error) {
     console.error('❌ Error in getCurrentUserEmpresaId:', error);
     return null;

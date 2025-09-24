@@ -9,7 +9,6 @@
  */
 
 import { isAdminConfigured, supabase, supabaseAdmin } from "../lib/supabase";
-import { generateSecurePassword, GeneratedPassword } from "../utils/secure-password-generator";
 
 // ============================================================================
 // INTERFACES E TIPOS
@@ -448,6 +447,7 @@ export class EmployeeCreationService {
   }
 
   /**
+  /**
    * Trata erros de forma padronizada
    */
   private handleError(operation: ServiceOperation, error: any, context?: string): ServiceResult {
@@ -604,9 +604,23 @@ export class EmployeeCreationService {
         this.log('info', operation, 'Usuário sem acesso ao sistema - pulando criação no Auth');
       }
 
-      // 5. Criar registro na tabela bar_employees
+      // 5. Criar registro na tabela employees
+      let employeeId: string | null = null;
+      this.log('info', operation, 'Criando registro na tabela employees');
+      const employeeResult = await this.createEmployeeSafely(employeeData, empresa_id, authUserId);
+      
+      if (employeeResult.success && employeeResult.data?.employeeId) {
+        employeeId = employeeResult.data.employeeId;
+        details.bar_employee_created = true;
+        this.log('info', operation, 'Funcionário criado na tabela employees', { employeeId });
+      } else {
+        details.warnings?.push(`Erro ao criar employee: ${employeeResult.error}`);
+        this.log('warn', operation, 'Falha ao criar employee', { error: employeeResult.error });
+      }
+
+      // 6. Criar registro na tabela bar_employees
       this.log('info', operation, 'Criando registro na tabela bar_employees');
-      const barEmployeeResult = await this.createBarEmployeeSafely(employeeData, empresa_id, authUserId);
+      const barEmployeeResult = await this.createBarEmployeeSafely(employeeData, empresa_id, employeeId);
 
       if (!barEmployeeResult.success) {
         // Cleanup em caso de falha crítica
@@ -627,7 +641,7 @@ export class EmployeeCreationService {
       const barEmployeeId = barEmployeeResult.data?.employeeId;
       this.log('info', operation, 'Funcionário criado na tabela bar_employees', { employeeId: barEmployeeId });
 
-      // 6. Criar registro na tabela usuarios_empresa
+      // 7. Criar registro na tabela usuarios_empresa
       this.log('info', operation, 'Criando registro na tabela usuarios_empresa');
       const usuarioEmpresaResult = await this.createUsuarioEmpresaSafely(employeeData, empresa_id, authUserId);
 
@@ -637,7 +651,7 @@ export class EmployeeCreationService {
         usuarioEmpresaId = usuarioEmpresaResult.data?.usuarioEmpresaId;
         this.log('info', operation, 'Registro criado na tabela usuarios_empresa', { usuarioEmpresaId });
 
-        // 7. Criar permissões do usuário
+        // 8. Criar permissões do usuário
         this.log('info', operation, 'Configurando permissões do usuário');
         const permissionsResult = await this.createUserPermissionsSafely(usuarioEmpresaId!, employeeData.permissoes_modulos);
 
@@ -653,7 +667,7 @@ export class EmployeeCreationService {
         this.log('warn', operation, 'Falha ao criar usuario_empresa', { error: usuarioEmpresaResult.error });
       }
 
-      // 8. Preparar resultado final
+      // 9. Preparar resultado final
       const executionTime = Date.now() - startTime;
       details.execution_time_ms = executionTime;
 
@@ -710,27 +724,24 @@ export class EmployeeCreationService {
    * @param barRole Função do funcionário para determinar nível de segurança
    * @returns Credenciais geradas
    */
-  private generateCredentials(nomeCompleto: string, email: string, barRole?: string): EmployeeCredentials & { generatedPassword?: GeneratedPassword } {
+  private generateCredentials(nomeCompleto: string, email: string, barRole?: string): EmployeeCredentials {
     const operation = ServiceOperation.GENERATE_CREDENTIALS;
     
     this.log('debug', operation, 'Gerando credenciais seguras', { email, barRole });
 
     try {
       // Usar o novo sistema de geração de senhas seguras
-      const generatedPassword = generateSecurePassword(barRole || 'funcionario');
+      const password = this.generateSecurePasswordFallback();
       
       const credentials = {
         email: email.toLowerCase().trim(),
-        senha_temporaria: generatedPassword.password,
+        senha_temporaria: password,
         deve_alterar_senha: true,
-        generatedPassword // Incluir dados da senha gerada para análise
       };
 
       this.log('info', operation, 'Credenciais geradas com sucesso', { 
         email: credentials.email,
-        senha_length: generatedPassword.password.length,
-        senha_strength: generatedPassword.strength.level,
-        senha_score: generatedPassword.strength.score
+        senha_length: password.length,
       });
 
       return credentials;
@@ -753,7 +764,25 @@ export class EmployeeCreationService {
   /**
    * Fallback para geração de senha (sistema antigo)
    */
-  private generateSecurePasswordFallback(length: number = 12): string {
+  private generateSecurePasswordFallback(length: number = 8): string {
+    // Senha mais simples e confiável para funcionários
+    const chars = "abcdefghijkmnpqrstuvwxyz0123456789";
+    let password = "";
+    
+    // Garantir pelo menos uma letra e um número
+    password += chars.charAt(Math.floor(Math.random() * 26)); // letra
+    password += chars.charAt(26 + Math.floor(Math.random() * 10)); // número
+    
+    // Completar o resto da senha
+    for (let i = 2; i < length; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    
+    // Embaralhar a senha
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+  }
+
+  private generateSecurePasswordFallbackOld(length: number = 12): string {
     // Caracteres seguros (evitando ambíguos como 0, O, l, I)
     const uppercase = "ABCDEFGHJKMNPQRSTUVWXYZ";
     const lowercase = "abcdefghijkmnpqrstuvwxyz";
@@ -805,6 +834,13 @@ export class EmployeeCreationService {
 
       if (authResult.success) {
         this.log('info', operation, 'Usuário criado com sucesso na primeira tentativa');
+        
+        // CORREÇÃO: Verificar se email foi confirmado e tentar confirmar se necessário
+        const needsEmailConfirmation = await this.checkAndConfirmEmail(authResult.userId!);
+        if (needsEmailConfirmation.confirmed) {
+          this.log('info', operation, 'Email confirmado com sucesso');
+        }
+        
         return authResult;
       }
 
@@ -819,6 +855,13 @@ export class EmployeeCreationService {
 
         if (authResult.success) {
           this.log('info', operation, 'Fallback bem-sucedido - problema era no trigger/função do banco');
+          
+          // Tentar confirmar email também no fallback
+          const needsEmailConfirmation = await this.checkAndConfirmEmail(authResult.userId!);
+          if (needsEmailConfirmation.confirmed) {
+            this.log('info', operation, 'Email confirmado no fallback');
+          }
+          
           return authResult;
         } else {
           this.log('error', operation, 'Fallback também falhou', { error: authResult.error });
@@ -835,6 +878,55 @@ export class EmployeeCreationService {
       return {
         success: false,
         error: errorMessage,
+      };
+    }
+  }
+
+  /**
+   * Verifica se o email do usuário está confirmado e tenta confirmar se necessário
+   */
+  private async checkAndConfirmEmail(userId: string): Promise<{ confirmed: boolean; error?: string }> {
+    try {
+      // Só pode confirmar via admin
+      if (!isAdminConfigured) {
+        this.log('warn', ServiceOperation.CREATE_EMPLOYEE, 'Admin não configurado - não pode confirmar email automaticamente');
+        return { confirmed: false, error: 'Admin não configurado para confirmação de email' };
+      }
+
+      // Buscar dados do usuário
+      const { data: userData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+      
+      if (getUserError || !userData.user) {
+        this.log('error', ServiceOperation.CREATE_EMPLOYEE, 'Erro ao buscar dados do usuário para confirmação de email', { userId }, getUserError);
+        return { confirmed: false, error: 'Erro ao buscar usuário' };
+      }
+
+      // Verificar se já está confirmado
+      if (userData.user.email_confirmed_at) {
+        this.log('debug', ServiceOperation.CREATE_EMPLOYEE, 'Email já estava confirmado', { userId });
+        return { confirmed: true };
+      }
+
+      // Tentar confirmar email
+      this.log('info', ServiceOperation.CREATE_EMPLOYEE, 'Tentando confirmar email automaticamente', { userId });
+      
+      const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        email_confirm: true
+      });
+
+      if (confirmError) {
+        this.log('error', ServiceOperation.CREATE_EMPLOYEE, 'Erro ao confirmar email', { userId }, confirmError);
+        return { confirmed: false, error: confirmError.message };
+      }
+
+      this.log('info', ServiceOperation.CREATE_EMPLOYEE, 'Email confirmado com sucesso', { userId });
+      return { confirmed: true };
+      
+    } catch (error) {
+      this.log('error', ServiceOperation.CREATE_EMPLOYEE, 'Erro geral na confirmação de email', { userId }, error);
+      return { 
+        confirmed: false, 
+        error: error instanceof Error ? error.message : 'Erro desconhecido na confirmação de email' 
       };
     }
   }
@@ -882,36 +974,14 @@ export class EmployeeCreationService {
         created_by: "system",
       };
 
-      if (!isAdminConfigured) {
-        this.log('debug', ServiceOperation.CREATE_EMPLOYEE, 'Usando cliente normal (anon key)');
-
-        const signUpData: any = {
-          email: employeeData.email,
-          password: senha,
-        };
-
-        if (!skipMetadata) {
-          signUpData.options = { data: userData };
-        }
-
-        const { data, error } = await supabase.auth.signUp(signUpData);
-
-        if (error) {
-          return { success: false, error: error.message };
-        }
-
-        if (!data.user) {
-          return { success: false, error: "Usuário não foi criado" };
-        }
-
-        return { success: true, userId: data.user.id };
-      } else {
-        this.log('debug', ServiceOperation.CREATE_EMPLOYEE, 'Usando cliente admin (service role)');
+      // CORREÇÃO: Sempre tentar usar admin client primeiro se disponível
+      if (isAdminConfigured) {
+        this.log('debug', ServiceOperation.CREATE_EMPLOYEE, 'Usando cliente admin (service role) - PREFERRED');
 
         const adminData: any = {
           email: employeeData.email,
           password: senha,
-          email_confirm: true,
+          email_confirm: true, // CRÍTICO: Confirmar email automaticamente
         };
 
         if (!skipMetadata) {
@@ -921,6 +991,48 @@ export class EmployeeCreationService {
         const { data, error } = await supabaseAdmin.auth.admin.createUser(adminData);
 
         if (error) {
+          this.log('warn', ServiceOperation.CREATE_EMPLOYEE, `Admin createUser falhou: ${error.message}`);
+          // Se admin falhar, não tentar fallback - o problema precisa ser resolvido
+          return { success: false, error: `Erro admin: ${error.message}` };
+        }
+
+        if (!data.user) {
+          return { success: false, error: "Usuário não foi criado via admin" };
+        }
+
+        this.log('info', ServiceOperation.CREATE_EMPLOYEE, 'Usuário criado via admin com email confirmado');
+        return { success: true, userId: data.user.id };
+      } else {
+        this.log('debug', ServiceOperation.CREATE_EMPLOYEE, 'Admin não configurado - usando cliente normal');
+
+        // CORREÇÃO: Usar método melhorado para cliente normal
+        const signUpData: any = {
+          email: employeeData.email,
+          password: senha,
+        };
+
+        // Tentar primeiro sem metadata para evitar problemas de trigger
+        if (!skipMetadata) {
+          // Reduzir metadata para minimizar problemas de trigger
+          signUpData.options = { 
+            data: {
+              name: employeeData.nome_completo,
+              role: 'funcionario'
+            }
+          };
+        }
+
+        const { data, error } = await supabase.auth.signUp(signUpData);
+
+        if (error) {
+          this.log('error', ServiceOperation.CREATE_EMPLOYEE, `SignUp falhou: ${error.message}`);
+          
+          // Se erro for relacionado ao trigger/database, tentar sem metadata
+          if (error.message.includes('Database error') && !skipMetadata) {
+            this.log('warn', ServiceOperation.CREATE_EMPLOYEE, 'Tentando novamente sem metadata devido ao erro de database');
+            return this.tryCreateAuthUser(employeeData, senha, true);
+          }
+          
           return { success: false, error: error.message };
         }
 
@@ -928,9 +1040,16 @@ export class EmployeeCreationService {
           return { success: false, error: "Usuário não foi criado" };
         }
 
+        // AVISO: Email pode não estar confirmado com cliente normal
+        if (!data.user.email_confirmed_at) {
+          this.log('warn', ServiceOperation.CREATE_EMPLOYEE, 
+            'Email não foi confirmado automaticamente - usuário pode não conseguir fazer login');
+        }
+
         return { success: true, userId: data.user.id };
       }
     } catch (error) {
+      this.log('error', ServiceOperation.CREATE_EMPLOYEE, 'Erro geral em tryCreateAuthUser', {}, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Erro desconhecido",
@@ -952,6 +1071,20 @@ export class EmployeeCreationService {
     return this.executeWithErrorHandling(
       ServiceOperation.CREATE_EMPLOYEE,
       async () => {
+        // Primeiro verificar se o perfil já existe
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", userId)
+          .single();
+
+        if (existingProfile) {
+          this.log('info', ServiceOperation.CREATE_EMPLOYEE, 
+            'Perfil já existe - pulando criação');
+          return { success: true };
+        }
+
+        // Se não existe, criar o perfil
         const { error } = await supabase
           .from("profiles")
           .insert([{
@@ -962,13 +1095,19 @@ export class EmployeeCreationService {
               encodeURIComponent(employeeData.nome_completo)
             }`,
             updated_at: new Date().toISOString(),
-          }]);
+          }] as any);
 
         if (error) {
           // Se a tabela não existir, não é um erro crítico
           if (error.code === "PGRST116" || error.message.includes("does not exist")) {
             this.log('warn', ServiceOperation.CREATE_EMPLOYEE, 
               'Tabela profiles não existe - pulando criação de perfil');
+            return { success: true };
+          }
+          // Se for erro de constraint duplicada, também não é crítico
+          if (error.code === "23505" || error.message.includes("duplicate key")) {
+            this.log('info', ServiceOperation.CREATE_EMPLOYEE, 
+              'Perfil já existe (constraint duplicada) - continuando');
             return { success: true };
           }
           throw new Error(error.message);
@@ -981,12 +1120,69 @@ export class EmployeeCreationService {
   }
 
   /**
+   * Cria registro na tabela employees de forma segura
+   */
+  private async createEmployeeSafely(
+    employeeData: EmployeeCreationData,
+    empresaId: string,
+    authUserId: string | null,
+  ): Promise<ServiceResult & { data?: { employeeId: string } }> {
+    return this.executeWithErrorHandling(
+      ServiceOperation.CREATE_EMPLOYEE,
+      async () => {
+        // Buscar departamento e posição padrão
+        const { data: departments } = await supabase
+          .from("departments")
+          .select("id")
+          .limit(1);
+
+        const { data: positions } = await supabase
+          .from("positions")
+          .select("id")
+          .limit(1);
+
+        const departmentId = (departments as any)?.[0]?.id;
+        const positionId = (positions as any)?.[0]?.id;
+
+        if (!departmentId || !positionId) {
+          throw new Error('Departamento ou posição não encontrados. Verifique se existem departamentos e posições cadastrados.');
+        }
+
+        const client = isAdminConfigured ? supabaseAdmin : supabase;
+        const { data, error } = await client
+          .from("employees")
+          .insert([{
+            employee_code: `EMP-${Date.now()}`,
+            name: employeeData.nome_completo,
+            email: employeeData.email,
+            hire_date: new Date().toISOString().split('T')[0],
+            position_id: positionId,
+            department_id: departmentId,
+            profile_id: authUserId,
+            status: 'active',
+            empresa_id: empresaId
+          }] as any)
+          .select('id')
+          .single();
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        return { success: true, data: { employeeId: (data as any)?.id } };
+
+      },
+      'Criação de registro employees'
+    ) as Promise<ServiceResult & { data?: { employeeId: string } }>;
+  }
+
+  /**
    * Cria registro na tabela bar_employees de forma segura
    */
   private async createBarEmployeeSafely(
     employeeData: EmployeeCreationData,
     empresaId: string,
-    authUserId: string | null,
+    employeeId: string | null,
   ): Promise<ServiceResult & { employeeId?: string }> {
     return this.executeWithErrorHandling(
       ServiceOperation.CREATE_EMPLOYEE,
@@ -1005,11 +1201,15 @@ export class EmployeeCreationService {
 
         const notes = notesArray.join(", ");
 
+        if (!employeeId) {
+          throw new Error('Employee ID é obrigatório para criar registro na tabela bar_employees');
+        }
+
         const client = isAdminConfigured ? supabaseAdmin : supabase;
         const { data, error } = await client
           .from("bar_employees")
           .insert([{
-            employee_id: authUserId,
+            employee_id: employeeId,
             bar_role: employeeData.bar_role,
             shift_preference: employeeData.shift_preference || "qualquer",
             specialties: employeeData.specialties || [],
@@ -1018,7 +1218,7 @@ export class EmployeeCreationService {
             start_date: new Date().toISOString().split("T")[0],
             notes: notes,
             empresa_id: empresaId,
-          }])
+          }] as any)
           .select("id")
           .single();
 
@@ -1026,7 +1226,7 @@ export class EmployeeCreationService {
           throw new Error(error.message);
         }
 
-        return { success: true, data: { employeeId: data?.id } };
+        return { success: true, data: { employeeId: (data as any)?.id } };
       },
       'Criação de registro bar_employees'
     ) as Promise<ServiceResult & { employeeId?: string }>;
@@ -1064,7 +1264,7 @@ export class EmployeeCreationService {
             total_logins: 0,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-          }])
+          }] as any)
           .select("id")
           .single();
 
@@ -1072,7 +1272,7 @@ export class EmployeeCreationService {
           throw new Error(error.message);
         }
 
-        return { success: true, data: { usuarioEmpresaId: data?.id } };
+        return { success: true, data: { usuarioEmpresaId: (data as any)?.[0]?.id } };
       },
       'Criação de registro usuarios_empresa'
     ) as Promise<ServiceResult & { usuarioEmpresaId?: string }>;
@@ -1101,7 +1301,7 @@ export class EmployeeCreationService {
         const client = isAdminConfigured ? supabaseAdmin : supabase;
         const { error } = await client
           .from("permissoes_usuario")
-          .insert(permissionsToInsert);
+          .insert(permissionsToInsert as any);
 
         if (error) {
           throw new Error(error.message);
@@ -1129,103 +1329,7 @@ export class EmployeeCreationService {
     }
   }
 
-  /**
-   * Tenta criar usuário no Auth com ou sem metadata
-   */
-  private async tryCreateAuthUser(
-    employeeData: EmployeeCreationData,
-    senha: string,
-    skipMetadata: boolean = false,
-  ): Promise<{ success: boolean; userId?: string; error?: string }> {
-    try {
-      console.log(
-        `🧪 Tentando criar usuário ${skipMetadata ? "SEM" : "COM"} metadata`,
-      );
 
-      const userData = skipMetadata ? {} : {
-        name: employeeData.nome_completo,
-        role: employeeData.tipo_usuario || "funcionario",
-        cargo: employeeData.cargo,
-        temporary_password: true,
-        created_by: "system",
-      };
-
-      if (!isAdminConfigured) {
-        console.log("📱 Usando cliente normal (anon key)");
-
-        const signUpData: any = {
-          email: employeeData.email,
-          password: senha,
-        };
-
-        if (!skipMetadata) {
-          signUpData.options = { data: userData };
-        }
-
-        console.log("📤 Enviando dados para signup:", {
-          email: employeeData.email,
-          hasOptions: !skipMetadata,
-          userData: skipMetadata ? "SKIP" : userData,
-        });
-
-        const { data, error } = await supabase.auth.signUp(signUpData);
-
-        if (error) {
-          console.log("❌ Erro no signup:", error.message);
-          return { success: false, error: error.message };
-        }
-
-        if (!data.user) {
-          console.log("❌ Usuário não foi criado (data.user é null)");
-          return { success: false, error: "Usuário não foi criado" };
-        }
-
-        console.log("✅ Usuário criado com sucesso:", data.user.id);
-        return { success: true, userId: data.user.id };
-      } else {
-        console.log("🔧 Usando cliente admin (service role)");
-
-        const adminData: any = {
-          email: employeeData.email,
-          password: senha,
-          email_confirm: true,
-        };
-
-        if (!skipMetadata) {
-          adminData.user_metadata = userData;
-        }
-
-        console.log("📤 Enviando dados para admin.createUser:", {
-          email: employeeData.email,
-          hasMetadata: !skipMetadata,
-          userData: skipMetadata ? "SKIP" : userData,
-        });
-
-        const { data, error } = await supabaseAdmin.auth.admin.createUser(
-          adminData,
-        );
-
-        if (error) {
-          console.log("❌ Erro no admin.createUser:", error.message);
-          return { success: false, error: error.message };
-        }
-
-        if (!data.user) {
-          console.log("❌ Usuário não foi criado (data.user é null)");
-          return { success: false, error: "Usuário não foi criado" };
-        }
-
-        console.log("✅ Usuário criado com sucesso via admin:", data.user.id);
-        return { success: true, userId: data.user.id };
-      }
-    } catch (error) {
-      console.error("❌ Erro na tentativa de criar usuário:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-      };
-    }
-  }
 
   /**
    * Cria perfil do usuário (opcional - só se tabela existir)
@@ -1305,7 +1409,7 @@ export class EmployeeCreationService {
           start_date: new Date().toISOString().split("T")[0],
           notes: notes,
           empresa_id: empresaId,
-        }])
+        }] as any)
         .select("id")
         .single();
 
@@ -1313,7 +1417,7 @@ export class EmployeeCreationService {
         return { success: false, error: error.message };
       }
 
-      return { success: true, employeeId: data?.id };
+      return { success: true, employeeId: (data as any)?.id };
     } catch (error) {
       return {
         success: false,
@@ -1343,7 +1447,7 @@ export class EmployeeCreationService {
           cargo: employeeData.cargo,
           tipo_usuario: employeeData.tipo_usuario || "funcionario",
           status: "ativo",
-          senha_provisoria: true, // Sempre true para novos funcionários
+          senha_provisoria: true,
           ativo: true,
           tem_acesso_sistema: employeeData.tem_acesso_sistema,
           papel: employeeData.papel || "USER",
@@ -1352,7 +1456,7 @@ export class EmployeeCreationService {
           total_logins: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        }])
+        }] as any)
         .select("id")
         .single();
 
@@ -1360,7 +1464,8 @@ export class EmployeeCreationService {
         return { success: false, error: error.message };
       }
 
-      return { success: true, usuarioEmpresaId: data?.id };
+      return { success: true, usuarioEmpresaId: (data as any)?.id };
+
     } catch (error) {
       return {
         success: false,
@@ -1370,9 +1475,206 @@ export class EmployeeCreationService {
   }
 
   /**
-   * Cria permissões do usuário
+   * Cria registro na tabela permissoes_usuario
    */
-  private async createUserPermissions(
+  private async createPermissoesUsuario(
+    usuarioEmpresaId: string,
+    permissoesModulos: ModulePermissions,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const permissionsToInsert = Object.entries(permissoesModulos).map((
+        [modulo, permissoes],
+      ) => ({
+        usuario_empresa_id: usuarioEmpresaId,
+        modulo: modulo,
+        permissoes: permissoes,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+
+      const client = isAdminConfigured ? supabaseAdmin : supabase;
+      const { error } = await client
+        .from("permissoes_usuario")
+        .insert(permissionsToInsert as any);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      };
+    }
+  }
+
+  /**
+   * Cria usuário no Supabase Auth
+   */
+  private async createUserAuth(
+    email: string,
+    senha: string,
+    employee: EmployeeCreationData,
+  ): Promise<{ success: boolean; userId?: string; error?: string }> {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: senha,
+        options: {
+          data: {
+            name: employee.nome_completo,
+            role: "funcionario"
+          }
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      if (!data.user) {
+        return { success: false, error: "Usuário não foi criado" };
+      }
+
+      return { success: true, userId: data.user.id };
+
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      };
+    }
+  }
+
+  /**
+   * Cria perfil do usuário
+   */
+  private async createUserProfile(
+    profileId: string,
+    employee: EmployeeCreationData,
+  ): Promise<{ success: boolean; error?: string }> {
+    const now = new Date().toISOString();
+
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .insert([{
+          id: profileId,
+          name: employee.name,
+          role: 'employee',
+          avatar_url: `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(employee.name)}`,
+          updated_at: now
+        }] as any)
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      };
+    }
+  }
+
+  /**
+   * Cria registro na tabela bar_employees
+   */
+  private async createBarEmployee(
+    authUserId: string,
+    barRole: BarRole,
+    shiftPreference: ShiftPreference,
+    specialties: string[],
+    commissionRate: number,
+    notes: string,
+    empresaId: string,
+  ): Promise<{ success: boolean; employeeId?: string; error?: string }> {
+    try {
+      const { data, error } = await supabase
+        .from("bar_employees")
+        .insert([{
+          employee_id: authUserId,
+          bar_role: barRole,
+          shift_preference: shiftPreference,
+          specialties: specialties,
+          commission_rate: commissionRate,
+          is_active: true,
+          start_date: new Date().toISOString().split('T')[0],
+          notes: notes,
+          empresa_id: empresaId
+        }] as any)
+        .select("id")
+        .single();
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, employeeId: (data as any)?.id };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      };
+    }
+  }
+
+/**
+ * Cria registro na tabela usuarios_empresa de forma segura
+ */
+private async createUsuarioEmpresaSafely(
+  employeeData: EmployeeCreationData,
+  empresaId: string,
+  authUserId: string | null,
+): Promise<ServiceResult & { usuarioEmpresaId?: string }> {
+  return this.executeWithErrorHandling(
+    ServiceOperation.CREATE_EMPLOYEE,
+    async () => {
+      const client = isAdminConfigured ? supabaseAdmin : supabase;
+      const { data, error } = await client
+        .from("usuarios_empresa")
+        .insert([{
+          user_id: authUserId,
+          empresa_id: empresaId,
+          nome_completo: employeeData.nome_completo,
+          email: employeeData.email,
+          telefone: employeeData.telefone,
+          cargo: employeeData.cargo,
+          tipo_usuario: employeeData.tipo_usuario || "funcionario",
+          status: "ativo",
+          senha_provisoria: true,
+          ativo: true,
+          tem_acesso_sistema: employeeData.tem_acesso_sistema,
+          papel: employeeData.papel || "USER",
+          is_primeiro_usuario: false,
+          tentativas_login_falhadas: 0,
+          total_logins: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }] as any)
+        .select("id")
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return { success: true, data: { usuarioEmpresaId: (data as any)?.id } };
+    },
+    'Criação de registro usuarios_empresa'
+  ) as Promise<ServiceResult & { usuarioEmpresaId?: string }>;
+}
+
+/**
+ * Cria permissões do usuário
+ */
+private async createUserPermissions(
     usuarioEmpresaId: string,
     permissoesModulos: EmployeeCreationData["permissoes_modulos"],
   ): Promise<{ success: boolean; error?: string }> {
@@ -1456,12 +1758,12 @@ export class EmployeeCreationService {
   /**
    * Gera permissões padrão baseadas na função usando o novo sistema de presets
    */
-  static generateDefaultPermissions(
+  static async generateDefaultPermissions(
     barRole: string,
-  ): EmployeeCreationData["permissoes_modulos"] {
+  ): Promise<EmployeeCreationData["permissoes_modulos"]> {
     try {
       // Importar o gerenciador de presets dinamicamente para evitar dependência circular
-      const { permissionPresetManager } = require('./permission-presets');
+      const { permissionPresetManager } = await import('./permission-presets');
       
       // Validar se a função é válida
       const validRoles = ["atendente", "garcom", "cozinheiro", "barman", "gerente"];
@@ -1781,6 +2083,74 @@ export class EmployeeCreationService {
       },
       'Atualização de permissões de funcionário'
     ) as Promise<ServiceResult>;
+  }
+
+  /**
+   * Reseta a senha de um funcionário
+   */
+  async resetEmployeePassword(
+    employeeId: string,
+    empresaId: string
+  ): Promise<ServiceResult & { credentials?: { email: string; senha_temporaria: string } }> {
+    const operation = ServiceOperation.UPDATE_EMPLOYEE;
+    
+    return this.executeWithErrorHandling(
+      operation,
+      async () => {
+        // Buscar dados do funcionário
+        const { data: employee, error: fetchError } = await supabase
+          .from("bar_employees")
+          .select(`
+            employee_id,
+            employees!inner(
+              profile_id,
+              name,
+              email
+            )
+          `)
+          .eq("id", employeeId)
+          .eq("empresa_id", empresaId)
+          .single();
+
+        if (fetchError || !employee) {
+          throw new Error('Funcionário não encontrado');
+        }
+
+        const userEmail = employee.employees.email;
+        const userName = employee.employees.name;
+
+        // Gerar nova senha
+        const credentials = this.generateCredentials(userEmail);
+
+        // Tentar resetar a senha via Supabase Admin API
+        try {
+          const { error: resetError } = await supabase.auth.admin.updateUserById(
+            employee.employees.profile_id,
+            { password: credentials.senha_temporaria }
+          );
+
+          if (resetError) {
+            throw new Error(`Erro ao resetar senha: ${resetError.message}`);
+          }
+
+          this.log('info', operation, 'Senha resetada com sucesso', { 
+            employeeId, 
+            email: userEmail 
+          });
+
+          return {
+            success: true,
+            credentials: {
+              email: userEmail,
+              senha_temporaria: credentials.senha_temporaria
+            }
+          };
+        } catch (error) {
+          throw new Error(`Falha ao resetar senha: ${error.message}`);
+        }
+      },
+      'Reset de senha do funcionário'
+    ) as Promise<ServiceResult & { credentials?: { email: string; senha_temporaria: string } }>;
   }
 
   /**

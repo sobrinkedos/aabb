@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextSimple';
 import { supabase } from '../lib/supabase';
 import { PapelUsuario, UsuarioEmpresa, Empresa, PrivilegiosAdmin, PRIVILEGIOS_POR_PAPEL } from '../types/multitenant';
 import { AdminService } from '../services/adminService';

@@ -346,6 +346,72 @@ export const useBarEmployees = () => {
     }
   }, [updateEmployee]);
 
+  // Resetar senha do funcionário
+  const resetEmployeePassword = useCallback(async (employeeId: string): Promise<{ success: boolean; newPassword?: string; error?: string }> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Buscar dados do funcionário
+      const { data: employee, error: fetchError } = await supabase
+        .from('bar_employees')
+        .select(`
+          id,
+          employees!inner(
+            email,
+            name,
+            profile_id
+          )
+        `)
+        .eq('id', employeeId)
+        .single();
+
+      if (fetchError || !employee) {
+        throw new Error('Funcionário não encontrado');
+      }
+
+      const userEmail = employee.employees.email;
+      const newPassword = generateSimplePassword();
+
+      // Resetar senha usando a função SQL
+      const { data, error: resetError } = await supabase
+        .rpc('reset_employee_password', {
+          user_email: userEmail,
+          new_password: newPassword
+        });
+
+      if (resetError) {
+        throw new Error(`Erro ao resetar senha: ${resetError.message}`);
+      }
+
+      return {
+        success: true,
+        newPassword: newPassword
+      };
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao resetar senha';
+      setError(errorMessage);
+      console.error('Erro ao resetar senha:', error);
+      return {
+        success: false,
+        error: errorMessage
+      };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Gerar senha simples
+  const generateSimplePassword = (): string => {
+    const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
+    let password = '';
+    for (let i = 0; i < 8; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  };
+
   // Buscar funcionário por ID (versão simplificada)
   const getEmployeeById = useCallback(async (employeeId: string): Promise<BarEmployee | null> => {
     try {
@@ -492,6 +558,7 @@ export const useBarEmployees = () => {
     updateEmployee,
     deactivateEmployee,
     reactivateEmployee,
+    resetEmployeePassword,
     getEmployeeById,
 
     // Utilitários

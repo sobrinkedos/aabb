@@ -45,6 +45,7 @@ export const BarEmployeesModule: React.FC = () => {
     updateEmployee,
     deactivateEmployee,
     reactivateEmployee,
+    resetEmployeePassword,
     getStats,
     refetch
   } = useBarEmployees();
@@ -109,6 +110,25 @@ export const BarEmployeesModule: React.FC = () => {
 
   const stats = useMemo(() => getStats(), [getStats]);
 
+  // Handler para resetar senha
+  const handleResetPassword = async (employeeId: string) => {
+    if (!confirm('Tem certeza que deseja gerar uma nova senha para este funcionário?')) {
+      return;
+    }
+
+    try {
+      const result = await resetEmployeePassword(employeeId);
+      
+      if (result.success && result.newPassword) {
+        alert(`Nova senha gerada com sucesso!\n\nNova senha: ${result.newPassword}\n\nAnote esta senha e forneça ao funcionário.`);
+      } else {
+        alert(`Erro ao gerar nova senha: ${result.error}`);
+      }
+    } catch (error) {
+      alert(`Erro ao gerar nova senha: ${error.message}`);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -155,6 +175,7 @@ export const BarEmployeesModule: React.FC = () => {
         }}
         onDeactivate={deactivateEmployee}
         onReactivate={reactivateEmployee}
+        onResetPassword={handleResetPassword}
         onViewDetails={(employee) => {
           setSelectedEmployeeId(employee.id);
           setShowEmployeeDetails(true);

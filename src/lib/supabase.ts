@@ -22,6 +22,7 @@ if (!isValidCredentials) {
 const mockUrl = 'https://mock.supabase.co';
 const mockKey = 'mock-anon-key';
 
+// Criar cliente Supabase com configuração única
 export const supabase = createClient<Database>(
   isValidCredentials ? supabaseUrl : mockUrl,
   isValidCredentials ? supabaseAnonKey : mockKey,
@@ -29,7 +30,8 @@ export const supabase = createClient<Database>(
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
+      storageKey: `sb-${isValidCredentials ? supabaseUrl.split('//')[1].split('.')[0] : 'mock'}-auth-token`
     }
   }
 );
@@ -41,7 +43,8 @@ export const supabaseAdmin = createClient<Database>(
   {
     auth: {
       autoRefreshToken: false,
-      persistSession: false
+      persistSession: false,
+      storageKey: `sb-${isValidCredentials ? supabaseUrl.split('//')[1].split('.')[0] : 'mock'}-admin-auth-token`
     }
   }
 );

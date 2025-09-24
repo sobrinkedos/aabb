@@ -225,12 +225,13 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
               mode={mode}
             />
 
-            {/* Credentials Section - Only for create mode */}
-            {mode === 'create' && (
+            {/* Credentials Section - Desabilitado por padrão, usar TwoStepEmployeeModal para fluxo completo */}
+            {false && mode === 'create' && (
               <CredentialsSection
                 employee={employee}
                 onCredentialsGenerated={setEmployeeCredentials}
                 mode={mode}
+                showCredentialsStep={false}
               />
             )}
           </div>

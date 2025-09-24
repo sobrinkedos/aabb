@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, User, Phone, Mail, Calendar, Badge, Eye, Edit, Trash2, Save, X } from 'lucide-react';
 import { useBarEmployees, NewBarEmployeeData, UpdateBarEmployeeData } from '../../hooks/useBarEmployees';
 import { useEmployeeCreation } from '../../hooks/useEmployeeCreation';
 import { BarEmployee } from '../../types';
-import { EmployeeModal } from '../../components/EmployeeModal';
+import { EmployeeModal, TwoStepEmployeeModal } from '../../components/EmployeeModal';
 import { NetworkNotification } from '../../components/NetworkNotification';
 import { CredentialsModal } from '../../components/CredentialsModal';
-
 import { Employee, EmployeeRole } from '../../types/employee.types';
 import { ROLE_PRESETS } from '../../utils/permissionPresets';
 
@@ -127,7 +126,7 @@ const BarEmployeesModule: React.FC = () => {
         specialties: [], // Default
         commission_rate: 0, // Default
         observacoes: employee.observations,
-        tem_acesso_sistema: true // IMPORTANTE: Sempre criar credenciais
+        tem_acesso_sistema: credentials ? true : false // Criar credenciais apenas se foram fornecidas
       });
       
       if (result.success) {
@@ -639,8 +638,8 @@ const BarEmployeesModule: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Novo Funcionário - Usando o novo componente */}
-      <EmployeeModal
+      {/* Modal Novo Funcionário - Usando o novo modal de duas etapas */}
+      <TwoStepEmployeeModal
         isOpen={showNewEmployeeModal}
         onClose={() => setShowNewEmployeeModal(false)}
         onSave={handleCreateEmployee}

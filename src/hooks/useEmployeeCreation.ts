@@ -23,14 +23,13 @@ export const useEmployeeCreation = () => {
       }
 
       // Obter empresa_id
-      let empresaId = '00000000-0000-0000-0000-000000000001'; // Default
+      const userEmpresaId = await getCurrentUserEmpresaId();
       
-      if (!authResult.useAdmin) {
-        const userEmpresaId = await getCurrentUserEmpresaId();
-        if (userEmpresaId) {
-          empresaId = userEmpresaId;
-        }
+      if (!userEmpresaId) {
+        throw new Error('Não foi possível obter o ID da empresa do usuário atual. Verifique se você está logado corretamente.');
       }
+      
+      const empresaId = userEmpresaId;
 
       // Usar o serviço de criação
       const service = EmployeeCreationService.getInstance();
@@ -104,7 +103,7 @@ export const useEmployeeCreation = () => {
       cargo: cargoMap[basicData.bar_role] || 'Funcionário',
       tipo_usuario: tipoUsuarioMap[basicData.bar_role] || 'funcionario',
       papel: papelMap[basicData.bar_role] || 'USER',
-      permissoes_modulos: EmployeeCreationService.generateDefaultPermissions(basicData.bar_role)
+      permissoes_modulos: await EmployeeCreationService.generateDefaultPermissions(basicData.bar_role)
     };
 
     return await createEmployee(employeeData);

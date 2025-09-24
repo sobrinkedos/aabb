@@ -52,6 +52,7 @@ interface EmployeeListProps {
   onEdit: (employee: Employee) => void;
   onDeactivate: (employeeId: string) => void;
   onReactivate: (employeeId: string) => void;
+  onResetPassword?: (employeeId: string) => void;
   onViewDetails?: (employee: Employee) => void;
 }
 
@@ -91,6 +92,7 @@ interface EmployeeCardProps {
   onEdit: (employee: Employee) => void;
   onDeactivate: () => void;
   onReactivate: () => void;
+  onResetPassword?: () => void;
   onViewDetails?: (employee: Employee) => void;
 }
 
@@ -99,6 +101,7 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({
   onEdit,
   onDeactivate,
   onReactivate,
+  onResetPassword,
   onViewDetails
 }) => {
   const employeeData = employee.employee || employee.usuario_empresa;
@@ -228,6 +231,16 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({
             <Edit className="h-4 w-4" />
             <span>Editar</span>
           </button>
+          {onResetPassword && (
+            <button
+              onClick={onResetPassword}
+              className="flex items-center space-x-1 text-sm text-orange-600 hover:text-orange-700"
+              title="Gerar nova senha"
+            >
+              <Shield className="h-4 w-4" />
+              <span>Nova Senha</span>
+            </button>
+          )}
         </div>
         
         {employee.is_active || employee.status === 'active' ? (
@@ -402,6 +415,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
   onEdit,
   onDeactivate,
   onReactivate,
+  onResetPassword,
   onViewDetails
 }) => {
   const [showDeactivationModal, setShowDeactivationModal] = useState(false);
@@ -436,6 +450,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
             onEdit={onEdit}
             onDeactivate={() => handleDeactivate(employee)}
             onReactivate={() => handleReactivate(employee)}
+            onResetPassword={onResetPassword ? () => onResetPassword(employee.id) : undefined}
             onViewDetails={onViewDetails}
           />
         ))}

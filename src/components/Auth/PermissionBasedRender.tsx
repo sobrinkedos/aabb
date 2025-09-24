@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextSimple';
 import { ModulePermissions, ModulePermission } from '../../middleware/authMiddleware';
 
 // ============================================================================

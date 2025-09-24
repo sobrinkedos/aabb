@@ -4,7 +4,7 @@
 
 import { useEffect } from 'react';
 import { auditLogger } from '../utils/auditLogger';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextSimple';
 
 export const useAuditLogger = () => {
   const { user, permissions } = useAuth();

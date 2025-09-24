@@ -39,7 +39,7 @@ export async function createExampleEmployee() {
     tipo_usuario: "funcionario",
     papel: "USER",
     tem_acesso_sistema: true,
-    permissoes_modulos: EmployeeCreationService.generateDefaultPermissions("garcom")
+    permissoes_modulos: await EmployeeCreationService.generateDefaultPermissions("garcom")
   };
   
   try {

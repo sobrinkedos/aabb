@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth } from './AuthContextSimple';
 import { PapelUsuario, PrivilegiosAdmin, PRIVILEGIOS_POR_PAPEL } from '../types/multitenant';
 import { AdminService } from '../services/adminService';
 import { PrivilegeUtils } from '../utils/privilegeUtils';
