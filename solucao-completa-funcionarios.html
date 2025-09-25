@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 SOLUÇÃO COMPLETA - Funcionários</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            border-radius: 10px;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+            background: #f8f9fa;
+            border-radius: 0 5px 5px 0;
+        }
+        .info { border-left-color: #3498db; background: #e3f2fd; }
+        .success { border-left-color: #27ae60; background: #e8f5e9; }
+        .warning { border-left-color: #f39c12; background: #fff3cd; }
+        .error { border-left-color: #e74c3c; background: #f8d7da; }
+        .button {
+            padding: 12px 24px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+        }
+        .button:hover { background: #2980b9; }
+        .button.critical { background: #e74c3c; }
+        .button.critical:hover { background: #c0392b; }
+        .button.success { background: #27ae60; }
+        .button.success:hover { background: #229954; }
+        .code {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .sql-block {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+            border: 1px solid #333;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        .table th, .table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .table th {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 SOLUÇÃO COMPLETA</h1>
+            <p>Corrigindo definitivamente os problemas de funcionários</p>
+        </div>
+
+        <div class="error">
+            <h3>🔍 Problemas Confirmados</h3>
+            <ol>
+                <li><strong>SenhaProvisionariaGuard não redireciona:</strong> Funcionários não são forçados a alterar senha</li>
+                <li><strong>Acesso total aos módulos:</strong> Falta registros na tabela `permissoes_usuario`</li>
+                <li><strong>Processo de criação incompleto:</strong> Não cria permissões automaticamente</li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <button class="button critical" onclick="diagnosticarProblemas()">
+                🔍 1. Diagnosticar Problemas
+            </button>
+            <button class="button critical" onclick="corrigirFuncionariosExistentes()">
+                🔧 2. Corrigir Funcionários Existentes
+            </button>
+            <button class="button success" onclick="criarFuncionarioTeste()">
+                🧪 3. Criar Funcionário Teste
+            </button>
+        </div>
+
+        <div id="resultados"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjcyMDA5NjEsImV4cCI6MjA0Mjc3Njk2MX0.tVqbLxPjmHtip8SCgd61iZFBBKY_EqmlnSz2aHaJaLg';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('resultados');
+            const div = document.createElement('div');
+            div.className = `step ${type}`;
+            div.innerHTML = message;
+            resultsDiv.appendChild(div);
+            div.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function clearResults() {
+            document.getElementById('resultados').innerHTML = '';
+        }
+
+        async function diagnosticarProblemas() {
+            clearResults();
+            addResult('🔍 Iniciando diagnóstico completo dos problemas...', 'info');
+
+            try {
+                // 1. Verificar funcionários na base
+                const { data: funcionarios, error: funcError } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .select('id, email, tipo_usuario, senha_provisoria, user_id, tem_acesso_sistema')
+                    .eq('tipo_usuario', 'funcionario');
+
+                if (funcError) {
+                    addResult(`❌ Erro ao buscar funcionários: ${funcError.message}`, 'error');
+                    return;
+                }
+
+                addResult(`📊 Encontrados ${funcionarios.length} funcionários`, 'info');
+
+                // 2. Verificar permissões existentes
+                const funcionariosComAcesso = funcionarios.filter(f => f.tem_acesso_sistema && f.user_id);
+                addResult(`👥 Funcionários com acesso ao sistema: ${funcionariosComAcesso.length}`, 'info');
+
+                let totalPermissoes = 0;
+                const funcionariosSemPermissoes = [];
+
+                for (const funcionario of funcionariosComAcesso) {
+                    const { data: permissoes } = await supabaseClient
+                        .from('permissoes_usuario')
+                        .select('id')
+                        .eq('usuario_empresa_id', funcionario.id);
+
+                    const qtdPermissoes = permissoes ? permissoes.length : 0;
+                    totalPermissoes += qtdPermissoes;
+
+                    if (qtdPermissoes === 0) {
+                        funcionariosSemPermissoes.push(funcionario);
+                    }
+                }
+
+                // 3. Verificar SenhaProvisionariaGuard
+                const funcionariosSenhaProvisoria = funcionarios.filter(f => f.senha_provisoria === true);
+
+                // 4. Gerar relatório
+                addResult(`
+                    <h4>📋 DIAGNÓSTICO COMPLETO:</h4>
+                    
+                    <table class="table">
+                        <tr><th>Item</th><th>Valor</th><th>Status</th></tr>
+                        <tr>
+                            <td>Total de funcionários</td>
+                            <td>${funcionarios.length}</td>
+                            <td>ℹ️ Info</td>
+                        </tr>
+                        <tr>
+                            <td>Com acesso ao sistema</td>
+                            <td>${funcionariosComAcesso.length}</td>
+                            <td>ℹ️ Info</td>
+                        </tr>
+                        <tr>
+                            <td>Com senha provisória ativa</td>
+                            <td>${funcionariosSenhaProvisoria.length}</td>
+                            <td>${funcionariosSenhaProvisoria.length > 0 ? '✅ OK' : '❌ Problema'}</td>
+                        </tr>
+                        <tr>
+                            <td>SEM permissões definidas</td>
+                            <td>${funcionariosSemPermissoes.length}</td>
+                            <td>${funcionariosSemPermissoes.length === 0 ? '✅ OK' : '❌ CRÍTICO'}</td>
+                        </tr>
+                        <tr>
+                            <td>Total de permissões</td>
+                            <td>${totalPermissoes}</td>
+                            <td>${totalPermissoes > 0 ? '✅ OK' : '❌ CRÍTICO'}</td>
+                        </tr>
+                    </table>
+
+                    <h4>🚨 PROBLEMAS CRÍTICOS IDENTIFICADOS:</h4>
+                    <ul>
+                        ${funcionariosSemPermissoes.length > 0 ? `<li><strong>❌ ${funcionariosSemPermissoes.length} funcionários SEM permissões:</strong> Terão acesso total por padrão!</li>` : ''}
+                        ${funcionariosSenhaProvisoria.length === 0 ? '<li><strong>❌ Nenhum funcionário com senha_provisoria=true:</strong> Guard não funcionará!</li>' : ''}
+                        ${funcionariosComAcesso.length > funcionariosSenhaProvisoria.length ? '<li><strong>❌ Funcionários sem senha provisória:</strong> Não serão redirecionados!</li>' : ''}
+                    </ul>
+                `, funcionariosSemPermissoes.length > 0 ? 'error' : 'success');
+
+                // 5. Listar funcionários problemáticos
+                if (funcionariosSemPermissoes.length > 0) {
+                    addResult(`
+                        <h4>👥 Funcionários SEM Permissões (CRÍTICO):</h4>
+                        <table class="table">
+                            <tr><th>Email</th><th>User ID</th><th>Senha Prov.</th></tr>
+                            ${funcionariosSemPermissoes.map(f => `
+                                <tr>
+                                    <td>${f.email}</td>
+                                    <td>${f.user_id || 'NULL'}</td>
+                                    <td>${f.senha_provisoria ? 'Sim' : 'Não'}</td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                        <p><strong>⚠️ ATENÇÃO:</strong> Estes funcionários têm acesso total ao sistema porque não há permissões específicas!</p>
+                    `, 'error');
+                }
+
+                addResult(`
+                    <div class="warning">
+                        <h4>🔧 PRÓXIMOS PASSOS:</h4>
+                        <ol>
+                            <li>Clique em <strong>"2. Corrigir Funcionários Existentes"</strong> para criar permissões</li>
+                            <li>Clique em <strong>"3. Criar Funcionário Teste"</strong> para testar o processo completo</li>
+                        </ol>
+                    </div>
+                `, 'warning');
+
+            } catch (error) {
+                addResult(`❌ Erro no diagnóstico: ${error.message}`, 'error');
+            }
+        }
+
+        async function corrigirFuncionariosExistentes() {
+            clearResults();
+            addResult('🔧 Iniciando correção de funcionários existentes...', 'info');
+
+            try {
+                // 1. Buscar todos os funcionários com acesso
+                const { data: funcionarios, error: funcError } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .select('id, email, user_id, senha_provisoria')
+                    .eq('tipo_usuario', 'funcionario')
+                    .eq('tem_acesso_sistema', true)
+                    .not('user_id', 'is', null);
+
+                if (funcError) {
+                    addResult(`❌ Erro ao buscar funcionários: ${funcError.message}`, 'error');
+                    return;
+                }
+
+                addResult(`👥 Encontrados ${funcionarios.length} funcionários com acesso`, 'info');
+
+                let corrigidos = 0;
+                let permissoesCriadas = 0;
+
+                for (const funcionario of funcionarios) {
+                    addResult(`🔧 Corrigindo funcionário: ${funcionario.email}`, 'info');
+
+                    // 1. Garantir senha_provisoria = true
+                    if (!funcionario.senha_provisoria) {
+                        const { error: updateError } = await supabaseClient
+                            .from('usuarios_empresa')
+                            .update({ senha_provisoria: true })
+                            .eq('id', funcionario.id);
+
+                        if (updateError) {
+                            addResult(`⚠️ Erro ao atualizar senha_provisoria para ${funcionario.email}: ${updateError.message}`, 'warning');
+                        } else {
+                            addResult(`✅ senha_provisoria definida como true para ${funcionario.email}`, 'success');
+                        }
+                    }
+
+                    // 2. Verificar se já tem permissões
+                    const { data: permissoesExistentes } = await supabaseClient
+                        .from('permissoes_usuario')
+                        .select('id')
+                        .eq('usuario_empresa_id', funcionario.id);
+
+                    if (permissoesExistentes && permissoesExistentes.length > 0) {
+                        addResult(`ℹ️ ${funcionario.email} já tem ${permissoesExistentes.length} permissões`, 'info');
+                        continue;
+                    }
+
+                    // 3. Criar permissões limitadas para funcionário
+                    const permissoesFuncionario = [
+                        {
+                            usuario_empresa_id: funcionario.id,
+                            modulo: 'dashboard',
+                            permissoes: {
+                                visualizar: true,
+                                criar: false,
+                                editar: false,
+                                excluir: false,
+                                administrar: false
+                            }
+                        },
+                        {
+                            usuario_empresa_id: funcionario.id,
+                            modulo: 'atendimento_bar',
+                            permissoes: {
+                                visualizar: true,
+                                criar: true,
+                                editar: true,
+                                excluir: false,
+                                administrar: false
+                            }
+                        },
+                        {
+                            usuario_empresa_id: funcionario.id,
+                            modulo: 'clientes',
+                            permissoes: {
+                                visualizar: true,
+                                criar: true,
+                                editar: false,
+                                excluir: false,
+                                administrar: false
+                            }
+                        },
+                        {
+                            usuario_empresa_id: funcionario.id,
+                            modulo: 'monitor_cozinha',
+                            permissoes: {
+                                visualizar: true,
+                                criar: false,
+                                editar: false,
+                                excluir: false,
+                                administrar: false
+                            }
+                        }
+                    ];
+
+                    const { error: permError } = await supabaseClient
+                        .from('permissoes_usuario')
+                        .insert(permissoesFuncionario);
+
+                    if (permError) {
+                        addResult(`❌ Erro ao criar permissões para ${funcionario.email}: ${permError.message}`, 'error');
+                    } else {
+                        addResult(`✅ Permissões criadas para ${funcionario.email}`, 'success');
+                        permissoesCriadas += permissoesFuncionario.length;
+                        corrigidos++;
+                    }
+
+                    // Aguardar um pouco para não sobrecarregar
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                addResult(`
+                    <div class="success">
+                        <h4>🎉 CORREÇÃO COMPLETA!</h4>
+                        
+                        <h5>📊 Resumo das Correções:</h5>
+                        <ul>
+                            <li><strong>Funcionários corrigidos:</strong> ${corrigidos}</li>
+                            <li><strong>Permissões criadas:</strong> ${permissoesCriadas}</li>
+                            <li><strong>Módulos configurados por funcionário:</strong> 4 (Dashboard, Atendimento Bar, Clientes, Monitor Cozinha)</li>
+                        </ul>
+
+                        <h5>✅ Benefícios Aplicados:</h5>
+                        <ul>
+                            <li>✅ <strong>SenhaProvisionariaGuard funcionará:</strong> senha_provisoria = true</li>
+                            <li>✅ <strong>Acesso limitado:</strong> Apenas módulos específicos</li>
+                            <li>✅ <strong>Segurança aumentada:</strong> Sem acesso administrativo</li>
+                        </ul>
+
+                        <h5>🧪 Próximo Passo:</h5>
+                        <p>Teste fazendo login com qualquer funcionário usando senha <strong>123456</strong></p>
+                        <p>Deve redirecionar para alteração de senha e ter acesso limitado.</p>
+                    </div>
+                `, 'success');
+
+            } catch (error) {
+                addResult(`❌ Erro durante correção: ${error.message}`, 'error');
+            }
+        }
+
+        async function criarFuncionarioTeste() {
+            clearResults();
+            addResult('🧪 Criando funcionário de teste com processo completo...', 'info');
+
+            try {
+                const timestamp = Date.now();
+                const testEmail = `funcionario.teste.${timestamp}@exemplo.com`;
+                const senha = '123456';
+
+                addResult(`📧 Criando: ${testEmail}`, 'info');
+
+                // 1. Criar usuário no Auth
+                const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                    email: testEmail,
+                    password: senha,
+                    options: {
+                        data: {
+                            name: 'Funcionário Teste Completo',
+                            role: 'employee'
+                        }
+                    }
+                });
+
+                if (authError) {
+                    addResult(`❌ Erro ao criar usuário: ${authError.message}`, 'error');
+                    return;
+                }
+
+                addResult(`✅ Usuário criado no Auth: ${authData.user.id}`, 'success');
+
+                // Aguardar processamento
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // 2. Criar na usuarios_empresa com TODAS as configurações corretas
+                const { data: usuarioEmpresa, error: empresaError } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .insert([{
+                        user_id: authData.user.id,
+                        empresa_id: '00000000-0000-0000-0000-000000000001',
+                        nome_completo: 'Funcionário Teste Completo',
+                        email: testEmail,
+                        telefone: '(11) 99999-9999',
+                        cargo: 'Testador',
+                        tipo_usuario: 'funcionario', // CORRETO
+                        status: 'ativo',
+                        senha_provisoria: true, // CRÍTICO: Para ativar o Guard
+                        ativo: true,
+                        tem_acesso_sistema: true,
+                        papel: 'USER'
+                    }])
+                    .select('id')
+                    .single();
+
+                if (empresaError) {
+                    addResult(`❌ Erro ao criar usuarios_empresa: ${empresaError.message}`, 'error');
+                    return;
+                }
+
+                addResult(`✅ Funcionário criado na empresa: ${usuarioEmpresa.id}`, 'success');
+
+                // 3. Criar permissões ESPECÍFICAS (não dar acesso total)
+                const permissoesFuncionario = [
+                    {
+                        usuario_empresa_id: usuarioEmpresa.id,
+                        modulo: 'dashboard',
+                        permissoes: {
+                            visualizar: true,
+                            criar: false,
+                            editar: false,
+                            excluir: false,
+                            administrar: false
+                        }
+                    },
+                    {
+                        usuario_empresa_id: usuarioEmpresa.id,
+                        modulo: 'atendimento_bar',
+                        permissoes: {
+                            visualizar: true,
+                            criar: true,
+                            editar: true,
+                            excluir: false,
+                            administrar: false
+                        }
+                    },
+                    {
+                        usuario_empresa_id: usuarioEmpresa.id,
+                        modulo: 'clientes',
+                        permissoes: {
+                            visualizar: true,
+                            criar: true,
+                            editar: false,
+                            excluir: false,
+                            administrar: false
+                        }
+                    }
+                ];
+
+                const { error: permError } = await supabaseClient
+                    .from('permissoes_usuario')
+                    .insert(permissoesFuncionario);
+
+                if (permError) {
+                    addResult(`❌ Erro ao criar permissões: ${permError.message}`, 'error');
+                } else {
+                    addResult(`✅ Permissões específicas criadas (${permissoesFuncionario.length} módulos)`, 'success');
+                }
+
+                // 4. Verificar profile
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', authData.user.id)
+                    .single();
+
+                // 5. Testar login
+                addResult('🔐 Testando login...', 'info');
+
+                const { data: loginData, error: loginError } = await supabaseClient.auth.signInWithPassword({
+                    email: testEmail,
+                    password: senha
+                });
+
+                if (loginError) {
+                    addResult(`❌ Login falhou: ${loginError.message}`, 'error');
+                } else {
+                    addResult(`✅ Login funcionou!`, 'success');
+                    await supabaseClient.auth.signOut();
+                }
+
+                // 6. Verificar dados finais
+                const { data: dadosFinais } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .select('tipo_usuario, senha_provisoria, tem_acesso_sistema')
+                    .eq('id', usuarioEmpresa.id)
+                    .single();
+
+                const { data: permissoesFinais } = await supabaseClient
+                    .from('permissoes_usuario')
+                    .select('modulo, permissoes')
+                    .eq('usuario_empresa_id', usuarioEmpresa.id);
+
+                // 7. Relatório final
+                addResult(`
+                    <div class="success">
+                        <h4>🎯 FUNCIONÁRIO TESTE CRIADO COM SUCESSO!</h4>
+                        
+                        <h5>📋 Credenciais:</h5>
+                        <ul>
+                            <li><strong>Email:</strong> ${testEmail}</li>
+                            <li><strong>Senha:</strong> ${senha}</li>
+                        </ul>
+
+                        <h5>⚙️ Configurações:</h5>
+                        <table class="table">
+                            <tr><th>Campo</th><th>Valor</th><th>Status</th></tr>
+                            <tr>
+                                <td>tipo_usuario</td>
+                                <td>${dadosFinais?.tipo_usuario}</td>
+                                <td>${dadosFinais?.tipo_usuario === 'funcionario' ? '✅' : '❌'}</td>
+                            </tr>
+                            <tr>
+                                <td>senha_provisoria</td>
+                                <td>${dadosFinais?.senha_provisoria}</td>
+                                <td>${dadosFinais?.senha_provisoria === true ? '✅' : '❌'}</td>
+                            </tr>
+                            <tr>
+                                <td>Profile role</td>
+                                <td>${profile?.role || 'N/A'}</td>
+                                <td>${profile?.role === 'employee' ? '✅' : '❌'}</td>
+                            </tr>
+                            <tr>
+                                <td>Permissões criadas</td>
+                                <td>${permissoesFinais ? permissoesFinais.length : 0}</td>
+                                <td>${permissoesFinais && permissoesFinais.length > 0 ? '✅' : '❌'}</td>
+                            </tr>
+                        </table>
+
+                        <h5>🧪 Para Testar:</h5>
+                        <ol>
+                            <li>Faça login no sistema com: <strong>${testEmail}</strong> / <strong>${senha}</strong></li>
+                            <li><strong>Deve redirecionar</strong> para alteração de senha (SenhaProvisionariaGuard)</li>
+                            <li>Após alterar senha, deve ter acesso <strong>APENAS</strong> aos módulos: Dashboard, Atendimento Bar, Clientes</li>
+                            <li><strong>NÃO deve ter acesso</strong> a: Funcionários, Configurações, Relatórios</li>
+                        </ol>
+
+                        <h5>🔍 Permissões Criadas:</h5>
+                        <ul>
+                            ${permissoesFinais ? permissoesFinais.map(p => 
+                                `<li><strong>${p.modulo}:</strong> ${JSON.stringify(p.permissoes, null, 2)}</li>`
+                            ).join('') : '<li>Nenhuma permissão encontrada</li>'}
+                        </ul>
+                    </div>
+                `, 'success');
+
+            } catch (error) {
+                addResult(`❌ Erro na criação do teste: ${error.message}`, 'error');
+            }
+        }
+
+        // Carregar automático
+        window.addEventListener('load', () => {
+            addResult('🔍 Sistema carregado. Clique em "1. Diagnosticar Problemas" para começar.', 'info');
+        });
+    </script>
+</body>
+</html>

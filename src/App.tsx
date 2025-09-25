@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContextSimple';
 import { MultitenantAuthProvider } from './contexts/MultitenantAuthContextSimple';
 import { AppProvider } from './contexts/AppContext';
 import { AppProvider as AppProviderOptimized } from './contexts/AppContextOptimized';
+import { SenhaProvisionariaGuard } from './components/Auth/SenhaProvisionariaGuard';
+import { AlterarSenhaProvisoria } from './pages/Auth/AlterarSenhaProvisoria';
 import LoginForm from './components/Auth/LoginForm';
 import RegisterForm from './components/Auth/RegisterForm';
 import Layout from './components/Layout/Layout';
@@ -41,7 +43,9 @@ const ProtectedRoutesWrapper: React.FC = () => {
   return (
     <MultitenantAuthProvider>
       <AppContextProvider>
-        <Layout /> {/* O Layout contém o <Outlet/> para renderizar as rotas filhas */}
+        <SenhaProvisionariaGuard>
+          <Layout /> {/* O Layout contém o <Outlet/> para renderizar as rotas filhas */}
+        </SenhaProvisionariaGuard>
       </AppContextProvider>
     </MultitenantAuthProvider>
   );
@@ -75,11 +79,12 @@ function App() {
       <Router>
         <AuthProvider>
           <Routes>
-          <Route path="/login" element={<LoginPageWrapper />} />
-          <Route path="/register" element={<RegisterPageWrapper />} />
+            <Route path="/login" element={<LoginPageWrapper />} />
+            <Route path="/register" element={<RegisterPageWrapper />} />
+            <Route path="/alterar-senha-provisoria" element={<AlterarSenhaProvisoria />} />
           
-          {/* Rota pai para o layout protegido */}
-          <Route element={<ProtectedRoutesWrapper />}>
+            {/* Rota pai para o layout protegido */}
+            <Route element={<ProtectedRoutesWrapper />}>
             <Route index element={PERFORMANCE_CONFIG.USE_OPTIMIZED_DASHBOARD ? <DashboardOptimized /> : <Dashboard />} />
             <Route path="bar" element={<BarModule />} />
             <Route path="bar-customers" element={<BarCustomersModule />} />

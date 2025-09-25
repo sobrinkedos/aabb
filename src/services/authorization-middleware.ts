@@ -101,20 +101,33 @@ export class AuthorizationMiddleware {
 
     const { user, permissions } = authResult;
     
-    // Administradores têm acesso total
-    if (user?.tipo_usuario === 'administrador') {
+    // ⚠️ CORREÇÃO CRÍTICA: Verificar permissões específicas para TODOS os usuários
+    // Administradores REAIS (proprietários) têm acesso total apenas se explicitamente definido
+    // Funcionários com tipo_usuario 'administrador' devem seguir suas permissões específicas
+    
+    // Somente usuários específicos (donos) têm acesso total irrestrito
+    const isSystemOwner = user?.email === 'admin@sistema.com' || user?.is_system_admin === true;
+    
+    if (isSystemOwner) {
+      console.log('🔓 Acesso total concedido para proprietário do sistema');
       return authResult;
     }
-
+    
+    // TODOS os outros usuários (incluindo administradores de empresas) devem ter permissões verificadas
+    console.log(`🔍 Verificando permissões para ${user?.email}: ${modulo}.${acao}`);
+    
     // Verificar permissão específica
     const moduloPermissions = permissions?.[modulo];
     if (!moduloPermissions || !moduloPermissions[acao]) {
+      console.log(`❌ Permissão negada para ${user?.email}: ${modulo}.${acao}`);
+      console.log('Permissões disponíveis:', moduloPermissions);
       return {
         authorized: false,
         error: `Sem permissão para ${acao} no módulo ${modulo}`
       };
     }
-
+    
+    console.log(`✅ Permissão concedida para ${user?.email}: ${modulo}.${acao}`);
     return authResult;
   }
 

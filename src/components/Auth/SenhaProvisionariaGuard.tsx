@@ -47,20 +47,27 @@ export const SenhaProvisionariaGuard: React.FC<SenhaProvisionariaGuardProps> = (
 
       try {
         // Buscar informações do usuário na empresa
+        console.log('🔍 [SenhaProvisionariaGuard] Verificando senha provisória para user_id:', user.user_id);
+        
         const { data: usuarioEmpresa, error } = await supabase
           .from('usuarios_empresa')
-          .select('senha_provisoria, status')
+          .select('senha_provisoria, status, nome_completo, email')
           .eq('user_id', user.user_id)
           .single();
 
+        console.log('📊 [SenhaProvisionariaGuard] Resultado da consulta:', { usuarioEmpresa, error });
+
         if (error) {
-          console.error('Erro ao verificar senha provisória:', error);
+          console.error('❌ [SenhaProvisionariaGuard] Erro ao verificar senha provisória:', error);
           setIsChecking(false);
           return;
         }
 
         // Verificar se tem senha provisória
+        console.log('🔍 [SenhaProvisionariaGuard] senha_provisoria:', usuarioEmpresa?.senha_provisoria);
+        
         if (usuarioEmpresa?.senha_provisoria === true) {
+          console.log('🚨 [SenhaProvisionariaGuard] SENHA PROVISÓRIA DETECTADA! Redirecionando...');
           setTemSenhaProvisoria(true);
           
           // Registrar tentativa de acesso com senha provisória

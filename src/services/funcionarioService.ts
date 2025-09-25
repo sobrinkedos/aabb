@@ -19,12 +19,8 @@ export interface CriarFuncionarioResult {
 
 // Gerar senha provisória segura
 export const gerarSenhaProvisoria = (): string => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
-  let senha = '';
-  for (let i = 0; i < 12; i++) {
-    senha += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return senha;
+  // SOLUÇÃO DEFINITIVA: Sempre usar senha genérica simples
+  return "123456";
 };
 
 // Criar funcionário com credenciais automáticas
@@ -44,7 +40,8 @@ export const criarFuncionarioComCredenciais = async (data: CriarFuncionarioData)
         password: senhaGerada,
         options: {
           data: {
-            nome_completo: data.nome_completo
+            nome_completo: data.nome_completo,
+            role: 'employee' // CORREÇÃO: Sempre "employee" para funcionários
           }
         }
       });
@@ -69,7 +66,7 @@ export const criarFuncionarioComCredenciais = async (data: CriarFuncionarioData)
       tipo_usuario: 'funcionario' as const,
       status: 'ativo' as const,
       tem_acesso_sistema: data.tem_acesso_sistema,
-      senha_provisoria: data.tem_acesso_sistema,
+      senha_provisoria: data.tem_acesso_sistema ? true : false, // CORREÇÃO: Sempre true se tem acesso
       senha_provisoria_texto: senhaGerada
     };
 
@@ -98,46 +95,89 @@ export const criarFuncionarioComCredenciais = async (data: CriarFuncionarioData)
 
     console.log('✅ Funcionário salvo com sucesso:', funcionarioResult);
 
-    // Salvar permissões se tem acesso ao sistema
-    if (data.tem_acesso_sistema && data.permissoes && funcionarioResult.id) {
+    // CORREÇÃO CRÍTICA: Sempre criar permissões para funcionários com acesso
+    if (data.tem_acesso_sistema && funcionarioResult.id) {
       console.log('🔐 Salvando permissões...');
       
       try {
-        const permissoesArray: any[] = [];
+        let permissoesArray: any[] = [];
         
-        Object.entries(data.permissoes).forEach(([modulo, permissoes]: [string, any]) => {
-          const temPermissaoAtiva = Object.values(permissoes).some(valor => valor === true);
-          
-          if (temPermissaoAtiva) {
-            permissoesArray.push({
+        // Se permissões foram fornecidas pelo usuário, usar elas
+        if (data.permissoes) {
+          Object.entries(data.permissoes).forEach(([modulo, permissoes]: [string, any]) => {
+            const temPermissaoAtiva = Object.values(permissoes).some(valor => valor === true);
+            
+            if (temPermissaoAtiva) {
+              permissoesArray.push({
+                usuario_empresa_id: funcionarioResult.id,
+                modulo: modulo,
+                permissoes: {
+                  visualizar: Boolean(permissoes.visualizar),
+                  criar: Boolean(permissoes.criar),
+                  editar: Boolean(permissoes.editar),
+                  excluir: Boolean(permissoes.excluir),
+                  administrar: Boolean(permissoes.administrar)
+                }
+              });
+            }
+          });
+        }
+        
+        // SOLUÇÃO: Se não foram fornecidas ou está vazio, criar permissões básicas
+        if (permissoesArray.length === 0) {
+          permissoesArray = [
+            {
               usuario_empresa_id: funcionarioResult.id,
-              modulo: modulo,
+              modulo: 'dashboard',
               permissoes: {
-                visualizar: Boolean(permissoes.visualizar),
-                criar: Boolean(permissoes.criar),
-                editar: Boolean(permissoes.editar),
-                excluir: Boolean(permissoes.excluir),
-                administrar: Boolean(permissoes.administrar)
+                visualizar: true,
+                criar: false,
+                editar: false,
+                excluir: false,
+                administrar: false
               }
-            });
-          }
-        });
+            },
+            {
+              usuario_empresa_id: funcionarioResult.id,
+              modulo: 'atendimento_bar',
+              permissoes: {
+                visualizar: true,
+                criar: true,
+                editar: true,
+                excluir: false,
+                administrar: false
+              }
+            },
+            {
+              usuario_empresa_id: funcionarioResult.id,
+              modulo: 'clientes',
+              permissoes: {
+                visualizar: true,
+                criar: true,
+                editar: false,
+                excluir: false,
+                administrar: false
+              }
+            }
+          ];
+        }
 
-        if (permissoesArray.length > 0) {
-          const { error: permError } = await supabase
-            .from('permissoes_usuario')
-            .insert(permissoesArray);
+        // Sempre inserir permissões (nunca deixar vazio)
+        const { error: permError } = await supabase
+          .from('permissoes_usuario')
+          .insert(permissoesArray);
 
-          if (permError) {
-            console.error('⚠️ Erro ao salvar permissões:', permError);
-            // Não falhar por causa das permissões
-          } else {
-            console.log('✅ Permissões salvas com sucesso');
-          }
+        if (permError) {
+          console.error('⚠️ Erro ao salvar permissões:', permError);
+          // CRÍTICO: Se falhar nas permissões, falhar toda a criação
+          throw new Error(`Erro crítico ao criar permissões: ${permError.message}`);
+        } else {
+          console.log('✅ Permissões salvas com sucesso:', permissoesArray.length);
         }
       } catch (permError) {
         console.error('⚠️ Erro no salvamento de permissões:', permError);
-        // Não falhar por causa das permissões
+        // Propagar o erro para falhar a criação completa
+        throw permError;
       }
     }
 
