@@ -2,3 +2,5 @@ node_modules/
 .vercel
 git-portable/
 docs/
+.env*
+*.md

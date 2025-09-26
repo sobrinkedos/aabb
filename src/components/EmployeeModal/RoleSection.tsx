@@ -29,7 +29,7 @@ export const RoleSection: React.FC<RoleSectionProps> = ({
     const roleMap: Record<EmployeeRole, BarRole> = {
       waiter: 'garcom',
       cook: 'cozinheiro',
-      cashier: 'atendente',
+      cashier: 'caixa', // ✅ CORRIGIDO: cashier mapeia para caixa
       supervisor: 'barman',
       manager: 'gerente',
       admin: 'gerente'

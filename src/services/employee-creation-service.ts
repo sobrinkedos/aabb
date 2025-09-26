@@ -9,6 +9,7 @@
  */
 
 import { isAdminConfigured, supabase, supabaseAdmin } from "../lib/supabase";
+import { addUserRoleMapping, mapEmployeeRoleToMiddlewareRole } from "../config/userRoleMapping";
 
 // ============================================================================
 // INTERFACES E TIPOS
@@ -17,7 +18,7 @@ import { isAdminConfigured, supabase, supabaseAdmin } from "../lib/supabase";
 /**
  * Tipos de função disponíveis no sistema
  */
-export type BarRole = "atendente" | "garcom" | "cozinheiro" | "barman" | "gerente";
+export type BarRole = "atendente" | "garcom" | "cozinheiro" | "barman" | "gerente" | "caixa";
 
 /**
  * Tipos de turno disponíveis
@@ -653,7 +654,24 @@ export class EmployeeCreationService {
 
         // 8. Criar permissões do usuário
         this.log('info', operation, 'Configurando permissões do usuário');
-        const permissionsResult = await this.createUserPermissionsSafely(usuarioEmpresaId!, employeeData.permissoes_modulos);
+        
+        // Se não há permissões específicas e é um usuário de caixa, criar permissões padrão
+        let permissoesParaCriar = employeeData.permissoes_modulos;
+        if ((!permissoesParaCriar || Object.keys(permissoesParaCriar).length === 0) && 
+            (employeeData.bar_role === 'caixa' || employeeData.cargo?.toLowerCase().includes('caixa'))) {
+          this.log('info', operation, 'Criando permissões padrão para usuário de caixa');
+          permissoesParaCriar = {
+            gestao_caixa: {
+              visualizar: true,
+              criar: true,
+              editar: true,
+              excluir: true,
+              administrar: false
+            }
+          };
+        }
+        
+        const permissionsResult = await this.createUserPermissionsSafely(usuarioEmpresaId!, permissoesParaCriar);
 
         if (permissionsResult.success) {
           details.permissions_created = true;
@@ -694,6 +712,33 @@ export class EmployeeCreationService {
         has_credentials: !!result.credentials,
         warnings_count: details.warnings?.length || 0
       });
+
+      // 10. Adicionar mapeamento de role automaticamente
+      this.log('info', operation, 'Verificando dados para mapeamento', { 
+        hasEmail: !!employeeData.email,
+        hasBarRole: !!employeeData.bar_role,
+        email: employeeData.email,
+        barRole: employeeData.bar_role
+      });
+      
+      if (employeeData.email && employeeData.bar_role) {
+        try {
+          const middlewareRole = mapEmployeeRoleToMiddlewareRole(employeeData.bar_role);
+          addUserRoleMapping(employeeData.email, middlewareRole, 'system');
+          this.log('info', operation, '✅ Mapeamento de role adicionado com sucesso', { 
+            email: employeeData.email, 
+            barRole: employeeData.bar_role,
+            middlewareRole 
+          });
+        } catch (error) {
+          this.log('warn', operation, '❌ Erro ao adicionar mapeamento de role', { error });
+        }
+      } else {
+        this.log('warn', operation, '⚠️ Dados insuficientes para mapeamento de role', {
+          email: employeeData.email,
+          barRole: employeeData.bar_role
+        });
+      }
 
       return result;
 
@@ -1301,6 +1346,27 @@ export class EmployeeCreationService {
     return this.executeWithErrorHandling(
       ServiceOperation.CREATE_EMPLOYEE,
       async () => {
+        this.log('info', ServiceOperation.CREATE_EMPLOYEE, 'Dados de permissões recebidos', {
+          usuarioEmpresaId,
+          permissoesModulos,
+          modulosCount: Object.keys(permissoesModulos || {}).length
+        });
+
+        if (!permissoesModulos || Object.keys(permissoesModulos).length === 0) {
+          this.log('warn', ServiceOperation.CREATE_EMPLOYEE, 'Nenhuma permissão fornecida - criando permissões padrão para caixa');
+          
+          // Criar permissões padrão para operador de caixa
+          permissoesModulos = {
+            gestao_caixa: {
+              visualizar: true,
+              criar: true,
+              editar: true,
+              excluir: true,
+              administrar: false
+            }
+          };
+        }
+
         const permissionsToInsert = Object.entries(permissoesModulos).map((
           [modulo, permissoes],
         ) => ({
@@ -1311,15 +1377,22 @@ export class EmployeeCreationService {
           updated_at: new Date().toISOString(),
         }));
 
+        this.log('info', ServiceOperation.CREATE_EMPLOYEE, 'Inserindo permissões', {
+          permissionsCount: permissionsToInsert.length,
+          permissions: permissionsToInsert
+        });
+
         const client = isAdminConfigured ? supabaseAdmin : supabase;
         const { error } = await client
           .from("permissoes_usuario")
           .insert(permissionsToInsert as any);
 
         if (error) {
+          this.log('error', ServiceOperation.CREATE_EMPLOYEE, 'Erro ao inserir permissões', { error });
           throw new Error(error.message);
         }
 
+        this.log('info', ServiceOperation.CREATE_EMPLOYEE, 'Permissões inseridas com sucesso');
         return { success: true };
       },
       'Criação de permissões de usuário'

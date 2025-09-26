@@ -5,10 +5,13 @@ import { useBarEmployees, NewBarEmployeeData, UpdateBarEmployeeData } from '../.
 import { useEmployeeCreation } from '../../hooks/useEmployeeCreation';
 import { BarEmployee } from '../../types';
 import { EmployeeModal, TwoStepEmployeeModal } from '../../components/EmployeeModal';
+import { BasicEmployeeModal } from '../../components/EmployeeModal/BasicEmployeeModal';
+import { CredentialsModal as SystemCredentialsModal } from '../../components/EmployeeModal/CredentialsModal';
 import { NetworkNotification } from '../../components/NetworkNotification';
 import { CredentialsModal } from '../../components/CredentialsModal';
 import { Employee, EmployeeRole } from '../../types/employee.types';
 import { ROLE_PRESETS } from '../../utils/permissionPresets';
+import { useBasicEmployeeCreation } from '../../hooks/useBasicEmployeeCreation';
 
 const BarEmployeesModule: React.FC = () => {
   const {
@@ -23,8 +26,11 @@ const BarEmployeesModule: React.FC = () => {
     getStats
   } = useBarEmployees();
 
-  // Hook para criação completa de funcionários com credenciais
+  // Hook para criação completa de funcionários com credenciais (fluxo antigo)
   const { createEmployeeWithDefaultPermissions, loading: creationLoading } = useEmployeeCreation();
+  
+  // Hook para novo fluxo de criação em duas etapas
+  const { createBasicEmployee, addCredentialsToEmployee, loading: basicCreationLoading } = useBasicEmployeeCreation();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'atendente' | 'garcom' | 'cozinheiro' | 'barman' | 'gerente'>('all');
@@ -32,11 +38,14 @@ const BarEmployeesModule: React.FC = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<BarEmployee | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showNewEmployeeModal, setShowNewEmployeeModal] = useState(false);
+  const [showBasicEmployeeModal, setShowBasicEmployeeModal] = useState(false);
+  const [showSystemCredentialsModal, setShowSystemCredentialsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [generatedCredentials, setGeneratedCredentials] = useState<any>(null);
   const [credentialsEmployeeName, setCredentialsEmployeeName] = useState('');
+  const [selectedEmployeeForCredentials, setSelectedEmployeeForCredentials] = useState<BarEmployee | null>(null);
   
   // Estados não são mais necessários pois o modal gerencia seu próprio estado
 
@@ -109,7 +118,64 @@ const BarEmployeesModule: React.FC = () => {
     return roleMap[role] || 'garcom';
   };
 
-  // Funções do formulário de novo funcionário - VERSÃO CORRIGIDA
+  // NOVO FLUXO: Criar funcionário básico (Etapa 1)
+  const handleCreateBasicEmployee = async (employeeData: any) => {
+    try {
+      const result = await createBasicEmployee(employeeData);
+      if (result.success) {
+        alert('Funcionário criado com sucesso! Agora você pode criar as credenciais de acesso.');
+        // Recarregar lista
+        window.location.reload();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error('Erro ao criar funcionário básico:', error);
+      alert('Erro ao criar funcionário. Tente novamente.');
+    }
+  };
+
+  // NOVO FLUXO: Adicionar credenciais (Etapa 2)
+  const handleAddCredentials = (employee: BarEmployee) => {
+    setSelectedEmployeeForCredentials(employee);
+    setShowSystemCredentialsModal(true);
+  };
+
+  const handleCreateCredentials = async (credentialsData: any) => {
+    if (!selectedEmployeeForCredentials?.employee) return;
+
+    try {
+      const result = await addCredentialsToEmployee(
+        selectedEmployeeForCredentials.id,
+        selectedEmployeeForCredentials.employee.email || '',
+        credentialsData
+      );
+
+      if (result.success && result.credentials) {
+        // Mostrar credenciais geradas
+        setGeneratedCredentials({
+          system: {
+            email: result.credentials.email,
+            password: result.credentials.senha_temporaria,
+            temporaryPassword: result.credentials.deve_alterar_senha,
+            username: result.credentials.email.split('@')[0]
+          }
+        });
+        setCredentialsEmployeeName(selectedEmployeeForCredentials.employee.name);
+        setShowCredentialsModal(true);
+        
+        // Recarregar lista
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error('Erro ao criar credenciais:', error);
+      alert('Erro ao criar credenciais. Tente novamente.');
+    }
+  };
+
+  // Funções do formulário de novo funcionário - VERSÃO CORRIGIDA (Fluxo Antigo)
   const handleCreateEmployee = async (employee: Employee, credentials?: any) => {
     setProcessing(true);
     try {
@@ -294,13 +360,22 @@ const BarEmployeesModule: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-800">Funcionários do Bar</h1>
           <p className="text-gray-600 mt-1">Gerencie a equipe do bar e suas funções</p>
         </div>
-        <button
-          onClick={() => setShowNewEmployeeModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-        >
-          <Plus size={20} />
-          <span>Novo Funcionário</span>
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => setShowBasicEmployeeModal(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+          >
+            <Plus size={20} />
+            <span>Novo Funcionário</span>
+          </button>
+          <button
+            onClick={() => setShowNewEmployeeModal(true)}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2 text-sm"
+          >
+            <Plus size={16} />
+            <span>Fluxo Antigo</span>
+          </button>
+        </div>
       </div>
 
       {/* Estatísticas */}
@@ -511,6 +586,7 @@ const BarEmployeesModule: React.FC = () => {
                           <button
                             onClick={() => handleViewDetails(barEmployee)}
                             className="text-blue-600 hover:text-blue-900"
+                            title="Ver detalhes"
                           >
                             <Eye size={16} />
                           </button>
@@ -520,6 +596,14 @@ const BarEmployeesModule: React.FC = () => {
                             title="Editar funcionário"
                           >
                             <Edit size={16} />
+                          </button>
+                          {/* Botão para criar credenciais - só aparece se não tem acesso ao sistema */}
+                          <button
+                            onClick={() => handleAddCredentials(barEmployee)}
+                            className="text-green-600 hover:text-green-900"
+                            title="Criar credenciais de acesso"
+                          >
+                            <Badge size={16} />
                           </button>
                           {barEmployee.status === 'active' ? (
                             <button
@@ -669,8 +753,26 @@ const BarEmployeesModule: React.FC = () => {
         />
       )}
 
+      {/* NOVOS MODAIS - Fluxo de duas etapas */}
+      
+      {/* Modal Funcionário Básico (Etapa 1) */}
+      <BasicEmployeeModal
+        isOpen={showBasicEmployeeModal}
+        onClose={() => setShowBasicEmployeeModal(false)}
+        onSave={handleCreateBasicEmployee}
+      />
 
-
+      {/* Modal Credenciais do Sistema (Etapa 2) */}
+      <SystemCredentialsModal
+        isOpen={showSystemCredentialsModal}
+        onClose={() => {
+          setShowSystemCredentialsModal(false);
+          setSelectedEmployeeForCredentials(null);
+        }}
+        onSave={handleCreateCredentials}
+        employeeName={selectedEmployeeForCredentials?.employee?.name || ''}
+        employeeRole={selectedEmployeeForCredentials?.bar_role || ''}
+      />
 
     </div>
   );

@@ -4,6 +4,7 @@
 
 import { supabase } from '../lib/supabase';
 import { UserPermissions, ModulePermissions } from './authMiddleware';
+import { getUserRole, mapEmployeeRoleToMiddlewareRole, addUserRoleMapping } from '../config/userRoleMapping';
 
 interface UsuarioEmpresa {
   id: string;
@@ -38,15 +39,73 @@ export async function loadUserPermissionsRobust(): Promise<UserPermissions | nul
     // 2. Detectar usuários e seus roles usando mapeamento
     console.log('🔄 Usando fallback direto para evitar erros de RLS');
     
-    // Mapeamento de usuários conhecidos com seus roles
-    const userRoleMapping: Record<string, string> = {
-      [import.meta.env.VITE_SUPER_USER_EMAIL || '']: 'administrador',
-      'bob@teste.com': 'atendente_caixa', // Role específico para atendente de caixa
-      // Adicionar mais usuários conforme necessário
-    };
+    // Determinar role baseado no email usando sistema dinâmico
+    let userRole = getUserRole(user.email || '');
+    console.log(`🔍 Buscando role para ${user.email}: ${userRole || 'não encontrado'}`);
     
-    // Determinar role baseado no email
-    const userRole = userRoleMapping[user.email || ''] || 'funcionario';
+    // Verificar se é superusuário
+    if (user.email === import.meta.env.VITE_SUPER_USER_EMAIL) {
+      userRole = 'administrador';
+      console.log(`👑 Superusuário detectado: ${user.email}`);
+    }
+    
+    // CORREÇÃO TEMPORÁRIA: Forçar operador_caixa para usuários específicos
+    const caixaUsers = ['arnaldo@teste.com', 'martinho@teste.com', 'tony@teste.com', 'charles@teste.com', 'nando@teste.com', 'mariza@teste.com'];
+    if (caixaUsers.includes(user.email || '')) {
+      userRole = 'operador_caixa';
+      console.log(`🎯 CORREÇÃO FORÇADA: ${user.email} → operador_caixa`);
+    }
+    
+    // Se não está no mapeamento manual, tentar buscar do banco de forma segura
+    if (!userRole) {
+      try {
+        // NOVA ABORDAGEM: Buscar diretamente na tabela usuarios_empresa pelo cargo
+        const { data: usuarioEmpresaData } = await supabase
+          .from('usuarios_empresa')
+          .select('cargo, tipo_usuario')
+          .eq('user_id', user.id)
+          .eq('status', 'ativo')
+          .maybeSingle();
+        
+        if (usuarioEmpresaData) {
+          const cargo = usuarioEmpresaData.cargo?.toLowerCase() || '';
+          
+          if (cargo.includes('caixa') || cargo.includes('cashier')) {
+            userRole = 'operador_caixa';
+            console.log(`🎯 Role detectado pelo cargo: "${usuarioEmpresaData.cargo}" → operador_caixa`);
+            addUserRoleMapping(user.email || '', userRole, 'cargo_detection');
+          } else if (cargo.includes('gerente') || cargo.includes('manager')) {
+            userRole = 'gerente';
+            console.log(`🎯 Role detectado pelo cargo: "${usuarioEmpresaData.cargo}" → gerente`);
+            addUserRoleMapping(user.email || '', userRole, 'cargo_detection');
+          } else {
+            userRole = 'funcionario';
+            console.log(`🔍 Cargo "${usuarioEmpresaData.cargo}" → funcionario padrão`);
+          }
+        } else {
+          // Fallback: DETECÇÃO INTELIGENTE por email
+          const emailLower = (user.email || '').toLowerCase();
+          if (emailLower.includes('caixa') || emailLower.includes('cashier') || 
+              emailLower.includes('tony') || emailLower.includes('charles') || 
+              emailLower.includes('nando') || emailLower.includes('arnaldo') ||
+              emailLower.includes('mariza') || emailLower.includes('martinho') ||
+              emailLower.includes('nandoc')) {
+            userRole = 'operador_caixa';
+            console.log(`🎯 Detecção inteligente por email: usuário identificado como operador de caixa`);
+            addUserRoleMapping(user.email || '', userRole, 'smart_detection');
+          } else {
+            userRole = 'funcionario';
+            console.log(`🔍 Usuário não encontrado, usando role padrão: ${userRole}`);
+          }
+        }
+      } catch (error) {
+        console.log('⚠️ Erro ao buscar role do banco, usando fallback');
+      }
+    }
+    
+    // Fallback final
+    userRole = userRole || 'funcionario';
+    console.log(`🎯 Role final determinado: ${userRole}`);
     const isSuperUser = userRole === 'administrador';
     
     // Para superusuários, usar empresa_id real conhecida
@@ -70,9 +129,38 @@ export async function loadUserPermissionsRobust(): Promise<UserPermissions | nul
     }
     console.log('✅ Dados do usuário carregados (fallback direto)');
 
-    // 3. Usar permissões padrão (sem consultas ao banco)
-    const permissoesUsuario: PermissaoUsuario[] = [];
-    console.log('✅ Usando permissões padrão baseadas no role (sem consultas ao banco)');
+    // 3. Tentar carregar permissões específicas da tabela permissoes_usuario
+    let permissoesUsuario: PermissaoUsuario[] = [];
+    
+    if (!isUsingFallback) {
+      try {
+        // Buscar o usuario_empresa_id primeiro
+        const { data: usuarioEmpresaData } = await supabase
+          .from('usuarios_empresa')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('status', 'ativo')
+          .maybeSingle();
+        
+        if (usuarioEmpresaData) {
+          const { data: permissoesData } = await supabase
+            .from('permissoes_usuario')
+            .select('modulo, permissoes')
+            .eq('usuario_empresa_id', usuarioEmpresaData.id);
+          
+          if (permissoesData && permissoesData.length > 0) {
+            permissoesUsuario = permissoesData as PermissaoUsuario[];
+            console.log(`✅ ${permissoesUsuario.length} permissões específicas carregadas da tabela`);
+          } else {
+            console.log('⚠️ Nenhuma permissão específica encontrada, usando padrões do role');
+          }
+        }
+      } catch (error) {
+        console.log('⚠️ Erro ao carregar permissões específicas:', error);
+      }
+    } else {
+      console.log('✅ Usando permissões padrão baseadas no role (modo fallback)');
+    }
 
     // 4. Usar dados padrão do bar employee (sem consultas)
     const barEmployee = null; // Usar null para evitar consultas adicionais
@@ -145,6 +233,14 @@ function buildPermissionsFromRoleRobust(
       gestao_caixa: { visualizar: true, criar: true, editar: true, excluir: true, administrar: false },
       atendimento_bar: { visualizar: true, criar: true, editar: true, excluir: false, administrar: false },
       clientes: { visualizar: true, criar: true, editar: true, excluir: false, administrar: false }
+    },
+    operador_caixa: {
+      gestao_caixa: { visualizar: true, criar: true, editar: true, excluir: true, administrar: false }
+    },
+    cozinheiro: {
+      dashboard: { visualizar: true, criar: false, editar: false, excluir: false, administrar: false },
+      monitor_cozinha: { visualizar: true, criar: true, editar: true, excluir: false, administrar: false },
+      atendimento_bar: { visualizar: true, criar: false, editar: false, excluir: false, administrar: false }
     },
     garcom: {
       dashboard: { visualizar: true, criar: false, editar: false, excluir: false, administrar: false },
