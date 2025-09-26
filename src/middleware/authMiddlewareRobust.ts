@@ -35,26 +35,38 @@ export async function loadUserPermissionsRobust(): Promise<UserPermissions | nul
 
     console.log('👤 Usuário autenticado:', user.email);
 
-    // 2. Detectar superusuários e usar fallback direto
+    // 2. Detectar usuários e seus roles usando mapeamento
     console.log('🔄 Usando fallback direto para evitar erros de RLS');
     
-    // Lista de emails de superusuários
-    const superUsers = ['riltons@gmail.com'];
-    const isSuperUser = superUsers.includes(user.email || '');
+    // Mapeamento de usuários conhecidos com seus roles
+    const userRoleMapping: Record<string, string> = {
+      [import.meta.env.VITE_SUPER_USER_EMAIL || '']: 'administrador',
+      'bob@teste.com': 'atendente_caixa', // Role específico para atendente de caixa
+      // Adicionar mais usuários conforme necessário
+    };
+    
+    // Determinar role baseado no email
+    const userRole = userRoleMapping[user.email || ''] || 'funcionario';
+    const isSuperUser = userRole === 'administrador';
+    
+    // Para superusuários, usar empresa_id real conhecida
+    const empresaId = isSuperUser ? '9e445c5a-a382-444d-94f8-9d126ed6414e' : crypto.randomUUID();
     
     const isUsingFallback = true;
     const usuarioEmpresa: UsuarioEmpresa = {
       id: crypto.randomUUID(), // Gerar um UUID válido para o fallback
       user_id: user.id,
-      empresa_id: crypto.randomUUID(), // Gerar um UUID válido para a empresa
+      empresa_id: empresaId, // Usar empresa_id real para superusuários
       tipo_usuario: isSuperUser ? 'administrador' : 'funcionario',
       status: 'ativo',
-      cargo: isSuperUser ? 'administrador' : 'funcionario',
+      cargo: userRole, // Usar o role mapeado
       tem_acesso_sistema: true
     };
     
     if (isSuperUser) {
-      console.log('👑 Superusuário detectado - concedendo permissões de administrador');
+      console.log('👑 Superusuário detectado - usando empresa AABB Garanhuns');
+    } else if (userRole !== 'funcionario') {
+      console.log(`👤 Usuário com role específico detectado: ${userRole}`);
     }
     console.log('✅ Dados do usuário carregados (fallback direto)');
 
@@ -124,6 +136,13 @@ function buildPermissionsFromRoleRobust(
     atendente: {
       dashboard: { visualizar: true, criar: false, editar: false, excluir: false, administrar: false },
       monitor_bar: { visualizar: true, criar: false, editar: false, excluir: false, administrar: false },
+      atendimento_bar: { visualizar: true, criar: true, editar: true, excluir: false, administrar: false },
+      gestao_caixa: { visualizar: true, criar: true, editar: true, excluir: false, administrar: false },
+      clientes: { visualizar: true, criar: true, editar: true, excluir: false, administrar: false }
+    },
+    atendente_caixa: {
+      dashboard: { visualizar: true, criar: false, editar: false, excluir: false, administrar: false },
+      gestao_caixa: { visualizar: true, criar: true, editar: true, excluir: true, administrar: false },
       atendimento_bar: { visualizar: true, criar: true, editar: true, excluir: false, administrar: false },
       clientes: { visualizar: true, criar: true, editar: true, excluir: false, administrar: false }
     },

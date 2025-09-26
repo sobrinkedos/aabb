@@ -19,7 +19,8 @@
         "get_project",
         "apply_migration",
         "list_migrations",
-        "get_logs"
+        "get_logs",
+        "get_anon_key"
       ]
     }
   }
