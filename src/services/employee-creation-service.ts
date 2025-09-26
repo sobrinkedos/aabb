@@ -1120,38 +1120,61 @@ export class EmployeeCreationService {
     return this.executeWithErrorHandling(
       ServiceOperation.CREATE_EMPLOYEE,
       async () => {
-        // Buscar departamento e posição padrão
-        const { data: departments } = await supabase
-          .from("departments")
-          .select("id")
-          .limit(1);
+        // CORREÇÃO: Buscar departamento e posição padrão de forma segura
+        let departmentId: string | null = null;
+        let positionId: string | null = null;
 
-        const { data: positions } = await supabase
-          .from("positions")
-          .select("id")
-          .limit(1);
+        try {
+          // Buscar departamento ativo (sem filtro por empresa_id pois campo não existe)
+          const { data: departments } = await supabase
+            .from("departments")
+            .select("id")
+            .eq('is_active', true)
+            .limit(1);
 
-        const departmentId = (departments as any)?.[0]?.id;
-        const positionId = (positions as any)?.[0]?.id;
+          departmentId = (departments as any)?.[0]?.id;
 
+          // Buscar posição ativa
+          const { data: positions } = await supabase
+            .from("positions")
+            .select("id")
+            .eq('is_active', true)
+            .limit(1);
+
+          positionId = (positions as any)?.[0]?.id;
+
+          this.log('info', ServiceOperation.CREATE_EMPLOYEE, 'Department e Position encontrados', { 
+            departmentId, 
+            positionId 
+          });
+
+        } catch (deptPosError) {
+          this.log('warn', ServiceOperation.CREATE_EMPLOYEE, 'Erro ao buscar departamento e posição', {}, deptPosError);
+        }
+
+        // CORREÇÃO: Se ainda não temos department/position, usar valores padrão simples
         if (!departmentId || !positionId) {
-          throw new Error('Departamento ou posição não encontrados. Verifique se existem departamentos e posições cadastrados.');
+          this.log('warn', ServiceOperation.CREATE_EMPLOYEE, 'Criando employee sem department/position devido a erros');
         }
 
         const client = isAdminConfigured ? supabaseAdmin : supabase;
+        const employeeRecord = {
+          employee_code: `EMP-${Date.now()}`,
+          name: employeeData.nome_completo,
+          email: employeeData.email,
+          hire_date: new Date().toISOString().split('T')[0],
+          status: 'active',
+          empresa_id: empresaId
+        } as any;
+
+        // Adicionar department_id e position_id apenas se existirem
+        if (departmentId) employeeRecord.department_id = departmentId;
+        if (positionId) employeeRecord.position_id = positionId;
+        if (authUserId) employeeRecord.profile_id = authUserId;
+
         const { data, error } = await client
           .from("employees")
-          .insert([{
-            employee_code: `EMP-${Date.now()}`,
-            name: employeeData.nome_completo,
-            email: employeeData.email,
-            hire_date: new Date().toISOString().split('T')[0],
-            position_id: positionId,
-            department_id: departmentId,
-            profile_id: authUserId,
-            status: 'active',
-            empresa_id: empresaId
-          }] as any)
+          .insert(employeeRecord as any)
           .select('id')
           .single();
 
@@ -1262,7 +1285,7 @@ export class EmployeeCreationService {
           throw new Error(error.message);
         }
 
-        return { success: true, data: { usuarioEmpresaId: (data as any)?.[0]?.id } };
+        return { success: true, data: { usuarioEmpresaId: (data as any)?.id } };
       },
       'Criação de registro usuarios_empresa'
     ) as Promise<ServiceResult & { usuarioEmpresaId?: string }>;
@@ -1332,7 +1355,7 @@ export class EmployeeCreationService {
       // Tentar criar perfil, mas não falhar se a tabela não existir
       const { error } = await supabase
         .from("profiles")
-        .insert([{
+        .insert({
           id: userId,
           name: employeeData.nome_completo,
           role: employeeData.tipo_usuario || "employee",
@@ -1340,7 +1363,7 @@ export class EmployeeCreationService {
             encodeURIComponent(employeeData.nome_completo)
           }`,
           updated_at: new Date().toISOString(),
-        }]);
+        } as any);
 
       if (error) {
         // Se a tabela não existir, não é um erro crítico

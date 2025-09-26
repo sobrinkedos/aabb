@@ -5,6 +5,7 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { loadUserPermissionsRobust } from './authMiddlewareRobust';
 
 // ============================================================================
 // INTERFACES
@@ -107,63 +108,10 @@ export const canAccessReports = (permissions: UserPermissions | null): boolean =
 // ============================================================================
 
 /**
- * Carrega as permissões do usuário atual
+ * Carrega as permissões do usuário atual usando versão robusta
  */
 export const loadUserPermissions = async (): Promise<UserPermissions | null> => {
-  try {
-    // Verificar se há usuário logado
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      console.log('Usuário não autenticado');
-      return null;
-    }
-
-    // Buscar dados do usuário na empresa
-    const { data: usuarioEmpresa, error: userError } = await supabase
-      .from('usuarios_empresa')
-      .select(`
-        *,
-        permissoes_usuario (
-          modulo,
-          permissoes
-        )
-      `)
-      .eq('user_id', user.id)
-      .eq('ativo', true)
-      .single();
-
-    if (userError || !usuarioEmpresa) {
-      console.error('Erro ao carregar dados do usuário:', userError);
-      return null;
-    }
-
-    // Buscar dados do funcionário do bar (se existir)
-    const { data: barEmployee } = await supabase
-      .from('bar_employees')
-      .select('bar_role, is_active')
-      .eq('employee_id', user.id)
-      .eq('is_active', true)
-      .single();
-
-    // Determinar a função principal
-    const role = barEmployee?.bar_role || usuarioEmpresa.cargo || 'funcionario';
-
-    // Construir permissões baseadas na função e permissões específicas
-    const permissions = buildPermissionsFromRole(role, usuarioEmpresa.permissoes_usuario || []);
-
-    return {
-      userId: user.id,
-      empresaId: usuarioEmpresa.empresa_id,
-      role,
-      permissions,
-      isActive: usuarioEmpresa.ativo && (barEmployee?.is_active !== false),
-      hasSystemAccess: usuarioEmpresa.tem_acesso_sistema
-    };
-  } catch (error) {
-    console.error('Erro ao carregar permissões do usuário:', error);
-    return null;
-  }
+  return await loadUserPermissionsRobust();
 };
 
 /**

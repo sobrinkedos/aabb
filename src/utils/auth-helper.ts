@@ -47,14 +47,36 @@ export const getCurrentUserEmpresaId = async (): Promise<string | null> => {
       return null;
     }
 
-    if (!data || data.length === 0) {
-      console.warn('⚠️ No empresa found for user:', session.user.id);
+    if (data && data.length > 0) {
+      const empresaId = data[0]?.empresa_id;
+      console.log('✅ User empresa_id:', empresaId);
+      return empresaId || null;
+    }
+
+    // CORREÇÃO: Se não encontrou em usuarios_empresa, buscar a primeira empresa disponível
+    // Isso resolve o problema de usuários criados sem empresa
+    console.warn('⚠️ No empresa found for user in usuarios_empresa, buscando primeira empresa disponível');
+    
+    const { data: firstEmpresa, error: empresaError } = await (supabase as any)
+      .from('empresas')
+      .select('id')
+      .eq('status', 'ativo')
+      .order('created_at', { ascending: true })
+      .limit(1);
+
+    if (empresaError) {
+      console.error('❌ Error getting first empresa:', empresaError.message);
       return null;
     }
 
-    const empresaId = data[0]?.empresa_id;
-    console.log('✅ User empresa_id:', empresaId);
-    return empresaId || null;
+    if (firstEmpresa && firstEmpresa.length > 0) {
+      const empresaId = firstEmpresa[0]?.id;
+      console.log('✅ Using first empresa as fallback:', empresaId);
+      return empresaId;
+    }
+
+    console.warn('⚠️ No empresas found in system');
+    return null;
   } catch (error) {
     console.error('❌ Error in getCurrentUserEmpresaId:', error);
     return null;

@@ -5,6 +5,7 @@ import { MultitenantAuthProvider } from './contexts/MultitenantAuthContextSimple
 import { AppProvider } from './contexts/AppContext';
 import { AppProvider as AppProviderOptimized } from './contexts/AppContextOptimized';
 import { SenhaProvisionariaGuard } from './components/Auth/SenhaProvisionariaGuard';
+import { PermissionProtectedRoute } from './components/Auth/PermissionProtectedRoute';
 import { AlterarSenhaProvisoria } from './pages/Auth/AlterarSenhaProvisoria';
 import LoginForm from './components/Auth/LoginForm';
 import RegisterForm from './components/Auth/RegisterForm';
@@ -85,22 +86,94 @@ function App() {
           
             {/* Rota pai para o layout protegido */}
             <Route element={<ProtectedRoutesWrapper />}>
-            <Route index element={PERFORMANCE_CONFIG.USE_OPTIMIZED_DASHBOARD ? <DashboardOptimized /> : <Dashboard />} />
-            <Route path="bar" element={<BarModule />} />
-            <Route path="bar-customers" element={<BarCustomersModule />} />
-            <Route path="bar-employees" element={<BarEmployeesModule />} />
-            <Route path="cash/*" element={<CashManagement />} />
-            <Route path="kitchen" element={<KitchenModule />} />
-            <Route path="inventory" element={<InventoryModule />} />
-            <Route path="inventory/estoque-baixo" element={<ListaEstoqueBaixo />} />
-            <Route path="inventory/atualizacao-massiva" element={<AtualizacaoMassiva />} />
-            <Route path="members" element={<MembersModule />} />
-            <Route path="bar/attendance" element={<BarAttendance />} />
-
-            <Route path="settings" element={<ConfiguracoesEmpresaSimples />} />
-            <Route path="test-modal" element={<TestNewModal />} />
-            <Route path="test-table-display" element={<TestTableDisplay />} />
-          </Route>
+              {/* Dashboard com proteção específica */}
+              <Route index element={
+                <PermissionProtectedRoute module="dashboard">
+                  {PERFORMANCE_CONFIG.USE_OPTIMIZED_DASHBOARD ? <DashboardOptimized /> : <Dashboard />}
+                </PermissionProtectedRoute>
+              } />
+              
+              {/* Módulos do Bar */}
+              <Route path="bar" element={
+                <PermissionProtectedRoute module="monitor_bar">
+                  <BarModule />
+                </PermissionProtectedRoute>
+              } />
+              <Route path="bar/attendance" element={
+                <PermissionProtectedRoute module="atendimento_bar">
+                  <BarAttendance />
+                </PermissionProtectedRoute>
+              } />
+              
+              {/* Módulo Clientes */}
+              <Route path="bar-customers" element={
+                <PermissionProtectedRoute module="clientes">
+                  <BarCustomersModule />
+                </PermissionProtectedRoute>
+              } />
+              <Route path="members" element={
+                <PermissionProtectedRoute module="clientes">
+                  <MembersModule />
+                </PermissionProtectedRoute>
+              } />
+              
+              {/* Módulo Funcionários */}
+              <Route path="bar-employees" element={
+                <PermissionProtectedRoute module="funcionarios">
+                  <BarEmployeesModule />
+                </PermissionProtectedRoute>
+              } />
+              
+              {/* Módulo Cozinha */}
+              <Route path="kitchen" element={
+                <PermissionProtectedRoute module="monitor_cozinha">
+                  <KitchenModule />
+                </PermissionProtectedRoute>
+              } />
+              
+              {/* Módulo Caixa */}
+              <Route path="cash/*" element={
+                <PermissionProtectedRoute module="gestao_caixa">
+                  <CashManagement />
+                </PermissionProtectedRoute>
+              } />
+              
+              {/* Módulos de Estoque (protegidos por funcionários) */}
+              <Route path="inventory" element={
+                <PermissionProtectedRoute module="funcionarios">
+                  <InventoryModule />
+                </PermissionProtectedRoute>
+              } />
+              <Route path="inventory/estoque-baixo" element={
+                <PermissionProtectedRoute module="funcionarios">
+                  <ListaEstoqueBaixo />
+                </PermissionProtectedRoute>
+              } />
+              <Route path="inventory/atualizacao-massiva" element={
+                <PermissionProtectedRoute module="funcionarios">
+                  <AtualizacaoMassiva />
+                </PermissionProtectedRoute>
+              } />
+              
+              {/* Configurações */}
+              <Route path="settings" element={
+                <PermissionProtectedRoute module="configuracoes">
+                  <ConfiguracoesEmpresaSimples />
+                </PermissionProtectedRoute>
+              } />
+              
+              {/* Rotas de desenvolvimento */}
+              <Route path="test-modal" element={
+                <PermissionProtectedRoute module="configuracoes">
+                  <TestNewModal />
+                </PermissionProtectedRoute>
+              } />
+              <Route path="test-table-display" element={
+                <PermissionProtectedRoute module="configuracoes">
+                  <TestTableDisplay />
+                </PermissionProtectedRoute>
+              } />
+            </Route>
           
           {/* Redireciona qualquer rota não encontrada para a página inicial */}
           <Route path="*" element={<Navigate to="/" replace />} />

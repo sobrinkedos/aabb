@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -15,22 +15,49 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContextSimple';
 import { motion } from 'framer-motion';
+import { loadUserPermissions, hasModuleAccess, UserPermissions } from '../../middleware/authMiddleware';
 
 const Sidebar: React.FC = () => {
   const { user, logout } = useAuth();
+  const [permissions, setPermissions] = useState<UserPermissions | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const menuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
-    { name: 'Monitor Bar', icon: Wine, path: '/bar' },
-    { name: 'Atendimento Bar', icon: Coffee, path: '/bar/attendance' },
-    { name: 'Monitor Cozinha', icon: ChefHat, path: '/kitchen' },
-    { name: 'Gestão de Caixa', icon: DollarSign, path: '/cash' },
-    { name: 'Clientes', icon: Users, path: '/bar-customers' },
-    { name: 'Funcionários', icon: UserCheck, path: '/bar-employees' },
-    { name: 'Estoque', icon: Package, path: '/inventory' },
-    { name: 'Sócios', icon: Users, path: '/members' },
-    { name: 'Configurações', icon: Settings, path: '/settings' },
+  // Carregar permissões do usuário
+  useEffect(() => {
+    const loadPermissions = async () => {
+      try {
+        const userPermissions = await loadUserPermissions();
+        setPermissions(userPermissions);
+      } catch (error) {
+        console.error('Erro ao carregar permissões:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      loadPermissions();
+    }
+  }, [user]);
+
+  const allMenuItems = [
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/', module: 'dashboard' as const },
+    { name: 'Monitor Bar', icon: Wine, path: '/bar', module: 'monitor_bar' as const },
+    { name: 'Atendimento Bar', icon: Coffee, path: '/bar/attendance', module: 'atendimento_bar' as const },
+    { name: 'Monitor Cozinha', icon: ChefHat, path: '/kitchen', module: 'monitor_cozinha' as const },
+    { name: 'Gestão de Caixa', icon: DollarSign, path: '/cash', module: 'gestao_caixa' as const },
+    { name: 'Clientes', icon: Users, path: '/bar-customers', module: 'clientes' as const },
+    { name: 'Funcionários', icon: UserCheck, path: '/bar-employees', module: 'funcionarios' as const },
+    { name: 'Estoque', icon: Package, path: '/inventory', module: 'funcionarios' as const }, // Estoque é gerenciado por funcionários
+    { name: 'Sócios', icon: Users, path: '/members', module: 'clientes' as const }, // Sócios são um tipo de cliente
+    { name: 'Configurações', icon: Settings, path: '/settings', module: 'configuracoes' as const },
   ];
+
+  // Filtrar itens de menu baseado nas permissões
+  const menuItems = allMenuItems.filter(item => {
+    if (loading || !permissions) return false;
+    return hasModuleAccess(permissions, item.module, 'visualizar');
+  });
 
   const isDemoUser = user?.email === 'demo@clubmanager.com';
 
@@ -78,25 +105,37 @@ const Sidebar: React.FC = () => {
       )}
 
       <nav className="flex-1 overflow-y-auto scrollbar-hide">
-        <ul className="space-y-2">
-          {menuItems.map((item) => (
-            <li key={item.name}>
-              <NavLink
-                to={item.path}
-                className={({ isActive }) =>
-                  `flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-blue-600 text-white'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }`
-                }
-              >
-                <item.icon size={20} />
-                <span>{item.name}</span>
-              </NavLink>
-            </li>
-          ))}
-        </ul>
+        {loading ? (
+          <div className="flex items-center justify-center p-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {menuItems.length > 0 ? (
+              menuItems.map((item) => (
+                <li key={item.name}>
+                  <NavLink
+                    to={item.path}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                        isActive
+                          ? 'bg-blue-600 text-white'
+                          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      }`
+                    }
+                  >
+                    <item.icon size={20} />
+                    <span>{item.name}</span>
+                  </NavLink>
+                </li>
+              ))
+            ) : (
+              <li className="p-3 text-slate-400 text-sm text-center">
+                Sem permissões de acesso
+              </li>
+            )}
+          </ul>
+        )}
       </nav>
 
       {isDemoUser && (
