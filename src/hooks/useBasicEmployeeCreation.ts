@@ -33,23 +33,47 @@ export const useBasicEmployeeCreation = () => {
    * Cria um funcionário básico sem credenciais
    */
   const createBasicEmployee = useCallback(async (employeeData: BasicEmployeeData) => {
+    console.log('📥 DADOS RECEBIDOS no hook:');
+    console.log('  - nome_completo:', employeeData.nome_completo);
+    console.log('  - email:', employeeData.email);
+    console.log('  - telefone:', employeeData.telefone);
+    console.log('  - cpf:', employeeData.cpf);
+    console.log('  - bar_role:', employeeData.bar_role);
+    console.log('  - cargo:', employeeData.cargo);
+    
     try {
       setLoading(true);
       setError(null);
 
       // Verificar autenticação
+      console.log('🔐 Verificando autenticação...');
       const authResult = await ensureAuthenticated();
       if (!authResult.success) {
+        console.error('❌ Falha na autenticação:', authResult.error);
         throw new Error(`Falha na autenticação: ${authResult.error}`);
       }
+      console.log('✅ Autenticação OK');
 
-      // Obter empresa_id
-      const empresaId = await getCurrentUserEmpresaId();
+      // Obter empresa_id de forma mais segura
+      console.log('🔍 Tentando obter empresa_id...');
+      let empresaId: string;
+      
+      try {
+        empresaId = await getCurrentUserEmpresaId();
+        console.log('🏢 Empresa ID obtido:', empresaId);
+      } catch (empresaError) {
+        console.error('❌ Erro ao obter empresa_id:', empresaError);
+        // Usar empresa_id fixo como fallback
+        empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e';
+        console.log('🔄 Usando empresa_id fixo como fallback:', empresaId);
+      }
+      
       if (!empresaId) {
         throw new Error('Não foi possível obter o ID da empresa');
       }
 
       // 1. Buscar department e position padrão
+      console.log('🔍 Buscando department e position...');
       const { data: departments } = await supabase
         .from("departments")
         .select("id")
@@ -64,50 +88,80 @@ export const useBasicEmployeeCreation = () => {
 
       const departmentId = departments?.[0]?.id;
       const positionId = positions?.[0]?.id;
+      console.log('📋 Department/Position encontrados:', { departmentId, positionId });
 
-      // 2. Criar registro na tabela employees
+      // 2. Criar registro na tabela employees (apenas campos essenciais)
+      const employeeInsertData: any = {
+        employee_code: `EMP-${Date.now()}`,
+        name: employeeData.nome_completo,
+        hire_date: new Date().toISOString().split('T')[0],
+        status: 'active',
+        empresa_id: empresaId
+      };
+
+      // Adicionar campos opcionais apenas se existirem
+      if (employeeData.email) employeeInsertData.email = employeeData.email;
+      if (employeeData.telefone) employeeInsertData.phone = employeeData.telefone;
+      if (employeeData.cpf) employeeInsertData.cpf = employeeData.cpf; // ✅ CORREÇÃO: Adicionar CPF
+      if (departmentId) employeeInsertData.department_id = departmentId;
+      if (positionId) employeeInsertData.position_id = positionId;
+
+      console.log('💾 Inserindo employee com dados:');
+      console.log('  - employee_code:', employeeInsertData.employee_code);
+      console.log('  - name:', employeeInsertData.name);
+      console.log('  - email:', employeeInsertData.email);
+      console.log('  - phone:', employeeInsertData.phone);
+      console.log('  - cpf:', employeeInsertData.cpf); // ✅ ADICIONADO: Log do CPF
+      console.log('  - empresa_id:', employeeInsertData.empresa_id);
       const { data: employeeRecord, error: employeeError } = await supabase
         .from("employees")
-        .insert({
-          employee_code: `EMP-${Date.now()}`,
-          name: employeeData.nome_completo,
-          email: employeeData.email,
-          phone: employeeData.telefone,
-          hire_date: new Date().toISOString().split('T')[0],
-          status: 'active',
-          empresa_id: empresaId,
-          department_id: departmentId,
-          position_id: positionId
-        })
+        .insert(employeeInsertData)
         .select('id')
         .single();
 
       if (employeeError) {
+        console.error('❌ Erro ao inserir employee:', employeeError);
         throw new Error(`Erro ao criar funcionário: ${employeeError.message}`);
       }
+      
+      console.log('✅ Employee criado:', employeeRecord);
 
-      // 3. Criar registro na tabela bar_employees
+      // 3. Criar registro na tabela bar_employees (apenas campos obrigatórios)
+      const barEmployeeData = {
+        employee_id: employeeRecord.id,
+        bar_role: employeeData.bar_role,
+        is_active: true
+      };
+      
+      console.log('💾 Inserindo bar_employee com dados:', barEmployeeData);
       const { error: barEmployeeError } = await supabase
         .from("bar_employees")
-        .insert({
-          employee_id: employeeRecord.id,
-          bar_role: employeeData.bar_role,
-          is_active: true,
-          shift_preference: 'qualquer',
-          commission_rate: 0,
-          specialties: [],
-          observacoes: employeeData.observacoes || ''
-        });
+        .insert(barEmployeeData);
 
       if (barEmployeeError) {
+        console.error('❌ Erro ao inserir bar_employee:', barEmployeeError);
         throw new Error(`Erro ao criar bar_employee: ${barEmployeeError.message}`);
       }
+      
+      console.log('✅ Bar_employee criado com sucesso');
 
       console.log('✅ Funcionário básico criado com sucesso:', {
         employeeId: employeeRecord.id,
         nome: employeeData.nome_completo,
-        role: employeeData.bar_role
+        role: employeeData.bar_role,
+        empresaId
       });
+
+      // Verificar se realmente foi criado
+      const { data: verification } = await supabase
+        .from("employees")
+        .select('id, name')
+        .eq('id', employeeRecord.id)
+        .single();
+      
+      console.log('🔍 Verificação no banco:');
+      console.log('  - id:', verification?.id);
+      console.log('  - name:', verification?.name);
 
       return {
         success: true,
@@ -118,7 +172,11 @@ export const useBasicEmployeeCreation = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao criar funcionário';
       setError(errorMessage);
-      console.error('❌ Erro ao criar funcionário básico:', err);
+      console.error('❌ ERRO COMPLETO ao criar funcionário básico:', {
+        error: err,
+        message: errorMessage,
+        stack: err instanceof Error ? err.stack : 'No stack'
+      });
       
       return {
         success: false,

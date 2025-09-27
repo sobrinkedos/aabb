@@ -26,6 +26,7 @@ import BarAttendance from './pages/BarAttendance';
 import CashManagement from './pages/CashManagement';
 import TestNewModal from './components/debug/TestNewModal';
 import { ConfiguracoesEmpresaSimples } from './pages/Auth/ConfiguracoesEmpresaSimples';
+import FuncionariosPage from './pages/Admin/FuncionariosPage';
 import { TestTableDisplay } from './examples';
 import './utils/debug-transactions';
 
@@ -121,6 +122,13 @@ function App() {
               <Route path="bar-employees" element={
                 <PermissionProtectedRoute module="funcionarios">
                   <BarEmployeesModule />
+                </PermissionProtectedRoute>
+              } />
+              
+              {/* Gestão de Funcionários (Admin) */}
+              <Route path="admin/funcionarios" element={
+                <PermissionProtectedRoute module="funcionarios">
+                  <FuncionariosPage />
                 </PermissionProtectedRoute>
               } />
               

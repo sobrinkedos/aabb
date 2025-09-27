@@ -27,7 +27,7 @@ export const BasicEmployeeModal: React.FC<BasicEmployeeModalProps> = ({
     email: '',
     telefone: '',
     cpf: '',
-    bar_role: 'caixa',
+    bar_role: 'atendente',
     cargo: 'Atendente de Caixa',
     observacoes: ''
   });
@@ -36,12 +36,11 @@ export const BasicEmployeeModal: React.FC<BasicEmployeeModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const roles = [
-    { value: 'caixa', label: 'Atendente de Caixa', cargo: 'Atendente de Caixa' },
+    { value: 'atendente', label: 'Atendente de Caixa', cargo: 'Atendente de Caixa' },
     { value: 'garcom', label: 'Garçom', cargo: 'Garçom' },
     { value: 'cozinheiro', label: 'Cozinheiro', cargo: 'Cozinheiro' },
     { value: 'barman', label: 'Barman', cargo: 'Barman' },
-    { value: 'gerente', label: 'Gerente', cargo: 'Gerente' },
-    { value: 'atendente', label: 'Atendente', cargo: 'Atendente' }
+    { value: 'gerente', label: 'Gerente', cargo: 'Gerente' }
   ];
 
   const handleRoleChange = (roleValue: string) => {
@@ -79,6 +78,14 @@ export const BasicEmployeeModal: React.FC<BasicEmployeeModalProps> = ({
   const handleSave = async () => {
     if (!validateForm()) return;
 
+    console.log('📤 DADOS ENVIADOS do modal:');
+    console.log('  - nome_completo:', employee.nome_completo);
+    console.log('  - email:', employee.email);
+    console.log('  - telefone:', employee.telefone);
+    console.log('  - cpf:', employee.cpf);
+    console.log('  - bar_role:', employee.bar_role);
+    console.log('  - cargo:', employee.cargo);
+
     setLoading(true);
     try {
       await onSave(employee);
@@ -96,7 +103,7 @@ export const BasicEmployeeModal: React.FC<BasicEmployeeModalProps> = ({
       email: '',
       telefone: '',
       cpf: '',
-      bar_role: 'caixa',
+      bar_role: 'atendente',
       cargo: 'Atendente de Caixa',
       observacoes: ''
     });
@@ -240,19 +247,7 @@ export const BasicEmployeeModal: React.FC<BasicEmployeeModalProps> = ({
                 />
               </div>
 
-              {/* Observações */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Observações
-                </label>
-                <textarea
-                  value={employee.observacoes}
-                  onChange={(e) => setEmployee(prev => ({ ...prev, observacoes: e.target.value }))}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Observações adicionais..."
-                />
-              </div>
+
             </div>
           </div>
 

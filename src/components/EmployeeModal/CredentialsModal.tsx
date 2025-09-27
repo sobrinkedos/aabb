@@ -38,7 +38,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
   // Definir permissões padrão baseadas no role
   const getDefaultPermissions = (role: string) => {
     const rolePermissions: Record<string, any> = {
-      'caixa': {
+      'atendente': {
         gestao_caixa: { visualizar: true, criar: true, editar: true, excluir: true, administrar: false }
       },
       'garcom': {

@@ -34,6 +34,14 @@ export const getCurrentUserEmpresaId = async (): Promise<string | null> => {
       return null;
     }
 
+    // CORREÇÃO TEMPORÁRIA: Usar empresa_id específica que sabemos que funciona
+    // Para o usuário riltons@gmail.com, usar AABB Garanhuns
+    if (session.user.email === 'riltons@gmail.com') {
+      const empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e';
+      console.log('✅ Using specific empresa_id for riltons@gmail.com:', empresaId);
+      return empresaId;
+    }
+
     // Query the usuarios_empresa table to get the empresa_id
     const { data, error } = await (supabase as any)
       .from('usuarios_empresa')

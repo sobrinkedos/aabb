@@ -73,9 +73,12 @@ export const mapEmployeeRoleToMiddlewareRole = (employeeRole: string): string =>
     'waiter': 'garcom',
     'cook': 'cozinheiro', 
     'cashier': 'operador_caixa', // EmployeeRole do formulário
-    'caixa': 'operador_caixa',   // BarRole mapeado
+    'caixa': 'operador_caixa',   // BarRole mapeado (antigo)
+    'atendente': 'operador_caixa', // BarRole correto
     'supervisor': 'atendente',
+    'barman': 'atendente',
     'manager': 'gerente',
+    'gerente': 'gerente',
     'admin': 'administrador'
   };
   

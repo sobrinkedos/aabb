@@ -8,7 +8,7 @@
  * 4. Criar registros em usuarios_empresa
  */
 
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseAdmin, isAdminConfigured } from '../lib/supabase';
 import { getCurrentUserEmpresaId } from '../utils/auth-helper';
 
 export interface CredentialsResult {
@@ -59,12 +59,16 @@ export class EmployeeCredentialsService {
         };
       }
       // Buscar o funcionário existente
-      const { data: employee, error: fetchError } = await (supabase as any)
-        .from('bar_employees')
-        .select('*')
+      const { data: employee, error: fetchError } = await supabase
+        .from('employees')
+        .select(`
+          id, name, email, phone, cpf, employee_code, status,
+          tem_acesso_sistema, auth_user_id, position_id, department_id,
+          created_at, updated_at, hire_date
+        `)
         .eq('id', employeeId)
         .eq('empresa_id', empresaId)
-        .eq('ativo', true)
+        .eq('status', 'active')
         .single();
 
       if (fetchError || !employee) {
@@ -86,19 +90,45 @@ export class EmployeeCredentialsService {
       // Gerar senha temporária
       const temporaryPassword = this.generateTemporaryPassword();
 
-      // Criar usuário no Supabase Auth usando admin
-      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-        email: employee.email,
-        password: temporaryPassword,
-        email_confirm: true, // Confirmar email automaticamente
-        user_metadata: {
-          nome: employee.nome,
-          cargo: employee.cargo,
-          empresa_id: empresaId,
-          employee_id: employeeId,
-          tipo_usuario: 'funcionario'
-        }
-      });
+      // Criar usuário no Supabase Auth
+      let authUser, authError;
+      
+      if (isAdminConfigured) {
+        // Usar admin client quando disponível (mais seguro)
+        const result = await supabaseAdmin.auth.admin.createUser({
+          email: employee.email,
+          password: temporaryPassword,
+          email_confirm: true, // Confirmar email automaticamente
+          user_metadata: {
+            name: employee.name,
+            position: employee.position?.name,
+            department: employee.department?.name,
+            empresa_id: empresaId,
+            employee_id: employeeId,
+            tipo_usuario: 'funcionario'
+          }
+        });
+        authUser = result.data;
+        authError = result.error;
+      } else {
+        // Fallback para signUp quando admin não disponível
+        const result = await supabase.auth.signUp({
+          email: employee.email,
+          password: temporaryPassword,
+          options: {
+            data: {
+              name: employee.name,
+              position: employee.position?.name,
+              department: employee.department?.name,
+              empresa_id: empresaId,
+              employee_id: employeeId,
+              tipo_usuario: 'funcionario'
+            }
+          }
+        });
+        authUser = result.data;
+        authError = result.error;
+      }
 
       if (authError || !authUser.user) {
         console.error('Erro ao criar usuário Auth:', authError);
@@ -109,12 +139,13 @@ export class EmployeeCredentialsService {
       }
 
       // Atualizar funcionário com auth_user_id e tem_acesso_sistema
-      const { error: updateEmployeeError } = await (supabase as any)
-        .from('bar_employees')
+      const { error: updateEmployeeError } = await supabase
+        .from('employees')
         .update({
           auth_user_id: authUser.user.id,
           tem_acesso_sistema: true,
-          data_credenciais_criadas: new Date().toISOString()
+          data_credenciais_criadas: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .eq('id', employeeId)
         .eq('empresa_id', empresaId);
@@ -135,16 +166,8 @@ export class EmployeeCredentialsService {
         };
       }
 
-      // Criar registro na tabela usuarios_empresa
-      const { error: userEmpresaError } = await (supabase as any)
-        .from('usuarios_empresa')
-        .insert({
-          user_id: authUser.user.id,
-          empresa_id: empresaId,
-          tipo_usuario: 'funcionario',
-          ativo: true,
-          data_vinculacao: new Date().toISOString()
-        });
+      // Não precisa criar registro separado, já está na usuarios_empresa
+      const userEmpresaError = null;
 
       if (userEmpresaError) {
         console.error('Erro ao criar vínculo usuário-empresa:', userEmpresaError);
@@ -183,8 +206,8 @@ export class EmployeeCredentialsService {
         };
       }
       // Buscar o funcionário
-      const { data: employee, error: fetchError } = await (supabase as any)
-        .from('bar_employees')
+      const { data: employee, error: fetchError } = await supabase
+        .from('employees')
         .select('auth_user_id')
         .eq('id', employeeId)
         .eq('empresa_id', empresaId)
@@ -198,7 +221,9 @@ export class EmployeeCredentialsService {
       }
 
       // Remover usuário do Auth
-      const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(employee.auth_user_id);
+      const { error: deleteAuthError } = isAdminConfigured 
+        ? await supabaseAdmin.auth.admin.deleteUser(employee.auth_user_id)
+        : await supabase.auth.admin.deleteUser(employee.auth_user_id);
       
       if (deleteAuthError) {
         console.error('Erro ao remover usuário Auth:', deleteAuthError);
@@ -209,12 +234,13 @@ export class EmployeeCredentialsService {
       }
 
       // Atualizar funcionário
-      const { error: updateError } = await (supabase as any)
-        .from('bar_employees')
+      const { error: updateError } = await supabase
+        .from('employees')
         .update({
           auth_user_id: null,
           tem_acesso_sistema: false,
-          data_credenciais_criadas: null
+          data_credenciais_criadas: null,
+          updated_at: new Date().toISOString()
         })
         .eq('id', employeeId)
         .eq('empresa_id', empresaId);
@@ -227,12 +253,8 @@ export class EmployeeCredentialsService {
         };
       }
 
-      // Remover vínculo usuarios_empresa
-      const { error: removeVinculoError } = await supabase
-        .from('usuarios_empresa')
-        .delete()
-        .eq('user_id', employee.auth_user_id)
-        .eq('empresa_id', empresaId);
+      // Não precisa remover vínculo, apenas limpar user_id
+      const removeVinculoError = null;
 
       if (removeVinculoError) {
         console.error('Erro ao remover vínculo:', removeVinculoError);
@@ -263,14 +285,18 @@ export class EmployeeCredentialsService {
           error: 'Acesso negado: você não tem permissão para esta empresa'
         };
       }
-      const { data, error } = await (supabase as any)
-        .from('bar_employees')
-        .select('*')
+      const { data, error } = await supabase
+        .from('employees')
+        .select(`
+          id, name, email, phone, cpf, employee_code, status,
+          tem_acesso_sistema, auth_user_id, position_id, department_id,
+          created_at, updated_at, hire_date, data_credenciais_criadas
+        `)
         .eq('empresa_id', empresaId)
         .eq('tem_acesso_sistema', true)
-        .eq('ativo', true)
+        .eq('status', 'active')
         .not('auth_user_id', 'is', null)
-        .order('nome');
+        .order('name');
 
       if (error) {
         console.error('Erro ao buscar funcionários com credenciais:', error);

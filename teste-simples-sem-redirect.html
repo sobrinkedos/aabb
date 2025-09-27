@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Simples - Sem Redirecionamento</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Teste Simples - Sistema de Funcionários</h1>
+        <p><strong>Este teste NÃO redireciona e captura todos os erros</strong></p>
+        
+        <div id="status" class="info">
+            <p>Verificando conexão...</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📋 Funcionários Existentes</h2>
+        <button onclick="listarFuncionarios()">Listar Funcionários</button>
+        <div id="funcionarios-lista"></div>
+    </div>
+
+    <div class="container">
+        <h2>➕ Criar Novo Funcionário</h2>
+        
+        <div>
+            <label>Nome Completo:</label>
+            <input type="text" id="nome" placeholder="Nome completo" value="Teste Novo Funcionário">
+        </div>
+        
+        <div>
+            <label>Email:</label>
+            <input type="email" id="email" placeholder="email@exemplo.com" value="novo.funcionario@teste.com">
+        </div>
+        
+        <div>
+            <label>Telefone:</label>
+            <input type="tel" id="telefone" placeholder="(11) 99999-9999" value="(11) 99999-9999">
+        </div>
+        
+        <div>
+            <label>Cargo:</label>
+            <select id="cargo">
+                <option value="atendente">Atendente</option>
+                <option value="garcom">Garçom</option>
+                <option value="cozinheiro">Cozinheiro</option>
+                <option value="gerente">Gerente</option>
+            </select>
+        </div>
+        
+        <button onclick="criarFuncionario()">Criar Funcionário</button>
+        
+        <div id="resultado-criacao"></div>
+    </div>
+
+    <div class="container">
+        <h2>🔐 Testar Credenciais</h2>
+        <p>Selecione um funcionário sem credenciais da lista acima:</p>
+        
+        <div>
+            <label>ID do Funcionário:</label>
+            <input type="text" id="funcionario-id" placeholder="Cole o ID do funcionário aqui">
+        </div>
+        
+        <button onclick="criarCredenciais()">Criar Credenciais</button>
+        
+        <div id="resultado-credenciais"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://pqmjfwmbitodwtpedlle.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxbWpmd21iaXRvZHd0cGVkbGxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI2MzQyNzEsImV4cCI6MjA0ODIxMDI3MX0.lAOmVJmBgLHGVJhqvQqIgzJdKAhHHkWqxpKdlJ8Q_qI';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let currentUser = null;
+        let empresaId = null;
+
+        // Prevenir redirecionamentos
+        window.addEventListener('beforeunload', (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+        });
+
+        // Capturar erros
+        window.addEventListener('error', (event) => {
+            console.error('Erro capturado:', event.error);
+            document.getElementById('status').innerHTML = `
+                <div class="error">
+                    <h4>❌ Erro Capturado</h4>
+                    <p>${event.error?.message || event.message}</p>
+                    <pre>${event.error?.stack || 'Stack não disponível'}</pre>
+                </div>
+            `;
+        });
+
+        // Verificar conexão
+        async function verificarConexao() {
+            try {
+                console.log('Verificando conexão...');
+                
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error) {
+                    console.error('Erro de auth:', error);
+                    document.getElementById('status').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro de Autenticação</h4>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (!user) {
+                    document.getElementById('status').innerHTML = `
+                        <div class="error">
+                            <h4>⚠️ Usuário não autenticado</h4>
+                            <p>Faça login primeiro</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                currentUser = user;
+                empresaId = user.user_metadata?.empresa_id;
+
+                console.log('Usuário:', user.email);
+                console.log('Empresa ID:', empresaId);
+
+                document.getElementById('status').innerHTML = `
+                    <div class="success">
+                        <h4>✅ Conectado com Sucesso</h4>
+                        <p><strong>Email:</strong> ${user.email}</p>
+                        <p><strong>Empresa ID:</strong> ${empresaId || 'NÃO ENCONTRADO'}</p>
+                        <p><strong>User ID:</strong> ${user.id}</p>
+                    </div>
+                `;
+
+                // Carregar funcionários automaticamente
+                await listarFuncionarios();
+
+            } catch (error) {
+                console.error('Erro na verificação:', error);
+                document.getElementById('status').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro na Verificação</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Listar funcionários
+        async function listarFuncionarios() {
+            try {
+                console.log('Listando funcionários...');
+                
+                if (!empresaId) {
+                    document.getElementById('funcionarios-lista').innerHTML = `
+                        <div class="error">Empresa ID não encontrado</div>
+                    `;
+                    return;
+                }
+
+                const { data, error } = await supabase
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .eq('empresa_id', empresaId)
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error('Erro ao listar:', error);
+                    document.getElementById('funcionarios-lista').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro ao Listar</h4>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                console.log('Funcionários encontrados:', data.length);
+
+                if (data.length === 0) {
+                    document.getElementById('funcionarios-lista').innerHTML = `
+                        <div class="info">Nenhum funcionário encontrado</div>
+                    `;
+                    return;
+                }
+
+                const funcionariosHtml = data.map(func => `
+                    <div style="border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 5px;">
+                        <h4>${func.nome_completo}</h4>
+                        <p><strong>ID:</strong> ${func.id}</p>
+                        <p><strong>Email:</strong> ${func.email}</p>
+                        <p><strong>Cargo:</strong> ${func.cargo}</p>
+                        <p><strong>Tem Acesso:</strong> ${func.tem_acesso_sistema ? '✅ Sim' : '❌ Não'}</p>
+                        <p><strong>Criado:</strong> ${new Date(func.created_at).toLocaleString('pt-BR')}</p>
+                        ${!func.tem_acesso_sistema ? 
+                            `<button onclick="document.getElementById('funcionario-id').value='${func.id}'" style="background: #28a745; font-size: 12px;">
+                                Selecionar para Credenciais
+                            </button>` : ''
+                        }
+                    </div>
+                `).join('');
+
+                document.getElementById('funcionarios-lista').innerHTML = `
+                    <div class="success">
+                        <h4>✅ ${data.length} Funcionários Encontrados</h4>
+                        ${funcionariosHtml}
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Erro inesperado:', error);
+                document.getElementById('funcionarios-lista').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro Inesperado</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Criar funcionário
+        async function criarFuncionario() {
+            try {
+                console.log('Criando funcionário...');
+                
+                const nome = document.getElementById('nome').value.trim();
+                const email = document.getElementById('email').value.trim();
+                const telefone = document.getElementById('telefone').value.trim();
+                const cargo = document.getElementById('cargo').value;
+
+                if (!nome || !email || !cargo) {
+                    document.getElementById('resultado-criacao').innerHTML = `
+                        <div class="error">Preencha todos os campos obrigatórios</div>
+                    `;
+                    return;
+                }
+
+                if (!empresaId) {
+                    document.getElementById('resultado-criacao').innerHTML = `
+                        <div class="error">Empresa ID não encontrado</div>
+                    `;
+                    return;
+                }
+
+                console.log('Dados:', { nome, email, telefone, cargo, empresaId });
+
+                // Verificar se email já existe
+                const { data: existing } = await supabase
+                    .from('usuarios_empresa')
+                    .select('id')
+                    .eq('empresa_id', empresaId)
+                    .eq('email', email)
+                    .single();
+
+                if (existing) {
+                    document.getElementById('resultado-criacao').innerHTML = `
+                        <div class="error">Email já existe nesta empresa</div>
+                    `;
+                    return;
+                }
+
+                // Criar funcionário
+                const { data: funcionario, error } = await supabase
+                    .from('usuarios_empresa')
+                    .insert({
+                        nome_completo: nome,
+                        email: email,
+                        telefone: telefone || null,
+                        cargo: cargo,
+                        empresa_id: empresaId,
+                        tipo_usuario: 'funcionario',
+                        status: 'ativo',
+                        ativo: true,
+                        tem_acesso_sistema: false,
+                        user_id: null
+                    })
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('Erro na criação:', error);
+                    document.getElementById('resultado-criacao').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro na Criação</h4>
+                            <p><strong>Mensagem:</strong> ${error.message}</p>
+                            <p><strong>Código:</strong> ${error.code}</p>
+                            <p><strong>Detalhes:</strong> ${error.details}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                console.log('Funcionário criado:', funcionario);
+
+                document.getElementById('resultado-criacao').innerHTML = `
+                    <div class="success">
+                        <h4>✅ Funcionário Criado com Sucesso!</h4>
+                        <p><strong>ID:</strong> ${funcionario.id}</p>
+                        <p><strong>Nome:</strong> ${funcionario.nome_completo}</p>
+                        <p><strong>Email:</strong> ${funcionario.email}</p>
+                        <p><strong>Cargo:</strong> ${funcionario.cargo}</p>
+                    </div>
+                `;
+
+                // Limpar formulário
+                document.getElementById('nome').value = '';
+                document.getElementById('email').value = '';
+                document.getElementById('telefone').value = '';
+
+                // Atualizar lista
+                await listarFuncionarios();
+
+            } catch (error) {
+                console.error('Erro inesperado na criação:', error);
+                document.getElementById('resultado-criacao').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro Inesperado</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Criar credenciais (simulação)
+        async function criarCredenciais() {
+            try {
+                const funcionarioId = document.getElementById('funcionario-id').value.trim();
+                
+                if (!funcionarioId) {
+                    document.getElementById('resultado-credenciais').innerHTML = `
+                        <div class="error">Selecione um funcionário primeiro</div>
+                    `;
+                    return;
+                }
+
+                console.log('Criando credenciais para:', funcionarioId);
+
+                // Buscar funcionário
+                const { data: funcionario, error: fetchError } = await supabase
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .eq('id', funcionarioId)
+                    .eq('empresa_id', empresaId)
+                    .single();
+
+                if (fetchError || !funcionario) {
+                    document.getElementById('resultado-credenciais').innerHTML = `
+                        <div class="error">Funcionário não encontrado</div>
+                    `;
+                    return;
+                }
+
+                if (funcionario.tem_acesso_sistema) {
+                    document.getElementById('resultado-credenciais').innerHTML = `
+                        <div class="error">Funcionário já possui credenciais</div>
+                    `;
+                    return;
+                }
+
+                // Simular criação de credenciais
+                const senhaTemporaria = 'Temp123@';
+                const fakeUserId = `user_${Date.now()}`;
+
+                const { error: updateError } = await supabase
+                    .from('usuarios_empresa')
+                    .update({
+                        user_id: fakeUserId,
+                        tem_acesso_sistema: true,
+                        senha_provisoria: true,
+                        senha_provisoria_texto: senhaTemporaria
+                    })
+                    .eq('id', funcionarioId);
+
+                if (updateError) {
+                    console.error('Erro ao atualizar:', updateError);
+                    document.getElementById('resultado-credenciais').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro ao Criar Credenciais</h4>
+                            <p>${updateError.message}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                document.getElementById('resultado-credenciais').innerHTML = `
+                    <div class="success">
+                        <h4>✅ Credenciais Criadas!</h4>
+                        <p><strong>Funcionário:</strong> ${funcionario.nome_completo}</p>
+                        <p><strong>Email:</strong> ${funcionario.email}</p>
+                        <p><strong>Senha Temporária:</strong> ${senhaTemporaria}</p>
+                        <p><strong>User ID:</strong> ${fakeUserId}</p>
+                    </div>
+                `;
+
+                // Atualizar lista
+                await listarFuncionarios();
+
+            } catch (error) {
+                console.error('Erro inesperado nas credenciais:', error);
+                document.getElementById('resultado-credenciais').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro Inesperado</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', verificarConexao);
+    </script>
+</body>
+</html>

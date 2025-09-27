@@ -23,7 +23,8 @@ const BarEmployeesModule: React.FC = () => {
     deactivateEmployee,
     reactivateEmployee,
     filterEmployees,
-    getStats
+    getStats,
+    refetch
   } = useBarEmployees();
 
   // Hook para criação completa de funcionários com credenciais (fluxo antigo)
@@ -120,18 +121,33 @@ const BarEmployeesModule: React.FC = () => {
 
   // NOVO FLUXO: Criar funcionário básico (Etapa 1)
   const handleCreateBasicEmployee = async (employeeData: any) => {
+    console.log('🚀 Iniciando criação de funcionário básico:', employeeData);
     try {
       const result = await createBasicEmployee(employeeData);
+      console.log('📋 Resultado da criação:', result);
+      
       if (result.success) {
-        alert('Funcionário criado com sucesso! Agora você pode criar as credenciais de acesso.');
-        // Recarregar lista
-        window.location.reload();
+        console.log('✅ Funcionário criado com sucesso:', result);
+        console.log('✅ Processo concluído, recarregando lista');
+        
+        // Mostrar mensagem de sucesso uma única vez
+        setTimeout(() => {
+          alert('Funcionário criado com sucesso! Agora você pode criar as credenciais de acesso.');
+          // Recarregar apenas a lista de funcionários, não a página toda
+          refetch();
+        }, 500);
+        
       } else {
+        console.error('❌ Erro na criação:', result.error);
         throw new Error(result.error);
       }
     } catch (error) {
-      console.error('Erro ao criar funcionário básico:', error);
-      alert('Erro ao criar funcionário. Tente novamente.');
+      console.error('❌ Erro ao criar funcionário básico:', error);
+      
+      // Usar setTimeout para mostrar alert depois dos logs
+      setTimeout(() => {
+        alert(`Erro ao criar funcionário: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      }, 100);
     }
   };
 
@@ -220,8 +236,10 @@ const BarEmployeesModule: React.FC = () => {
           alert('Funcionário cadastrado com sucesso!');
         }
         
-        // Recarregar lista de funcionários
-        window.location.reload(); // Força reload para mostrar o novo funcionário
+        // Recarregar lista de funcionários sem reload da página
+        setTimeout(() => {
+          refetch();
+        }, 1000);
         
       } else {
         throw new Error(result.error || 'Erro ao criar funcionário');
@@ -553,7 +571,7 @@ const BarEmployeesModule: React.FC = () => {
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">{employee.name}</div>
-                            <div className="text-sm text-gray-500">{employee.cpf || 'CPF não informado'}</div>
+                            <div className="text-sm text-gray-500">{employee.cpf || barEmployee.employee?.cpf || 'CPF não informado'}</div>
                           </div>
                         </div>
                       </td>

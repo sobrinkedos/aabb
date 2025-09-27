@@ -6,10 +6,10 @@ interface CredentialsModalProps {
   onClose: () => void;
   credentials: {
     system: {
-      username: string;
+      username?: string;
       password: string;
       email: string;
-      temporaryPassword: boolean;
+      temporaryPassword?: boolean;
     };
     mobile?: {
       username: string;
@@ -113,18 +113,20 @@ Entregue estas informações ao funcionário de forma segura.
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Usuário:</span>
-                  <div className="flex items-center space-x-2">
-                    <span className="font-mono text-sm">{credentials.system.username}</span>
-                    <button
-                      onClick={() => copyToClipboard(credentials.system.username, 'username')}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <Copy className="h-3 w-3" />
-                    </button>
+                {credentials.system.username && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Usuário:</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-mono text-sm">{credentials.system.username}</span>
+                      <button
+                        onClick={() => copyToClipboard(credentials.system.username!, 'username')}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Senha:</span>
@@ -165,7 +167,7 @@ Entregue estas informações ao funcionário de forma segura.
             )}
 
             {/* Temporary Password Warning */}
-            {credentials.system.temporaryPassword && (
+            {(credentials.system.temporaryPassword !== false) && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <div className="flex items-start space-x-2">
                   <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />

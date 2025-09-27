@@ -287,13 +287,16 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-sm text-gray-600">Controle de cardápio, pedidos e gestão da cozinha</p>
           </Link>
-          <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+          <Link
+            to="/admin/funcionarios"
+            className="p-4 border border-gray-200 rounded-lg hover:border-purple-300 transition-colors cursor-pointer group"
+          >
             <div className="flex items-center space-x-2 mb-2">
-              <Package className="w-5 h-5 text-gray-400" />
-              <h4 className="font-medium text-gray-500">Módulos Futuros</h4>
+              <Users className="w-5 h-5 text-purple-600" />
+              <h4 className="font-medium text-gray-800 group-hover:text-purple-600 transition-colors">Gestão de Funcionários</h4>
             </div>
-            <p className="text-sm text-gray-400">Quadras, Piscina, Eventos, RH e mais</p>
-          </div>
+            <p className="text-sm text-gray-600">Cadastro e credenciais de funcionários</p>
+          </Link>
         </div>
       </motion.div>
     </div>

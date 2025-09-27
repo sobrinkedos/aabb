@@ -70,7 +70,7 @@ export async function loadUserPermissionsRobust(): Promise<UserPermissions | nul
         if (usuarioEmpresaData) {
           const cargo = usuarioEmpresaData.cargo?.toLowerCase() || '';
           
-          if (cargo.includes('caixa') || cargo.includes('cashier')) {
+          if (cargo.includes('caixa') || cargo.includes('cashier') || cargo.includes('atendente')) {
             userRole = 'operador_caixa';
             console.log(`🎯 Role detectado pelo cargo: "${usuarioEmpresaData.cargo}" → operador_caixa`);
             addUserRoleMapping(user.email || '', userRole, 'cargo_detection');

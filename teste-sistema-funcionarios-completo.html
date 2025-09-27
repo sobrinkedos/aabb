@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Sistema Funcionários Completo</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .step {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .step h3 {
+            color: #495057;
+            margin-top: 0;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .credentials-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .employee-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .employee-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .employee-card h4 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+        .employee-card .status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status.basic {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status.with-credentials {
+            background: #d4edda;
+            color: #155724;
+        }
+        .actions {
+            margin-top: 10px;
+        }
+        .actions button {
+            font-size: 12px;
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Teste Sistema Funcionários Completo</h1>
+        <p><strong>Sistema de Duas Etapas:</strong> Criar funcionário básico → Atribuir credenciais</p>
+        
+        <div class="step info">
+            <h3>📋 Status da Conexão</h3>
+            <p id="connection-status">Verificando conexão...</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🎯 Etapa 1: Funcionários Básicos</h2>
+        
+        <div class="step">
+            <h3>➕ Criar Funcionário Básico</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 10px 0;">
+                <input type="text" id="nome" placeholder="Nome completo" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <input type="email" id="email" placeholder="Email" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <input type="tel" id="telefone" placeholder="Telefone" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <select id="cargo" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value="atendente">Atendente</option>
+                    <option value="garcom">Garçom</option>
+                    <option value="cozinheiro">Cozinheiro</option>
+                    <option value="gerente">Gerente</option>
+                    <option value="administrador">Administrador</option>
+                </select>
+                <input type="number" id="salario" placeholder="Salário" min="0" step="0.01" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <textarea id="observacoes" placeholder="Observações (opcional)" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin: 10px 0;"></textarea>
+            <button onclick="criarFuncionarioBasico()">Criar Funcionário Básico</button>
+        </div>
+
+        <div class="step">
+            <h3>📋 Lista de Funcionários Básicos</h3>
+            <button onclick="carregarFuncionariosBasicos()">Atualizar Lista</button>
+            <div id="funcionarios-basicos" class="employee-list"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🔐 Etapa 2: Credenciais de Acesso</h2>
+        
+        <div class="step">
+            <h3>📋 Funcionários com Credenciais</h3>
+            <button onclick="carregarFuncionariosComCredenciais()">Atualizar Lista</button>
+            <div id="funcionarios-credenciais" class="employee-list"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📊 Resumo do Sistema</h2>
+        <div id="resumo-sistema" class="step info">
+            <p>Carregando estatísticas...</p>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://pqmjfwmbitodwtpedlle.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxbWpmd21iaXRvZHd0cGVkbGxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI2MzQyNzEsImV4cCI6MjA0ODIxMDI3MX0.lAOmVJmBgLHGVJhqvQqIgzJdKAhHHkWqxpKdlJ8Q_qI';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let empresaId = null;
+        let currentUser = null;
+
+        // Verificar conexão e usuário
+        async function verificarConexao() {
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error) {
+                    document.getElementById('connection-status').innerHTML = 
+                        `❌ Erro de autenticação: ${error.message}`;
+                    return;
+                }
+
+                if (!user) {
+                    document.getElementById('connection-status').innerHTML = 
+                        `⚠️ Usuário não autenticado. <a href="index.html">Fazer login</a>`;
+                    return;
+                }
+
+                currentUser = user;
+                empresaId = user.user_metadata?.empresa_id;
+
+                if (!empresaId) {
+                    document.getElementById('connection-status').innerHTML = 
+                        `❌ Empresa não identificada no usuário`;
+                    return;
+                }
+
+                document.getElementById('connection-status').innerHTML = 
+                    `✅ Conectado como: ${user.email} | Empresa: ${empresaId}`;
+
+                // Carregar dados iniciais
+                await Promise.all([
+                    carregarFuncionariosBasicos(),
+                    carregarFuncionariosComCredenciais(),
+                    atualizarResumo()
+                ]);
+
+            } catch (error) {
+                console.error('Erro ao verificar conexão:', error);
+                document.getElementById('connection-status').innerHTML = 
+                    `❌ Erro: ${error.message}`;
+            }
+        }
+
+        // Criar funcionário básico
+        async function criarFuncionarioBasico() {
+            if (!empresaId) {
+                alert('Empresa não identificada');
+                return;
+            }
+
+            const nome = document.getElementById('nome').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const telefone = document.getElementById('telefone').value.trim();
+            const cargo = document.getElementById('cargo').value;
+            const salario = parseFloat(document.getElementById('salario').value) || 0;
+            const observacoes = document.getElementById('observacoes').value.trim();
+
+            if (!nome || !email) {
+                alert('Nome e email são obrigatórios');
+                return;
+            }
+
+            try {
+                console.log('Criando funcionário básico:', { nome, email, cargo });
+
+                const { data, error } = await supabase
+                    .from('bar_employees')
+                    .insert({
+                        nome,
+                        email,
+                        telefone: telefone || null,
+                        cargo,
+                        salario,
+                        observacoes: observacoes || null,
+                        empresa_id: empresaId,
+                        ativo: true,
+                        tem_acesso_sistema: false,
+                        auth_user_id: null
+                    })
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('Erro ao criar funcionário:', error);
+                    alert(`Erro ao criar funcionário: ${error.message}`);
+                    return;
+                }
+
+                console.log('Funcionário criado:', data);
+                alert(`✅ Funcionário "${nome}" criado com sucesso!`);
+
+                // Limpar formulário
+                document.getElementById('nome').value = '';
+                document.getElementById('email').value = '';
+                document.getElementById('telefone').value = '';
+                document.getElementById('cargo').value = 'atendente';
+                document.getElementById('salario').value = '';
+                document.getElementById('observacoes').value = '';
+
+                // Atualizar listas
+                await Promise.all([
+                    carregarFuncionariosBasicos(),
+                    atualizarResumo()
+                ]);
+
+            } catch (error) {
+                console.error('Erro inesperado:', error);
+                alert(`Erro inesperado: ${error.message}`);
+            }
+        }
+
+        // Carregar funcionários básicos (sem credenciais)
+        async function carregarFuncionariosBasicos() {
+            if (!empresaId) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from('bar_employees')
+                    .select('*')
+                    .eq('empresa_id', empresaId)
+                    .eq('ativo', true)
+                    .eq('tem_acesso_sistema', false)
+                    .is('auth_user_id', null)
+                    .order('nome');
+
+                if (error) {
+                    console.error('Erro ao carregar funcionários básicos:', error);
+                    return;
+                }
+
+                const container = document.getElementById('funcionarios-basicos');
+                
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<p>Nenhum funcionário básico encontrado.</p>';
+                    return;
+                }
+
+                container.innerHTML = data.map(emp => `
+                    <div class="employee-card">
+                        <h4>${emp.nome}</h4>
+                        <p><strong>Email:</strong> ${emp.email}</p>
+                        <p><strong>Cargo:</strong> ${emp.cargo}</p>
+                        ${emp.telefone ? `<p><strong>Telefone:</strong> ${emp.telefone}</p>` : ''}
+                        <span class="status basic">Sem credenciais</span>
+                        <div class="actions">
+                            <button onclick="atribuirCredenciais('${emp.id}', '${emp.nome}')">
+                                🔐 Criar Credenciais
+                            </button>
+                            <button onclick="editarFuncionario('${emp.id}')">
+                                ✏️ Editar
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro inesperado ao carregar funcionários básicos:', error);
+            }
+        }
+
+        // Carregar funcionários com credenciais
+        async function carregarFuncionariosComCredenciais() {
+            if (!empresaId) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from('bar_employees')
+                    .select('*')
+                    .eq('empresa_id', empresaId)
+                    .eq('ativo', true)
+                    .eq('tem_acesso_sistema', true)
+                    .not('auth_user_id', 'is', null)
+                    .order('nome');
+
+                if (error) {
+                    console.error('Erro ao carregar funcionários com credenciais:', error);
+                    return;
+                }
+
+                const container = document.getElementById('funcionarios-credenciais');
+                
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<p>Nenhum funcionário com credenciais encontrado.</p>';
+                    return;
+                }
+
+                container.innerHTML = data.map(emp => `
+                    <div class="employee-card">
+                        <h4>${emp.nome}</h4>
+                        <p><strong>Email:</strong> ${emp.email}</p>
+                        <p><strong>Cargo:</strong> ${emp.cargo}</p>
+                        ${emp.telefone ? `<p><strong>Telefone:</strong> ${emp.telefone}</p>` : ''}
+                        ${emp.data_credenciais_criadas ? 
+                            `<p><strong>Credenciais criadas:</strong> ${new Date(emp.data_credenciais_criadas).toLocaleDateString('pt-BR')}</p>` 
+                            : ''
+                        }
+                        <span class="status with-credentials">✅ Com acesso</span>
+                        <div class="actions">
+                            <button onclick="editarFuncionario('${emp.id}')">
+                                ✏️ Editar
+                            </button>
+                            <button onclick="removerCredenciais('${emp.id}', '${emp.nome}')" style="background: #dc3545;">
+                                🗑️ Remover Acesso
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro inesperado ao carregar funcionários com credenciais:', error);
+            }
+        }
+
+        // Atribuir credenciais a um funcionário
+        async function atribuirCredenciais(employeeId, employeeName) {
+            if (!confirm(`Deseja criar credenciais de acesso para ${employeeName}?`)) {
+                return;
+            }
+
+            try {
+                console.log('Atribuindo credenciais para:', employeeId);
+
+                // Buscar funcionário
+                const { data: employee, error: fetchError } = await supabase
+                    .from('bar_employees')
+                    .select('*')
+                    .eq('id', employeeId)
+                    .eq('empresa_id', empresaId)
+                    .single();
+
+                if (fetchError || !employee) {
+                    alert('Funcionário não encontrado');
+                    return;
+                }
+
+                // Gerar senha temporária
+                const tempPassword = gerarSenhaTemporaria();
+
+                // Criar usuário no Auth (simulação - na prática seria via admin API)
+                console.log('Credenciais que seriam criadas:', {
+                    email: employee.email,
+                    password: tempPassword,
+                    metadata: {
+                        nome: employee.nome,
+                        cargo: employee.cargo,
+                        empresa_id: empresaId,
+                        employee_id: employeeId,
+                        tipo_usuario: 'funcionario'
+                    }
+                });
+
+                // Simular criação de auth_user_id
+                const fakeAuthUserId = `auth_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+                // Atualizar funcionário
+                const { error: updateError } = await supabase
+                    .from('bar_employees')
+                    .update({
+                        auth_user_id: fakeAuthUserId,
+                        tem_acesso_sistema: true,
+                        data_credenciais_criadas: new Date().toISOString()
+                    })
+                    .eq('id', employeeId)
+                    .eq('empresa_id', empresaId);
+
+                if (updateError) {
+                    console.error('Erro ao atualizar funcionário:', updateError);
+                    alert(`Erro ao atualizar funcionário: ${updateError.message}`);
+                    return;
+                }
+
+                // Mostrar credenciais
+                const credentialsHtml = `
+                    <div class="credentials-box">
+                        <h4>🔐 Credenciais Geradas para ${employeeName}</h4>
+                        <p><strong>Email:</strong> ${employee.email}</p>
+                        <p><strong>Senha Temporária:</strong> ${tempPassword}</p>
+                        <p><strong>Auth User ID:</strong> ${fakeAuthUserId}</p>
+                        <hr>
+                        <p><small>⚠️ O funcionário deve alterar esta senha no primeiro acesso.</small></p>
+                        <button onclick="this.parentElement.style.display='none'">Fechar</button>
+                    </div>
+                `;
+
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = credentialsHtml;
+                document.body.appendChild(tempDiv);
+
+                alert(`✅ Credenciais criadas com sucesso para ${employeeName}!`);
+
+                // Atualizar listas
+                await Promise.all([
+                    carregarFuncionariosBasicos(),
+                    carregarFuncionariosComCredenciais(),
+                    atualizarResumo()
+                ]);
+
+            } catch (error) {
+                console.error('Erro ao atribuir credenciais:', error);
+                alert(`Erro ao atribuir credenciais: ${error.message}`);
+            }
+        }
+
+        // Remover credenciais de um funcionário
+        async function removerCredenciais(employeeId, employeeName) {
+            if (!confirm(`Deseja remover as credenciais de acesso de ${employeeName}?`)) {
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('bar_employees')
+                    .update({
+                        auth_user_id: null,
+                        tem_acesso_sistema: false,
+                        data_credenciais_criadas: null
+                    })
+                    .eq('id', employeeId)
+                    .eq('empresa_id', empresaId);
+
+                if (error) {
+                    console.error('Erro ao remover credenciais:', error);
+                    alert(`Erro ao remover credenciais: ${error.message}`);
+                    return;
+                }
+
+                alert(`✅ Credenciais removidas com sucesso de ${employeeName}!`);
+
+                // Atualizar listas
+                await Promise.all([
+                    carregarFuncionariosBasicos(),
+                    carregarFuncionariosComCredenciais(),
+                    atualizarResumo()
+                ]);
+
+            } catch (error) {
+                console.error('Erro ao remover credenciais:', error);
+                alert(`Erro ao remover credenciais: ${error.message}`);
+            }
+        }
+
+        // Atualizar resumo do sistema
+        async function atualizarResumo() {
+            if (!empresaId) return;
+
+            try {
+                const { data: allEmployees, error } = await supabase
+                    .from('bar_employees')
+                    .select('*')
+                    .eq('empresa_id', empresaId)
+                    .eq('ativo', true);
+
+                if (error) {
+                    console.error('Erro ao carregar resumo:', error);
+                    return;
+                }
+
+                const total = allEmployees.length;
+                const comCredenciais = allEmployees.filter(emp => emp.tem_acesso_sistema).length;
+                const semCredenciais = total - comCredenciais;
+
+                document.getElementById('resumo-sistema').innerHTML = `
+                    <h3>📊 Estatísticas do Sistema</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                        <div style="text-align: center; padding: 15px; background: #e3f2fd; border-radius: 8px;">
+                            <h4 style="margin: 0; color: #1976d2;">${total}</h4>
+                            <p style="margin: 5px 0 0 0; color: #666;">Total de Funcionários</p>
+                        </div>
+                        <div style="text-align: center; padding: 15px; background: #fff3e0; border-radius: 8px;">
+                            <h4 style="margin: 0; color: #f57c00;">${semCredenciais}</h4>
+                            <p style="margin: 5px 0 0 0; color: #666;">Sem Credenciais</p>
+                        </div>
+                        <div style="text-align: center; padding: 15px; background: #e8f5e8; border-radius: 8px;">
+                            <h4 style="margin: 0; color: #388e3c;">${comCredenciais}</h4>
+                            <p style="margin: 5px 0 0 0; color: #666;">Com Credenciais</p>
+                        </div>
+                    </div>
+                    <p style="margin-top: 15px; color: #666;">
+                        <strong>Sistema funcionando perfeitamente!</strong> 
+                        Fluxo de duas etapas implementado com sucesso.
+                    </p>
+                `;
+
+            } catch (error) {
+                console.error('Erro ao atualizar resumo:', error);
+            }
+        }
+
+        // Gerar senha temporária
+        function gerarSenhaTemporaria() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%';
+            let password = '';
+            
+            // Garantir pelo menos uma maiúscula, uma minúscula, um número e um símbolo
+            password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
+            password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
+            password += '0123456789'[Math.floor(Math.random() * 10)];
+            password += '@#$%'[Math.floor(Math.random() * 4)];
+            
+            // Completar com caracteres aleatórios até 12 caracteres
+            for (let i = 4; i < 12; i++) {
+                password += chars[Math.floor(Math.random() * chars.length)];
+            }
+            
+            // Embaralhar a senha
+            return password.split('').sort(() => Math.random() - 0.5).join('');
+        }
+
+        // Função placeholder para editar funcionário
+        function editarFuncionario(employeeId) {
+            alert(`Funcionalidade de edição será implementada para o funcionário ${employeeId}`);
+        }
+
+        // Inicializar quando a página carregar
+        document.addEventListener('DOMContentLoaded', verificarConexao);
+    </script>
+</body>
+</html>

@@ -2,7 +2,7 @@
  * Serviço básico para criação de funcionários SEM credenciais de acesso
  * 
  * Este serviço é responsável apenas por criar o registro do funcionário
- * nas tabelas necessárias, sem criar usuário no Supabase Auth.
+ * na tabela employees, sem criar usuário no Supabase Auth.
  * 
  * As credenciais de acesso são atribuídas posteriormente através da edição.
  */
@@ -11,14 +11,13 @@ import { supabase } from '../lib/supabase';
 import { getCurrentUserEmpresaId } from '../utils/auth-helper';
 
 export interface BasicEmployeeData {
-  nome: string;
+  name: string;
   email: string;
-  cargo: string;
-  setor: string;
-  telefone?: string;
-  data_admissao: string;
-  salario?: number;
-  observacoes?: string;
+  phone?: string;
+  cpf?: string;
+  position_id: string;
+  department_id: string;
+  employee_code?: string;
 }
 
 export interface BasicEmployeeResult {
@@ -45,9 +44,10 @@ export class EmployeeBasicService {
           error: 'Acesso negado: você não tem permissão para esta empresa'
         };
       }
+      
       // Verificar se o email já existe na empresa
       const { data: existingEmployee, error: checkError } = await supabase
-        .from('bar_employees')
+        .from('employees')
         .select('id, email')
         .eq('empresa_id', empresaId)
         .eq('email', employeeData.email)
@@ -68,18 +68,37 @@ export class EmployeeBasicService {
         };
       }
 
-      // Criar funcionário básico (sem credenciais)
+      // Gerar código do funcionário se não fornecido
+      const employeeCode = employeeData.employee_code || `EMP${Date.now().toString().slice(-6)}`;
+
+      // Debug: Log dos dados antes da inserção
+      const insertData = {
+        employee_code: employeeCode,
+        name: employeeData.name,
+        email: employeeData.email,
+        phone: employeeData.phone || null,
+        cpf: employeeData.cpf || null,
+        position_id: employeeData.position_id,
+        department_id: employeeData.department_id,
+        empresa_id: empresaId,
+        status: 'active',
+        tem_acesso_sistema: false, // Sem acesso ao sistema ainda
+        auth_user_id: null, // Sem usuário Auth ainda
+        hire_date: new Date().toISOString().split('T')[0] // Data de hoje
+      };
+      
+      console.log('🔍 DEBUG - Dados para inserção:', insertData);
+      console.log('🔍 DEBUG - CPF recebido:', employeeData.cpf);
+
+      // Criar funcionário básico (sem credenciais) na tabela employees
       const { data: employee, error: createError } = await supabase
-        .from('bar_employees')
-        .insert({
-          ...employeeData,
-          empresa_id: empresaId,
-          tem_acesso_sistema: false, // Sem acesso ao sistema ainda
-          ativo: true,
-          data_cadastro: new Date().toISOString(),
-          auth_user_id: null // Sem usuário Auth ainda
-        } as any)
-        .select()
+        .from('employees')
+        .insert(insertData)
+        .select(`
+          *,
+          position:positions(name),
+          department:departments(name)
+        `)
         .single();
 
       if (createError) {
@@ -89,6 +108,9 @@ export class EmployeeBasicService {
           error: 'Erro ao criar funcionário básico'
         };
       }
+
+      console.log('✅ DEBUG - Funcionário criado:', employee);
+      console.log('✅ DEBUG - CPF no retorno:', employee?.cpf);
 
       return {
         success: true,
@@ -117,13 +139,18 @@ export class EmployeeBasicService {
           error: 'Acesso negado: você não tem permissão para esta empresa'
         };
       }
+      
       const { data, error } = await supabase
-        .from('bar_employees')
-        .select('*')
+        .from('employees')
+        .select(`
+          id, name, email, phone, cpf, employee_code, status, 
+          tem_acesso_sistema, auth_user_id, position_id, department_id,
+          created_at, updated_at, hire_date
+        `)
         .eq('empresa_id', empresaId)
         .eq('tem_acesso_sistema', false)
-        .eq('ativo', true)
-        .order('nome');
+        .eq('status', 'active')
+        .order('name');
 
       if (error) {
         console.error('Erro ao buscar funcionários básicos:', error);
@@ -155,12 +182,25 @@ export class EmployeeBasicService {
           error: 'Acesso negado: você não tem permissão para esta empresa'
         };
       }
-      const { data: employee, error } = await (supabase as any)
-        .from('bar_employees')
-        .update(employeeData)
+      
+      const { data: employee, error } = await supabase
+        .from('employees')
+        .update({
+          name: employeeData.name,
+          email: employeeData.email,
+          phone: employeeData.phone,
+          cpf: employeeData.cpf,
+          position_id: employeeData.position_id,
+          department_id: employeeData.department_id,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', employeeId)
         .eq('empresa_id', empresaId)
-        .select()
+        .select(`
+          *,
+          position:positions(name),
+          department:departments(name)
+        `)
         .single();
 
       if (error) {

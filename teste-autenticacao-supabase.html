@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Autenticação Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Teste de Autenticação Supabase</h1>
+        <p><strong>Vamos resolver o problema "Auth session missing!"</strong></p>
+        
+        <div id="status" class="info">
+            <p>Verificando status da autenticação...</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🔍 Diagnóstico da Sessão</h2>
+        
+        <button onclick="verificarSessao()">Verificar Sessão Atual</button>
+        <button onclick="verificarToken()">Verificar Token</button>
+        <button onclick="verificarLocalStorage()">Verificar LocalStorage</button>
+        
+        <div id="diagnostico"></div>
+    </div>
+
+    <div class="container">
+        <h2>🔑 Login Manual</h2>
+        <p>Se não houver sessão ativa, faça login aqui:</p>
+        
+        <div>
+            <label>Email:</label>
+            <input type="email" id="email" placeholder="seu@email.com" value="admin@aabb.com">
+        </div>
+        
+        <div>
+            <label>Senha:</label>
+            <input type="password" id="password" placeholder="sua senha" value="123456">
+        </div>
+        
+        <button onclick="fazerLogin()">Fazer Login</button>
+        
+        <div id="login-result"></div>
+    </div>
+
+    <div class="container">
+        <h2>✅ Teste Após Login</h2>
+        <p>Após fazer login com sucesso, teste o sistema:</p>
+        
+        <button onclick="testarSistemaFuncionarios()">Testar Sistema de Funcionários</button>
+        
+        <div id="teste-funcionarios"></div>
+    </div>
+
+    <div class="container">
+        <h2>🔧 Ações de Recuperação</h2>
+        
+        <button onclick="limparSessao()">Limpar Sessão</button>
+        <button onclick="renovarToken()">Renovar Token</button>
+        <button onclick="verificarUsuarioAtual()">Verificar Usuário Atual</button>
+        
+        <div id="acoes-result"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://pqmjfwmbitodwtpedlle.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxbWpmd21iaXRvZHd0cGVkbGxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI2MzQyNzEsImV4cCI6MjA0ODIxMDI3MX0.lAOmVJmBgLHGVJhqvQqIgzJdKAhHHkWqxpKdlJ8Q_qI';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Verificar status inicial
+        async function verificarStatusInicial() {
+            try {
+                console.log('Verificando status inicial...');
+                
+                const { data: { session }, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    document.getElementById('status').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro ao Verificar Sessão</h4>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (!session) {
+                    document.getElementById('status').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Nenhuma Sessão Ativa</h4>
+                            <p>Você precisa fazer login primeiro.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                document.getElementById('status').innerHTML = `
+                    <div class="success">
+                        <h4>✅ Sessão Ativa Encontrada</h4>
+                        <p><strong>Email:</strong> ${session.user.email}</p>
+                        <p><strong>Expires:</strong> ${new Date(session.expires_at * 1000).toLocaleString()}</p>
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('status').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro Inesperado</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Verificar sessão detalhadamente
+        async function verificarSessao() {
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                
+                document.getElementById('diagnostico').innerHTML = `
+                    <div class="info">
+                        <h4>🔍 Diagnóstico da Sessão</h4>
+                        <p><strong>Erro:</strong> ${error ? error.message : 'Nenhum'}</p>
+                        <p><strong>Sessão:</strong> ${session ? 'Encontrada' : 'Não encontrada'}</p>
+                        ${session ? `
+                            <p><strong>User ID:</strong> ${session.user.id}</p>
+                            <p><strong>Email:</strong> ${session.user.email}</p>
+                            <p><strong>Expira em:</strong> ${new Date(session.expires_at * 1000).toLocaleString()}</p>
+                            <pre>${JSON.stringify(session.user.user_metadata, null, 2)}</pre>
+                        ` : ''}
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('diagnostico').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro na Verificação</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Verificar token
+        async function verificarToken() {
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                document.getElementById('diagnostico').innerHTML = `
+                    <div class="info">
+                        <h4>🎫 Verificação de Token</h4>
+                        <p><strong>Erro:</strong> ${error ? error.message : 'Nenhum'}</p>
+                        <p><strong>Usuário:</strong> ${user ? 'Encontrado' : 'Não encontrado'}</p>
+                        ${user ? `
+                            <p><strong>User ID:</strong> ${user.id}</p>
+                            <p><strong>Email:</strong> ${user.email}</p>
+                            <pre>${JSON.stringify(user, null, 2)}</pre>
+                        ` : ''}
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('diagnostico').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro na Verificação do Token</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Verificar localStorage
+        function verificarLocalStorage() {
+            const keys = Object.keys(localStorage).filter(key => 
+                key.includes('supabase') || key.includes('auth')
+            );
+            
+            let content = '<h4>💾 LocalStorage</h4>';
+            
+            if (keys.length === 0) {
+                content += '<p>Nenhuma chave relacionada ao Supabase encontrada</p>';
+            } else {
+                keys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    content += `<p><strong>${key}:</strong></p>`;
+                    content += `<pre>${value}</pre>`;
+                });
+            }
+            
+            document.getElementById('diagnostico').innerHTML = `
+                <div class="info">${content}</div>
+            `;
+        }
+
+        // Fazer login
+        async function fazerLogin() {
+            try {
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value.trim();
+                
+                if (!email || !password) {
+                    document.getElementById('login-result').innerHTML = `
+                        <div class="error">Preencha email e senha</div>
+                    `;
+                    return;
+                }
+
+                console.log('Tentando login com:', email);
+
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) {
+                    document.getElementById('login-result').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro no Login</h4>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                document.getElementById('login-result').innerHTML = `
+                    <div class="success">
+                        <h4>✅ Login Realizado com Sucesso!</h4>
+                        <p><strong>Email:</strong> ${data.user.email}</p>
+                        <p><strong>User ID:</strong> ${data.user.id}</p>
+                        <p><strong>Empresa ID:</strong> ${data.user.user_metadata?.empresa_id || 'Não encontrado'}</p>
+                    </div>
+                `;
+
+                // Atualizar status
+                await verificarStatusInicial();
+
+            } catch (error) {
+                document.getElementById('login-result').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro Inesperado no Login</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Testar sistema de funcionários
+        async function testarSistemaFuncionarios() {
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error || !user) {
+                    document.getElementById('teste-funcionarios').innerHTML = `
+                        <div class="error">Faça login primeiro</div>
+                    `;
+                    return;
+                }
+
+                const empresaId = user.user_metadata?.empresa_id;
+                
+                if (!empresaId) {
+                    document.getElementById('teste-funcionarios').innerHTML = `
+                        <div class="error">Empresa ID não encontrado no usuário</div>
+                    `;
+                    return;
+                }
+
+                // Testar acesso à tabela usuarios_empresa
+                const { data: funcionarios, error: funcionariosError } = await supabase
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .eq('empresa_id', empresaId)
+                    .limit(5);
+
+                if (funcionariosError) {
+                    document.getElementById('teste-funcionarios').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro ao Acessar Funcionários</h4>
+                            <p>${funcionariosError.message}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                document.getElementById('teste-funcionarios').innerHTML = `
+                    <div class="success">
+                        <h4>✅ Sistema de Funcionários OK!</h4>
+                        <p><strong>Empresa ID:</strong> ${empresaId}</p>
+                        <p><strong>Funcionários encontrados:</strong> ${funcionarios.length}</p>
+                        <p>Agora você pode usar o sistema normalmente!</p>
+                        <pre>${JSON.stringify(funcionarios, null, 2)}</pre>
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('teste-funcionarios').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro no Teste</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Limpar sessão
+        async function limparSessao() {
+            try {
+                await supabase.auth.signOut();
+                localStorage.clear();
+                
+                document.getElementById('acoes-result').innerHTML = `
+                    <div class="info">
+                        <h4>🧹 Sessão Limpa</h4>
+                        <p>Sessão e localStorage limpos. Faça login novamente.</p>
+                    </div>
+                `;
+
+                await verificarStatusInicial();
+
+            } catch (error) {
+                document.getElementById('acoes-result').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro ao Limpar Sessão</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Renovar token
+        async function renovarToken() {
+            try {
+                const { data, error } = await supabase.auth.refreshSession();
+                
+                if (error) {
+                    document.getElementById('acoes-result').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro ao Renovar Token</h4>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                document.getElementById('acoes-result').innerHTML = `
+                    <div class="success">
+                        <h4>✅ Token Renovado</h4>
+                        <p>Sessão renovada com sucesso!</p>
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('acoes-result').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro Inesperado</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Verificar usuário atual
+        async function verificarUsuarioAtual() {
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                document.getElementById('acoes-result').innerHTML = `
+                    <div class="info">
+                        <h4>👤 Usuário Atual</h4>
+                        <p><strong>Erro:</strong> ${error ? error.message : 'Nenhum'}</p>
+                        <p><strong>Usuário:</strong> ${user ? user.email : 'Não encontrado'}</p>
+                        ${user ? `<pre>${JSON.stringify(user, null, 2)}</pre>` : ''}
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('acoes-result').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro na Verificação</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', verificarStatusInicial);
+    </script>
+</body>
+</html>

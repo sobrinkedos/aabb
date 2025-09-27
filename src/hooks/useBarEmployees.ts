@@ -58,13 +58,11 @@ export const useBarEmployees = () => {
       setLoading(true);
       setError(null);
 
-      // Tentar buscar do cache primeiro
-      const cachedEmployees = employeeCache.getList();
-      if (cachedEmployees) {
-        setEmployees(cachedEmployees);
-        setLoading(false);
-        return;
-      }
+      // CORREÇÃO: Limpar cache para garantir dados atualizados
+      employeeCache.invalidateAll();
+      
+      // Não usar cache temporariamente para debug
+      console.log('🔄 DEBUG - Cache limpo, buscando dados frescos do banco');
 
       const result = await loadWithRecovery(async () => {
         // Ensure user is authenticated before proceeding
@@ -78,59 +76,78 @@ export const useBarEmployees = () => {
           client = supabaseAdmin;
         }
 
-        // Buscar funcionários do bar
-        const { data: barEmployeesData, error: barError } = await client
-          .from('bar_employees')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (barError) {
-          console.error('Erro na consulta bar_employees:', barError);
-          throw new Error(`Erro ao consultar banco de dados: ${barError.message}`);
+        // CORREÇÃO: Buscar funcionários da tabela employees corrigida
+        const empresaId = await getCurrentUserEmpresaId();
+        
+        if (!empresaId) {
+          throw new Error('Empresa não encontrada para o usuário atual');
         }
 
-        return barEmployeesData || [];
+        const { data: employeesData, error: employeesError } = await client
+          .from('employees')
+          .select(`
+            id, name, email, phone, cpf, status, employee_code,
+            tem_acesso_sistema, auth_user_id, created_at, updated_at,
+            position_id, department_id
+          `)
+          .eq('empresa_id', empresaId)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false });
+
+        if (employeesError) {
+          console.error('Erro na consulta employees:', employeesError);
+          throw new Error(`Erro ao consultar banco de dados: ${employeesError.message}`);
+        }
+
+        return employeesData || [];
       }, 'employees_list');
 
       if (result.success) {
         const barEmployeesData = result.data;
 
-      // Mapear dados para a interface esperada
-      const mappedEmployees: BarEmployee[] = (barEmployeesData || []).map((barEmp: any) => {
-        // Extrair nome das observações (temporário)
-        const notes = barEmp.notes || '';
-        const nameMatch = notes.match(/Nome: ([^,]+)/);
-        const cpfMatch = notes.match(/CPF: ([^,]+)/);
-        const emailMatch = notes.match(/Email: ([^,]+)/);
-        const phoneMatch = notes.match(/Telefone: ([^,]+)/);
-        
+      // CORREÇÃO: Mapear dados da tabela employees corrigida
+      const mappedEmployees: BarEmployee[] = (result.data || []).map((emp: any) => {
         return {
-          id: barEmp.id,
-          employee_id: barEmp.employee_id || '',
-          bar_role: barEmp.bar_role,
-          shift_preference: barEmp.shift_preference,
-          specialties: barEmp.specialties || [],
-          commission_rate: barEmp.commission_rate || 0,
-          status: barEmp.is_active ? 'active' : 'inactive',
-          start_date: barEmp.start_date,
-          end_date: barEmp.end_date,
-          notes: barEmp.notes,
-          created_at: barEmp.created_at,
-          updated_at: barEmp.updated_at,
-          // Dados extraídos das observações
+          id: emp.id,
+          employee_id: emp.id,
+          bar_role: 'atendente', // Valor padrão, pode ser customizado
+          shift_preference: 'qualquer',
+          specialties: [],
+          commission_rate: 0,
+          status: emp.status,
+          start_date: emp.created_at,
+          end_date: null,
+          notes: `Código: ${emp.employee_code}`,
+          created_at: emp.created_at,
+          updated_at: emp.updated_at,
+          is_active: emp.status === 'active',
+          // Dados reais da tabela employees
           employee: {
-            id: barEmp.id,
-            name: nameMatch ? nameMatch[1] : 'Nome não informado',
-            cpf: cpfMatch ? cpfMatch[1] : undefined,
-            email: emailMatch ? emailMatch[1] : undefined,
-            phone: phoneMatch ? phoneMatch[1] : undefined,
-            hire_date: barEmp.start_date,
-            status: barEmp.is_active ? 'active' : 'inactive'
+            id: emp.id,
+            name: emp.name || 'Nome não informado',
+            cpf: emp.cpf,
+            email: emp.email,
+            phone: emp.phone,
+            hire_date: emp.created_at,
+            status: emp.status
+          },
+          // Dados adicionais para compatibilidade
+          usuario_empresa: {
+            id: emp.id,
+            nome_completo: emp.name,
+            email: emp.email,
+            telefone: emp.phone,
+            status: emp.status,
+            tem_acesso_sistema: emp.tem_acesso_sistema,
+            auth_user_id: emp.auth_user_id
           }
         };
       });
 
-        console.log('Funcionários carregados:', mappedEmployees.length);
+        console.log('✅ Funcionários carregados:', mappedEmployees.length);
+        if (mappedEmployees.length > 0) {
+          console.log('🔍 Primeiro funcionário:', mappedEmployees[0]?.employee?.name);
+        }
         setEmployees(mappedEmployees);
         
         // Salvar no cache

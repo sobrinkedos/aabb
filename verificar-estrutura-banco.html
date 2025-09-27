@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificar Estrutura do Banco</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .step {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Verificação Completa da Estrutura do Banco</h1>
+        <p>Vamos verificar todos os aspectos da estrutura do banco de dados.</p>
+        
+        <div class="step">
+            <h3>📋 Status da Conexão</h3>
+            <p id="connection-status">Verificando conexão...</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🏗️ Estrutura das Tabelas</h2>
+        
+        <div class="grid">
+            <div class="step">
+                <h3>1. Tabela bar_employees</h3>
+                <button onclick="verificarTabelaBarEmployees()">Verificar</button>
+                <div id="bar-employees-info"></div>
+            </div>
+
+            <div class="step">
+                <h3>2. Tabela usuarios_empresa</h3>
+                <button onclick="verificarTabelaUsuariosEmpresa()">Verificar</button>
+                <div id="usuarios-empresa-info"></div>
+            </div>
+
+            <div class="step">
+                <h3>3. Tabela empresas</h3>
+                <button onclick="verificarTabelaEmpresas()">Verificar</button>
+                <div id="empresas-info"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🔒 Políticas RLS</h2>
+        
+        <div class="step">
+            <h3>Verificar Políticas RLS</h3>
+            <button onclick="verificarPoliticasRLS()">Verificar RLS</button>
+            <div id="rls-policies"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>👤 Informações do Usuário</h2>
+        
+        <div class="step">
+            <h3>Usuário Atual</h3>
+            <button onclick="verificarUsuarioCompleto()">Verificar Usuário</button>
+            <div id="user-complete-info"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 Testes de Operações</h2>
+        
+        <div class="grid">
+            <div class="step">
+                <h3>Teste SELECT</h3>
+                <button onclick="testeSelect()">Testar SELECT</button>
+                <div id="teste-select"></div>
+            </div>
+
+            <div class="step">
+                <h3>Teste INSERT</h3>
+                <button onclick="testeInsert()">Testar INSERT</button>
+                <div id="teste-insert"></div>
+            </div>
+
+            <div class="step">
+                <h3>Teste UPDATE</h3>
+                <button onclick="testeUpdate()">Testar UPDATE</button>
+                <div id="teste-update"></div>
+            </div>
+
+            <div class="step">
+                <h3>Teste DELETE</h3>
+                <button onclick="testeDelete()">Testar DELETE</button>
+                <div id="teste-delete"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://pqmjfwmbitodwtpedlle.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxbWpmd21iaXRvZHd0cGVkbGxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI2MzQyNzEsImV4cCI6MjA0ODIxMDI3MX0.lAOmVJmBgLHGVJhqvQqIgzJdKAhHHkWqxpKdlJ8Q_qI';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let currentUser = null;
+        let empresaId = null;
+
+        // Verificar conexão inicial
+        async function verificarConexao() {
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error) {
+                    document.getElementById('connection-status').innerHTML = 
+                        `❌ Erro de autenticação: ${error.message}`;
+                    return;
+                }
+
+                if (!user) {
+                    document.getElementById('connection-status').innerHTML = 
+                        `⚠️ Usuário não autenticado. <a href="index.html">Fazer login</a>`;
+                    return;
+                }
+
+                currentUser = user;
+                empresaId = user.user_metadata?.empresa_id;
+
+                document.getElementById('connection-status').innerHTML = 
+                    `✅ Conectado como: ${user.email} | Empresa: ${empresaId || 'NÃO ENCONTRADO'}`;
+
+            } catch (error) {
+                document.getElementById('connection-status').innerHTML = 
+                    `❌ Erro: ${error.message}`;
+            }
+        }
+
+        // Verificar tabela bar_employees
+        async function verificarTabelaBarEmployees() {
+            try {
+                const { data, error } = await supabase
+                    .from('bar_employees')
+                    .select('*')
+                    .limit(1);
+
+                const container = document.getElementById('bar-employees-info');
+
+                if (error) {
+                    container.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro ao acessar tabela</h4>
+                            <p><strong>Mensagem:</strong> ${error.message}</p>
+                            <p><strong>Código:</strong> ${error.code}</p>
+                            <pre>${JSON.stringify(error, null, 2)}</pre>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Tentar obter informações sobre a estrutura
+                const { data: allData, error: allError } = await supabase
+                    .from('bar_employees')
+                    .select('*')
+                    .limit(5);
+
+                container.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Tabela bar_employees acessível</h4>
+                        <p><strong>Registros encontrados:</strong> ${allData?.length || 0}</p>
+                        ${allData?.length > 0 ? 
+                            `<h5>Exemplo de registro:</h5><pre>${JSON.stringify(allData[0], null, 2)}</pre>` : 
+                            '<p>Nenhum registro encontrado</p>'
+                        }
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('bar-employees-info').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro inesperado</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Verificar tabela usuarios_empresa
+        async function verificarTabelaUsuariosEmpresa() {
+            try {
+                const { data, error } = await supabase
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .limit(5);
+
+                const container = document.getElementById('usuarios-empresa-info');
+
+                if (error) {
+                    container.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro ao acessar tabela</h4>
+                            <p><strong>Mensagem:</strong> ${error.message}</p>
+                            <pre>${JSON.stringify(error, null, 2)}</pre>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Tabela usuarios_empresa acessível</h4>
+                        <p><strong>Registros encontrados:</strong> ${data?.length || 0}</p>
+                        ${data?.length > 0 ? 
+                            `<h5>Registros:</h5><pre>${JSON.stringify(data, null, 2)}</pre>` : 
+                            '<p>Nenhum registro encontrado</p>'
+                        }
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('usuarios-empresa-info').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro inesperado</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Verificar tabela empresas
+        async function verificarTabelaEmpresas() {
+            try {
+                const { data, error } = await supabase
+                    .from('empresas')
+                    .select('*')
+                    .limit(5);
+
+                const container = document.getElementById('empresas-info');
+
+                if (error) {
+                    container.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro ao acessar tabela</h4>
+                            <p><strong>Mensagem:</strong> ${error.message}</p>
+                            <pre>${JSON.stringify(error, null, 2)}</pre>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Tabela empresas acessível</h4>
+                        <p><strong>Registros encontrados:</strong> ${data?.length || 0}</p>
+                        ${data?.length > 0 ? 
+                            `<h5>Registros:</h5><pre>${JSON.stringify(data, null, 2)}</pre>` : 
+                            '<p>Nenhum registro encontrado</p>'
+                        }
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('empresas-info').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro inesperado</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Verificar políticas RLS
+        async function verificarPoliticasRLS() {
+            try {
+                const container = document.getElementById('rls-policies');
+                
+                // Tentar acessar informações sobre RLS (isso pode não funcionar com usuário anônimo)
+                const { data, error } = await supabase
+                    .rpc('get_table_policies', { table_name: 'bar_employees' })
+                    .catch(() => null);
+
+                container.innerHTML = `
+                    <div class="warning">
+                        <h4>⚠️ Informações sobre RLS</h4>
+                        <p>Não é possível verificar políticas RLS diretamente com usuário anônimo.</p>
+                        <p><strong>Empresa ID atual:</strong> ${empresaId || 'NÃO ENCONTRADO'}</p>
+                        <p><strong>User ID:</strong> ${currentUser?.id || 'NÃO ENCONTRADO'}</p>
+                        
+                        <h5>Teste de acesso com filtro de empresa:</h5>
+                        <div id="rls-test-result">Testando...</div>
+                    </div>
+                `;
+
+                // Teste prático de RLS
+                if (empresaId) {
+                    const { data: testData, error: testError } = await supabase
+                        .from('bar_employees')
+                        .select('*')
+                        .eq('empresa_id', empresaId);
+
+                    document.getElementById('rls-test-result').innerHTML = testError ? 
+                        `❌ Erro: ${testError.message}` : 
+                        `✅ Sucesso: ${testData.length} registros acessíveis`;
+                } else {
+                    document.getElementById('rls-test-result').innerHTML = 
+                        '❌ Não é possível testar sem empresa_id';
+                }
+
+            } catch (error) {
+                document.getElementById('rls-policies').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro ao verificar RLS</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Verificar usuário completo
+        async function verificarUsuarioCompleto() {
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error) {
+                    document.getElementById('user-complete-info').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro ao buscar usuário</h4>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                document.getElementById('user-complete-info').innerHTML = `
+                    <div class="success">
+                        <h4>✅ Informações do Usuário</h4>
+                        <pre>${JSON.stringify(user, null, 2)}</pre>
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('user-complete-info').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro inesperado</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Teste SELECT
+        async function testeSelect() {
+            try {
+                const { data, error } = await supabase
+                    .from('bar_employees')
+                    .select('*')
+                    .limit(3);
+
+                const container = document.getElementById('teste-select');
+
+                if (error) {
+                    container.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro no SELECT</h4>
+                            <p>${error.message}</p>
+                            <pre>${JSON.stringify(error, null, 2)}</pre>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="success">
+                        <h4>✅ SELECT funcionando</h4>
+                        <p>Registros encontrados: ${data.length}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('teste-select').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro inesperado no SELECT</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Teste INSERT
+        async function testeInsert() {
+            try {
+                if (!empresaId) {
+                    document.getElementById('teste-insert').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Não é possível testar INSERT</h4>
+                            <p>Empresa ID não encontrado</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const testData = {
+                    nome: `Teste INSERT ${Date.now()}`,
+                    email: `teste${Date.now()}@exemplo.com`,
+                    cargo: 'atendente',
+                    empresa_id: empresaId,
+                    ativo: true,
+                    tem_acesso_sistema: false,
+                    auth_user_id: null
+                };
+
+                const { data, error } = await supabase
+                    .from('bar_employees')
+                    .insert(testData)
+                    .select()
+                    .single();
+
+                const container = document.getElementById('teste-insert');
+
+                if (error) {
+                    container.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro no INSERT</h4>
+                            <p><strong>Mensagem:</strong> ${error.message}</p>
+                            <p><strong>Código:</strong> ${error.code}</p>
+                            <p><strong>Detalhes:</strong> ${error.details}</p>
+                            <h5>Dados tentados:</h5>
+                            <pre>${JSON.stringify(testData, null, 2)}</pre>
+                            <h5>Erro completo:</h5>
+                            <pre>${JSON.stringify(error, null, 2)}</pre>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="success">
+                        <h4>✅ INSERT funcionando</h4>
+                        <p>Registro criado com ID: ${data.id}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('teste-insert').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro inesperado no INSERT</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Teste UPDATE
+        async function testeUpdate() {
+            document.getElementById('teste-update').innerHTML = `
+                <div class="warning">
+                    <h4>⚠️ Teste UPDATE</h4>
+                    <p>Execute primeiro o teste INSERT para ter um registro para atualizar</p>
+                </div>
+            `;
+        }
+
+        // Teste DELETE
+        async function testeDelete() {
+            document.getElementById('teste-delete').innerHTML = `
+                <div class="warning">
+                    <h4>⚠️ Teste DELETE</h4>
+                    <p>Execute primeiro o teste INSERT para ter um registro para deletar</p>
+                </div>
+            `;
+        }
+
+        // Inicializar quando a página carregar
+        document.addEventListener('DOMContentLoaded', verificarConexao);
+    </script>
+</body>
+</html>
