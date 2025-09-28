@@ -8,7 +8,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Users, Search, Filter, Plus, BarChart3, 
-  UserCheck, UserX, Clock, TrendingUp 
+  UserCheck, UserX, Clock, TrendingUp, Shield 
 } from 'lucide-react';
 import { useBarEmployees } from '../../hooks/useBarEmployees';
 import { EmployeeFilters } from './EmployeeFilters';
@@ -16,6 +16,7 @@ import { EmployeeStats } from './EmployeeStats';
 import { EmployeeList } from './EmployeeList';
 import { EmployeeModal } from '../EmployeeModal/EmployeeModal';
 import { EmployeeDetails } from '../EmployeeDetails/EmployeeDetails';
+import { EmployeePermissionsTab } from './EmployeePermissionsTab';
 
 // ============================================================================
 // INTERFACES
@@ -66,6 +67,7 @@ export const BarEmployeesModule: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [showEmployeeDetails, setShowEmployeeDetails] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'employees' | 'permissions'>('employees');
 
   // Filtrar funcionários baseado nos filtros ativos
   const filteredEmployees = useMemo(() => {
@@ -143,44 +145,94 @@ export const BarEmployeesModule: React.FC = () => {
           </p>
         </div>
         
-        <button
-          onClick={() => setShowEmployeeModal(true)}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="h-5 w-5" />
-          <span>Novo Funcionário</span>
-        </button>
+        {activeTab === 'employees' && (
+          <button
+            onClick={() => setShowEmployeeModal(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Novo Funcionário</span>
+          </button>
+        )}
       </div>
 
-      {/* Stats Dashboard */}
-      <EmployeeStats stats={stats} />
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('employees')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'employees'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <Users className="h-4 w-4" />
+              <span>Funcionários</span>
+            </div>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('permissions')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'permissions'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <Shield className="h-4 w-4" />
+              <span>Permissões</span>
+            </div>
+          </button>
+        </nav>
+      </div>
 
-      {/* Filters */}
-      <EmployeeFilters 
-        filters={filters}
-        onFiltersChange={setFilters}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-      />
+      {/* Conteúdo das Tabs */}
+      {activeTab === 'employees' ? (
+        <>
+          {/* Stats Dashboard */}
+          <EmployeeStats stats={stats} />
 
-      {/* Employee List */}
-      <EmployeeList
-        employees={filteredEmployees}
-        loading={loading}
-        error={error}
-        viewMode={viewMode}
-        onEdit={(employee) => {
-          setSelectedEmployee(employee);
-          setShowEmployeeModal(true);
-        }}
-        onDeactivate={deactivateEmployee}
-        onReactivate={reactivateEmployee}
-        onResetPassword={handleResetPassword}
-        onViewDetails={(employee) => {
-          setSelectedEmployeeId(employee.id);
-          setShowEmployeeDetails(true);
-        }}
-      />
+          {/* Filters */}
+          <EmployeeFilters 
+            filters={filters}
+            onFiltersChange={setFilters}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+          />
+
+          {/* Employee List */}
+          <EmployeeList
+            employees={filteredEmployees}
+            loading={loading}
+            error={error}
+            viewMode={viewMode}
+            onEdit={(employee) => {
+              setSelectedEmployee(employee);
+              setShowEmployeeModal(true);
+            }}
+            onDeactivate={deactivateEmployee}
+            onReactivate={reactivateEmployee}
+            onResetPassword={handleResetPassword}
+            onViewDetails={(employee) => {
+              setSelectedEmployeeId(employee.id);
+              setShowEmployeeDetails(true);
+            }}
+          />
+        </>
+      ) : (
+        <>
+          {/* Aba de Permissões */}
+          <EmployeePermissionsTab
+            onPermissionsChanged={() => {
+              // Recarregar dados se necessário
+              refetch();
+            }}
+          />
+        </>
+      )}
 
       {/* Employee Modal */}
       {showEmployeeModal && (

@@ -16,6 +16,9 @@ export const baseUserRoleMapping: Record<string, string> = {
   'maria@teste.com': 'operador_caixa',
   'charles@teste.com': 'operador_caixa', // Usuário criado como caixa
   'tony@teste.com': 'operador_caixa', // Usuário criado como caixa (temporário)
+  'lulu@teste.com': 'operador_caixa', // ✅ ADICIONADO: Lulu Santos como operador de caixa
+  'lulusantos@teste.com': 'operador_caixa', // ✅ ADICIONADO: Variação do email
+  'lulu.santos@teste.com': 'operador_caixa', // ✅ ADICIONADO: Variação do email
 };
 
 // Função para adicionar novo usuário ao mapeamento

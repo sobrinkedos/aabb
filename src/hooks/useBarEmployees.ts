@@ -88,7 +88,11 @@ export const useBarEmployees = () => {
           .select(`
             id, name, email, phone, cpf, status, employee_code,
             tem_acesso_sistema, auth_user_id, created_at, updated_at,
-            position_id, department_id
+            position_id, department_id,
+            bar_employees!inner(
+              bar_role, shift_preference, specialties, commission_rate,
+              is_active, start_date, end_date, notes
+            )
           `)
           .eq('empresa_id', empresaId)
           .eq('status', 'active')
@@ -105,22 +109,24 @@ export const useBarEmployees = () => {
       if (result.success) {
         const barEmployeesData = result.data;
 
-      // CORREÇÃO: Mapear dados da tabela employees corrigida
+      // CORREÇÃO: Mapear dados das tabelas employees + bar_employees
       const mappedEmployees: BarEmployee[] = (result.data || []).map((emp: any) => {
+        const barEmployeeData = emp.bar_employees?.[0] || {};
+        
         return {
           id: emp.id,
           employee_id: emp.id,
-          bar_role: 'atendente', // Valor padrão, pode ser customizado
-          shift_preference: 'qualquer',
-          specialties: [],
-          commission_rate: 0,
+          bar_role: barEmployeeData.bar_role || 'atendente', // ✅ Usar dados reais da tabela bar_employees
+          shift_preference: barEmployeeData.shift_preference || 'qualquer',
+          specialties: barEmployeeData.specialties || [],
+          commission_rate: barEmployeeData.commission_rate || 0,
           status: emp.status,
-          start_date: emp.created_at,
-          end_date: null,
-          notes: `Código: ${emp.employee_code}`,
+          start_date: barEmployeeData.start_date || emp.created_at,
+          end_date: barEmployeeData.end_date || null,
+          notes: barEmployeeData.notes || `Código: ${emp.employee_code}`,
           created_at: emp.created_at,
           updated_at: emp.updated_at,
-          is_active: emp.status === 'active',
+          is_active: barEmployeeData.is_active !== undefined ? barEmployeeData.is_active : (emp.status === 'active'),
           // Dados reais da tabela employees
           employee: {
             id: emp.id,

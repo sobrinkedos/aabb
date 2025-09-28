@@ -212,11 +212,28 @@ export const useBasicEmployeeCreation = () => {
         throw new Error('Não foi possível obter o ID da empresa');
       }
 
-      // 1. Gerar senha temporária
+      // Buscar dados do funcionário
+      const { data: employeeData, error: employeeError } = await supabase
+        .from("employees")
+        .select('name, email')
+        .eq('id', employeeId)
+        .single();
+
+      if (employeeError || !employeeData) {
+        throw new Error('Funcionário não encontrado');
+      }
+
+      // 1. Verificar se o usuário já existe no Auth
+      console.log('🔍 Verificando se usuário já existe:', email);
+      
+      // Tentar buscar usuário existente (isso não funciona diretamente, então vamos tentar criar e tratar o erro)
+      
+      // 2. Gerar senha temporária
       const senhaTemporaria = '123456'; // Senha padrão
 
-      // 2. Criar usuário no Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // 3. Tentar criar usuário no Auth
+      let authData: any;
+      const { data: signUpData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: senhaTemporaria,
         options: {
@@ -225,7 +242,36 @@ export const useBasicEmployeeCreation = () => {
       });
 
       if (authError) {
-        throw new Error(`Erro ao criar usuário no Auth: ${authError.message}`);
+        // Se usuário já existe, tentar fazer login para obter o ID
+        if (authError.message.includes('User already registered') || authError.message.includes('already registered')) {
+          console.log('⚠️ Usuário já existe, tentando fazer login para obter ID...');
+          
+          // Tentar login para obter o user ID
+          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: senhaTemporaria
+          });
+          
+          if (loginError) {
+            throw new Error(`Usuário já existe mas não foi possível fazer login. Pode ser necessário resetar a senha: ${loginError.message}`);
+          }
+          
+          if (!loginData.user?.id) {
+            throw new Error('Não foi possível obter ID do usuário existente');
+          }
+          
+          // Usar o ID do usuário existente
+          const userId = loginData.user.id;
+          console.log('✅ Usando usuário existente:', userId);
+          
+          // Continuar com o fluxo usando o userId existente
+          authData = { user: loginData.user };
+        } else {
+          throw new Error(`Erro ao criar usuário no Auth: ${authError.message}`);
+        }
+      } else {
+        // Usuário criado com sucesso
+        authData = signUpData;
       }
 
       const userId = authData.user?.id;
@@ -243,35 +289,86 @@ export const useBasicEmployeeCreation = () => {
         console.warn('Aviso ao atualizar profile_id:', updateError.message);
       }
 
-      // 4. Criar registro na tabela usuarios_empresa
-      const { data: usuarioEmpresaData, error: usuarioEmpresaError } = await supabase
+      // 4. Verificar se já existe registro na tabela usuarios_empresa
+      console.log('🔍 Verificando se usuario_empresa já existe...');
+      const { data: existingUsuarioEmpresa, error: checkError } = await supabase
         .from("usuarios_empresa")
-        .insert({
-          user_id: userId,
-          empresa_id: empresaId,
-          tipo_usuario: 'funcionario',
-          cargo: 'Funcionário',
-          status: 'ativo',
-          ativo: true,
-          tem_acesso_sistema: true
-        })
-        .select('id')
-        .single();
+        .select('id, status')
+        .eq('user_id', userId)
+        .eq('empresa_id', empresaId)
+        .maybeSingle();
 
-      if (usuarioEmpresaError) {
-        throw new Error(`Erro ao criar usuario_empresa: ${usuarioEmpresaError.message}`);
+      let usuarioEmpresaData;
+
+      if (existingUsuarioEmpresa) {
+        console.log('✅ Usuario empresa já existe, usando existente:', existingUsuarioEmpresa.id);
+        
+        // Se existe mas está inativo, reativar
+        if (existingUsuarioEmpresa.status !== 'ativo') {
+          const { data: updatedData, error: updateError } = await supabase
+            .from("usuarios_empresa")
+            .update({
+              status: 'ativo',
+              ativo: true,
+              tem_acesso_sistema: true,
+              nome_completo: employeeData.name,
+              email: employeeData.email
+            })
+            .eq('id', existingUsuarioEmpresa.id)
+            .select('id')
+            .single();
+
+          if (updateError) {
+            throw new Error(`Erro ao reativar usuario_empresa: ${updateError.message}`);
+          }
+          usuarioEmpresaData = updatedData;
+        } else {
+          usuarioEmpresaData = existingUsuarioEmpresa;
+        }
+      } else {
+        // Criar novo registro
+        console.log('📝 Criando novo usuario_empresa...');
+        const { data: newData, error: usuarioEmpresaError } = await supabase
+          .from("usuarios_empresa")
+          .insert({
+            user_id: userId,
+            empresa_id: empresaId,
+            nome_completo: employeeData.name,
+            email: employeeData.email,
+            tipo_usuario: 'funcionario',
+            cargo: 'Funcionário',
+            status: 'ativo',
+            ativo: true,
+            tem_acesso_sistema: true
+          })
+          .select('id')
+          .single();
+
+        if (usuarioEmpresaError) {
+          throw new Error(`Erro ao criar usuario_empresa: ${usuarioEmpresaError.message}`);
+        }
+        usuarioEmpresaData = newData;
       }
 
-      // 5. Criar permissões
-      const permissionsToInsert = Object.entries(credentialsData.permissoes_modulos).map(
-        ([modulo, permissoes]) => ({
+      // 5. Verificar e criar permissões
+      console.log('🔍 Verificando permissões existentes...');
+      const { data: existingPermissions } = await supabase
+        .from("permissoes_usuario")
+        .select('modulo')
+        .eq('usuario_empresa_id', usuarioEmpresaData.id);
+
+      const existingModules = existingPermissions?.map(p => p.modulo) || [];
+      
+      const permissionsToInsert = Object.entries(credentialsData.permissoes_modulos)
+        .filter(([modulo]) => !existingModules.includes(modulo)) // Só inserir se não existir
+        .map(([modulo, permissoes]) => ({
           usuario_empresa_id: usuarioEmpresaData.id,
           modulo: modulo,
           permissoes: permissoes
-        })
-      );
+        }));
 
       if (permissionsToInsert.length > 0) {
+        console.log(`📝 Criando ${permissionsToInsert.length} novas permissões...`);
         const { error: permissionsError } = await supabase
           .from("permissoes_usuario")
           .insert(permissionsToInsert);
@@ -279,6 +376,8 @@ export const useBasicEmployeeCreation = () => {
         if (permissionsError) {
           throw new Error(`Erro ao criar permissões: ${permissionsError.message}`);
         }
+      } else {
+        console.log('✅ Todas as permissões já existem');
       }
 
       console.log('✅ Credenciais criadas com sucesso:', {

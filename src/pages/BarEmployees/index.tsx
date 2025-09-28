@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, User, Phone, Mail, Calendar, Badge, Eye, Edit, Trash2, Save, X } from 'lucide-react';
+import { Search, Plus, User, Phone, Mail, Calendar, Badge, Eye, Edit, Trash2, Save, X, Settings } from 'lucide-react';
 import { useBarEmployees, NewBarEmployeeData, UpdateBarEmployeeData } from '../../hooks/useBarEmployees';
 import { useEmployeeCreation } from '../../hooks/useEmployeeCreation';
 import { BarEmployee } from '../../types';
@@ -12,6 +12,8 @@ import { CredentialsModal } from '../../components/CredentialsModal';
 import { Employee, EmployeeRole } from '../../types/employee.types';
 import { ROLE_PRESETS } from '../../utils/permissionPresets';
 import { useBasicEmployeeCreation } from '../../hooks/useBasicEmployeeCreation';
+import { PermissionsModal } from '../../components/EmployeeModal/PermissionsModal';
+import { useEmployeePermissions } from '../../hooks/useEmployeePermissions';
 
 const BarEmployeesModule: React.FC = () => {
   const {
@@ -33,6 +35,9 @@ const BarEmployeesModule: React.FC = () => {
   // Hook para novo fluxo de criação em duas etapas
   const { createBasicEmployee, addCredentialsToEmployee, loading: basicCreationLoading } = useBasicEmployeeCreation();
   
+  // Hook para gerenciar permissões
+  const { saveEmployeePermissions, loading: permissionsLoading } = useEmployeePermissions();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'atendente' | 'garcom' | 'cozinheiro' | 'barman' | 'gerente'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -47,6 +52,8 @@ const BarEmployeesModule: React.FC = () => {
   const [generatedCredentials, setGeneratedCredentials] = useState<any>(null);
   const [credentialsEmployeeName, setCredentialsEmployeeName] = useState('');
   const [selectedEmployeeForCredentials, setSelectedEmployeeForCredentials] = useState<BarEmployee | null>(null);
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [selectedEmployeeForPermissions, setSelectedEmployeeForPermissions] = useState<BarEmployee | null>(null);
   
   // Estados não são mais necessários pois o modal gerencia seu próprio estado
 
@@ -157,6 +164,12 @@ const BarEmployeesModule: React.FC = () => {
     setShowSystemCredentialsModal(true);
   };
 
+  // NOVO: Gerenciar permissões (independente de credenciais)
+  const handleManagePermissions = (employee: BarEmployee) => {
+    setSelectedEmployeeForPermissions(employee);
+    setShowPermissionsModal(true);
+  };
+
   const handleCreateCredentials = async (credentialsData: any) => {
     if (!selectedEmployeeForCredentials?.employee) return;
 
@@ -181,13 +194,38 @@ const BarEmployeesModule: React.FC = () => {
         setShowCredentialsModal(true);
         
         // Recarregar lista
-        setTimeout(() => window.location.reload(), 2000);
+        setTimeout(() => refetch(), 2000);
       } else {
         throw new Error(result.error);
       }
     } catch (error) {
       console.error('Erro ao criar credenciais:', error);
       alert('Erro ao criar credenciais. Tente novamente.');
+    }
+  };
+
+  // NOVO: Salvar permissões
+  const handleSavePermissions = async (permissions: any[]) => {
+    if (!selectedEmployeeForPermissions?.employee?.id) return;
+
+    try {
+      const result = await saveEmployeePermissions(
+        selectedEmployeeForPermissions.employee.id,
+        permissions
+      );
+
+      if (result.success) {
+        alert('Permissões salvas com sucesso!');
+        setShowPermissionsModal(false);
+        setSelectedEmployeeForPermissions(null);
+        // Recarregar lista para refletir mudanças
+        refetch();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error('Erro ao salvar permissões:', error);
+      alert('Erro ao salvar permissões. Tente novamente.');
     }
   };
 
@@ -623,6 +661,14 @@ const BarEmployeesModule: React.FC = () => {
                           >
                             <Badge size={16} />
                           </button>
+                          {/* NOVO: Botão para gerenciar permissões */}
+                          <button
+                            onClick={() => handleManagePermissions(barEmployee)}
+                            className="text-purple-600 hover:text-purple-900"
+                            title="Gerenciar permissões"
+                          >
+                            <Settings size={16} />
+                          </button>
                           {barEmployee.status === 'active' ? (
                             <button
                               onClick={() => handleDeactivateEmployee(barEmployee)}
@@ -790,6 +836,25 @@ const BarEmployeesModule: React.FC = () => {
         onSave={handleCreateCredentials}
         employeeName={selectedEmployeeForCredentials?.employee?.name || ''}
         employeeRole={selectedEmployeeForCredentials?.bar_role || ''}
+      />
+
+      {/* NOVO: Modal de Gerenciamento de Permissões */}
+      <PermissionsModal
+        isOpen={showPermissionsModal}
+        onClose={() => {
+          setShowPermissionsModal(false);
+          setSelectedEmployeeForPermissions(null);
+        }}
+        employeeId={selectedEmployeeForPermissions?.employee?.id || ''}
+        employeeName={selectedEmployeeForPermissions?.employee?.name || ''}
+        onSave={handleSavePermissions}
+        onCreateCredentials={() => {
+          // Fechar modal de permissões e abrir modal de credenciais
+          setShowPermissionsModal(false);
+          setSelectedEmployeeForCredentials(selectedEmployeeForPermissions);
+          setSelectedEmployeeForPermissions(null);
+          setShowSystemCredentialsModal(true);
+        }}
       />
 
     </div>

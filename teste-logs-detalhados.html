@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🔍 Teste Logs Detalhados</title>
+        <style>
+            body {
+                font-family:
+                    "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                background: #f8fafc;
+            }
+            .container {
+                background: white;
+                padding: 30px;
+                border-radius: 12px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            .header {
+                text-align: center;
+                margin-bottom: 30px;
+                padding-bottom: 20px;
+                border-bottom: 2px solid #e2e8f0;
+            }
+            .logs-section {
+                background: #f0fdf4;
+                border: 1px solid #bbf7d0;
+                border-radius: 8px;
+                padding: 20px;
+                margin: 20px 0;
+            }
+            .code-block {
+                background: #1f2937;
+                color: #f9fafb;
+                padding: 15px;
+                border-radius: 6px;
+                font-family: "Courier New", monospace;
+                font-size: 13px;
+                overflow-x: auto;
+                margin: 10px 0;
+            }
+            .step {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 15px;
+                margin: 10px 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🔍 Teste Logs Detalhados</h1>
+                <p>
+                    Validação dos logs adicionados para debug do problema do
+                    Zeca Baleiro
+                </p>
+            </div>
+
+            <!-- Logs Adicionados -->
+            <div class="logs-section">
+                <h2>✅ Logs Detalhados Implementados</h2>
+                <p>
+                    Os seguintes logs foram adicionados ao PermissionsModal.tsx:
+                </p>
+
+                <h3>📊 1. Log da Query:</h3>
+                <div class="code-block">
+                    console.log('🔍 DEBUG - Resultado da query:', { employeeId,
+                    data: usuarioEmpresa, error: usuarioError });
+                    console.log('📊 DEBUG - Dados recebidos:', usuarioEmpresa);
+                </div>
+
+                <h3>🧪 2. Log de Verificação de Existência:</h3>
+                <div class="code-block">
+                    console.log('🧪 DEBUG - Verificando existência:',
+                    !!usuarioEmpresa);
+                </div>
+
+                <h3>📋 3. Log de Verificação de Status:</h3>
+                <div class="code-block">
+                    console.log('🧪 DEBUG - Verificando status:',
+                    usuarioEmpresa?.status);
+                </div>
+
+                <h3>🔑 4. Log Detalhado de Credenciais:</h3>
+                <div class="code-block">
+                    console.log('🧪 DEBUG - Verificando credenciais:', {
+                    user_id: usuarioEmpresa?.user_id, tem_acesso_sistema:
+                    usuarioEmpresa?.tem_acesso_sistema, user_id_exists:
+                    !!usuarioEmpresa?.user_id, tem_acesso_true:
+                    usuarioEmpresa?.tem_acesso_sistema === true });
+                </div>
+
+                <h3>❌ 5. Log de Falha Detalhado:</h3>
+                <div class="code-block">
+                    console.log('❌ DEBUG - Usuário sem credenciais -
+                    DETALHES:', { user_id: usuarioEmpresa.user_id, user_id_type:
+                    typeof usuarioEmpresa.user_id, user_id_null:
+                    usuarioEmpresa.user_id === null, user_id_undefined:
+                    usuarioEmpresa.user_id === undefined, tem_acesso_sistema:
+                    usuarioEmpresa.tem_acesso_sistema, tem_acesso_type: typeof
+                    usuarioEmpresa.tem_acesso_sistema, tem_acesso_false:
+                    usuarioEmpresa.tem_acesso_sistema === false, condition1:
+                    !usuarioEmpresa.user_id, condition2:
+                    !usuarioEmpresa.tem_acesso_sistema, final_condition:
+                    !usuarioEmpresa.user_id ||
+                    !usuarioEmpresa.tem_acesso_sistema });
+                </div>
+            </div>
+
+            <!-- Como Testar -->
+            <div class="logs-section">
+                <h2>🧪 Como Testar</h2>
+
+                <div class="step">
+                    <h3>Passo 1: Abrir Console</h3>
+                    <p>
+                        Pressione <strong>F12</strong> para abrir o DevTools e
+                        vá para a aba <strong>Console</strong>
+                    </p>
+                </div>
+
+                <div class="step">
+                    <h3>Passo 2: Acessar Permissões</h3>
+                    <p>
+                        Vá para <strong>Funcionários → aba Permissões</strong>
+                    </p>
+                </div>
+
+                <div class="step">
+                    <h3>Passo 3: Selecionar Zeca Baleiro</h3>
+                    <p>
+                        Clique em <strong>"Zeca Baleiro"</strong> na lista de
+                        usuários
+                    </p>
+                </div>
+
+                <div class="step">
+                    <h3>Passo 4: Analisar Logs</h3>
+                    <p>Observe os logs detalhados no console. Você deve ver:</p>
+                    <ul>
+                        <li>🔍 DEBUG - Resultado da query</li>
+                        <li>📊 DEBUG - Dados recebidos</li>
+                        <li>🧪 DEBUG - Verificando existência</li>
+                        <li>🧪 DEBUG - Verificando status</li>
+                        <li>🧪 DEBUG - Verificando credenciais</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Cenários Esperados -->
+            <div class="logs-section">
+                <h2>📊 Cenários Esperados</h2>
+
+                <h3>✅ Cenário 1: Sucesso (Esperado)</h3>
+                <div class="code-block">
+                    🔍 DEBUG - Resultado da query: {employeeId: "95886a5e...",
+                    data: {...}, error: null} 📊 DEBUG - Dados recebidos: {id:
+                    "95886a5e...", user_id: "7b79f89a...", nome_completo: "Zeca
+                    Baleiro", tem_acesso_sistema: true, status: "ativo"} 🧪
+                    DEBUG - Verificando existência: true 👤 Usuario empresa
+                    encontrado: {...} 🧪 DEBUG - Verificando status: "ativo" 🧪
+                    DEBUG - Verificando credenciais: {user_id: "7b79f89a...",
+                    tem_acesso_sistema: true, user_id_exists: true,
+                    tem_acesso_true: true} ✅ Usuário tem credenciais válidas
+                </div>
+
+                <h3>❌ Cenário 2: RLS Bloqueando</h3>
+                <div class="code-block">
+                    🔍 DEBUG - Resultado da query: {employeeId: "95886a5e...",
+                    data: null, error: null} 📊 DEBUG - Dados recebidos: null 🧪
+                    DEBUG - Verificando existência: false ⚠️ DEBUG - Usuario
+                    empresa não encontrado para ID: 95886a5e... 💡 DEBUG - Isso
+                    pode indicar que o usuário não tem permissão para ver este
+                    registro devido ao RLS
+                </div>
+
+                <h3>❌ Cenário 3: Dados Alterados</h3>
+                <div class="code-block">
+                    🔍 DEBUG - Resultado da query: {employeeId: "95886a5e...",
+                    data: {...}, error: null} 📊 DEBUG - Dados recebidos: {id:
+                    "95886a5e...", user_id: null, tem_acesso_sistema: false,
+                    status: "ativo"} 🧪 DEBUG - Verificando existência: true 👤
+                    Usuario empresa encontrado: {...} 🧪 DEBUG - Verificando
+                    status: "ativo" 🧪 DEBUG - Verificando credenciais:
+                    {user_id: null, tem_acesso_sistema: false, user_id_exists:
+                    false, tem_acesso_true: false} ❌ DEBUG - Usuário sem
+                    credenciais - DETALHES: {user_id: null, user_id_type:
+                    "object", user_id_null: true, tem_acesso_sistema: false,
+                    condition1: true, condition2: true, final_condition: true}
+                </div>
+            </div>
+
+            <!-- Próximos Passos -->
+            <div class="logs-section">
+                <h2>🎯 Próximos Passos</h2>
+                <p>Com base nos logs que aparecerem, saberemos exatamente:</p>
+                <ul>
+                    <li>✅ Se a query está retornando dados</li>
+                    <li>✅ Se há erro na query</li>
+                    <li>✅ Quais são os dados reais do Zeca Baleiro</li>
+                    <li>✅ Em qual verificação específica está falhando</li>
+                    <li>✅ Se é problema de RLS, dados ou lógica</li>
+                </ul>
+
+                <p>
+                    <strong>Após ver os logs, poderemos aplicar a correção
+                        específica necessária!</strong>
+                </p>
+            </div>
+        </div>
+    </body>
+</html>

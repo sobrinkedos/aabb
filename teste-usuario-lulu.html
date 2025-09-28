@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Teste Usuário Lulu Santos</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .success { background-color: #d4edda; border: 2px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .error { background-color: #f8d7da; border: 2px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .info { background-color: #d1ecf1; border: 2px solid #bee5eb; color: #0c5460; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 8px; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        .user-card { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin: 10px 0; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="test-section">
+        <h1>🧪 Teste Usuário Lulu Santos</h1>
+        <p>Investigar por que Lulu Santos não está vendo apenas o módulo Caixa</p>
+        
+        <button onclick="investigarUsuarioLulu()" id="btn-teste">🔍 Investigar Usuário Lulu</button>
+        
+        <div id="resultado-teste"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function investigarUsuarioLulu() {
+            try {
+                document.getElementById('resultado-teste').innerHTML = `
+                    <div class="info">🔄 Investigando usuário Lulu Santos...</div>
+                `;
+
+                // Passo 1: Login como admin
+                console.log('🔐 Fazendo login como admin...');
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                    email: 'riltons@gmail.com',
+                    password: '000000'
+                });
+
+                if (authError) {
+                    throw new Error(`Erro no login: ${authError.message}`);
+                }
+
+                const empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e';
+                console.log('✅ Login realizado como admin');
+
+                let html = `<div class="success">✅ Login realizado como admin</div>`;
+
+                // Passo 2: Buscar usuário Lulu Santos na tabela employees
+                console.log('👤 Buscando Lulu Santos na tabela employees...');
+                const { data: employeesData, error: employeesError } = await supabase
+                    .from('employees')
+                    .select('*')
+                    .ilike('name', '%lulu%')
+                    .eq('empresa_id', empresaId);
+
+                if (employeesError) {
+                    throw new Error(`Erro ao buscar employees: ${employeesError.message}`);
+                }
+
+                html += `<h3>👤 Funcionários com "Lulu" no nome:</h3>`;
+                if (employeesData && employeesData.length > 0) {
+                    employeesData.forEach(emp => {
+                        html += `
+                            <div class="user-card">
+                                <strong>Nome:</strong> ${emp.name}<br>
+                                <strong>Email:</strong> ${emp.email}<br>
+                                <strong>CPF:</strong> ${emp.cpf || 'N/A'}<br>
+                                <strong>Status:</strong> ${emp.status}<br>
+                                <strong>Tem Acesso Sistema:</strong> ${emp.tem_acesso_sistema ? 'Sim' : 'Não'}<br>
+                                <strong>Auth User ID:</strong> ${emp.auth_user_id || 'N/A'}<br>
+                                <strong>Employee ID:</strong> ${emp.id}
+                            </div>
+                        `;
+                    });
+                } else {
+                    html += `<p>❌ Nenhum funcionário encontrado com "Lulu" no nome</p>`;
+                }
+
+                // Passo 3: Buscar na tabela usuarios_empresa
+                console.log('🏢 Buscando na tabela usuarios_empresa...');
+                const { data: usuariosEmpresaData, error: usuariosError } = await supabase
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .ilike('nome_completo', '%lulu%')
+                    .eq('empresa_id', empresaId);
+
+                if (usuariosError) {
+                    console.warn('Erro ao buscar usuarios_empresa:', usuariosError);
+                }
+
+                html += `<h3>🏢 Usuários Empresa com "Lulu" no nome:</h3>`;
+                if (usuariosEmpresaData && usuariosEmpresaData.length > 0) {
+                    usuariosEmpresaData.forEach(user => {
+                        html += `
+                            <div class="user-card">
+                                <strong>Nome:</strong> ${user.nome_completo}<br>
+                                <strong>Email:</strong> ${user.email}<br>
+                                <strong>Cargo:</strong> ${user.cargo}<br>
+                                <strong>Tipo:</strong> ${user.tipo_usuario}<br>
+                                <strong>Status:</strong> ${user.status}<br>
+                                <strong>Tem Acesso:</strong> ${user.tem_acesso_sistema ? 'Sim' : 'Não'}<br>
+                                <strong>User ID:</strong> ${user.user_id}<br>
+                                <strong>ID:</strong> ${user.id}
+                            </div>
+                        `;
+                    });
+                } else {
+                    html += `<p>❌ Nenhum usuário empresa encontrado com "Lulu" no nome</p>`;
+                }
+
+                // Passo 4: Buscar permissões específicas se encontrou usuário
+                if (usuariosEmpresaData && usuariosEmpresaData.length > 0) {
+                    const usuarioEmpresaId = usuariosEmpresaData[0].id;
+                    
+                    console.log('🔑 Buscando permissões específicas...');
+                    const { data: permissoesData, error: permissoesError } = await supabase
+                        .from('permissoes_usuario')
+                        .select('*')
+                        .eq('usuario_empresa_id', usuarioEmpresaId);
+
+                    html += `<h3>🔑 Permissões Específicas:</h3>`;
+                    if (permissoesData && permissoesData.length > 0) {
+                        html += `<table>
+                            <tr>
+                                <th>Módulo</th>
+                                <th>Permissões</th>
+                            </tr>`;
+                        
+                        permissoesData.forEach(perm => {
+                            html += `
+                                <tr>
+                                    <td>${perm.modulo}</td>
+                                    <td><pre>${JSON.stringify(perm.permissoes, null, 2)}</pre></td>
+                                </tr>
+                            `;
+                        });
+                        html += `</table>`;
+                    } else {
+                        html += `<p>❌ Nenhuma permissão específica encontrada</p>`;
+                    }
+                }
+
+                // Passo 5: Verificar mapeamento de roles
+                html += `<h3>🗺️ Mapeamento de Roles:</h3>`;
+                const baseMapping = {
+                    'bob@teste.com': 'atendente_caixa',
+                    'maria@teste.com': 'operador_caixa',
+                    'charles@teste.com': 'operador_caixa',
+                    'tony@teste.com': 'operador_caixa'
+                };
+
+                html += `<table>
+                    <tr>
+                        <th>Email</th>
+                        <th>Role Mapeado</th>
+                    </tr>`;
+                
+                Object.entries(baseMapping).forEach(([email, role]) => {
+                    html += `
+                        <tr>
+                            <td>${email}</td>
+                            <td>${role}</td>
+                        </tr>
+                    `;
+                });
+                html += `</table>`;
+
+                // Passo 6: Buscar todos os usuários com email "lulu"
+                console.log('📧 Buscando por emails com "lulu"...');
+                const { data: allEmployees, error: allError } = await supabase
+                    .from('employees')
+                    .select('name, email, auth_user_id')
+                    .ilike('email', '%lulu%')
+                    .eq('empresa_id', empresaId);
+
+                html += `<h3>📧 Emails com "lulu":</h3>`;
+                if (allEmployees && allEmployees.length > 0) {
+                    allEmployees.forEach(emp => {
+                        html += `
+                            <div class="user-card">
+                                <strong>Nome:</strong> ${emp.name}<br>
+                                <strong>Email:</strong> ${emp.email}<br>
+                                <strong>Auth User ID:</strong> ${emp.auth_user_id || 'N/A'}
+                            </div>
+                        `;
+                    });
+                } else {
+                    html += `<p>❌ Nenhum email encontrado com "lulu"</p>`;
+                }
+
+                // Conclusão
+                html += `<h3>🎯 Conclusão e Correção:</h3>`;
+                if (employeesData && employeesData.length > 0) {
+                    const luluEmployee = employeesData[0];
+                    if (luluEmployee.email) {
+                        html += `
+                            <div class="info">
+                                <strong>Email do Lulu Santos:</strong> ${luluEmployee.email}<br>
+                                <strong>Ação necessária:</strong> Adicionar mapeamento de role para este email
+                            </div>
+                        `;
+                        
+                        // Simular correção
+                        html += `
+                            <div class="success">
+                                <strong>✅ Correção sugerida:</strong><br>
+                                Adicionar no arquivo <code>userRoleMapping.ts</code>:<br>
+                                <pre>'${luluEmployee.email}': 'operador_caixa'</pre>
+                            </div>
+                        `;
+                    }
+                } else {
+                    html += `
+                        <div class="error">
+                            ❌ Usuário Lulu Santos não encontrado no sistema
+                        </div>
+                    `;
+                }
+
+                document.getElementById('resultado-teste').innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('resultado-teste').innerHTML = `
+                    <div class="error">❌ Erro na investigação: ${error.message}</div>
+                `;
+                console.error('❌ Erro na investigação:', error);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Teste Permissões Operador Caixa</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .success { background-color: #d4edda; border: 2px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .error { background-color: #f8d7da; border: 2px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .info { background-color: #d1ecf1; border: 2px solid #bee5eb; color: #0c5460; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .permission-card { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin: 10px 0; }
+        .allowed { background-color: #d4edda; color: #155724; }
+        .denied { background-color: #f8d7da; color: #721c24; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .module-allowed { background-color: #d4edda; }
+        .module-denied { background-color: #f8d7da; }
+    </style>
+</head>
+<body>
+    <div class="test-section">
+        <h1>🧪 Teste Permissões Operador Caixa</h1>
+        <p>Verificar quais módulos o operador de caixa deve ver</p>
+        
+        <div class="info">
+            <strong>✅ Correções Aplicadas:</strong><br>
+            1. Lulu Santos adicionado ao mapeamento como <code>operador_caixa</code><br>
+            2. Lista de usuários de caixa atualizada no middleware
+        </div>
+        
+        <div id="resultado-teste">
+            <h3>🔑 Permissões do Operador de Caixa:</h3>
+            
+            <div class="permission-card">
+                <h4>📋 Módulos que DEVE ver:</h4>
+                <table>
+                    <tr>
+                        <th>Módulo</th>
+                        <th>Visualizar</th>
+                        <th>Criar</th>
+                        <th>Editar</th>
+                        <th>Excluir</th>
+                        <th>Administrar</th>
+                    </tr>
+                    <tr class="module-allowed">
+                        <td><strong>Gestão de Caixa</strong></td>
+                        <td>✅ Sim</td>
+                        <td>✅ Sim</td>
+                        <td>✅ Sim</td>
+                        <td>✅ Sim</td>
+                        <td>❌ Não</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="permission-card">
+                <h4>🚫 Módulos que NÃO deve ver:</h4>
+                <table>
+                    <tr>
+                        <th>Módulo</th>
+                        <th>Status</th>
+                        <th>Motivo</th>
+                    </tr>
+                    <tr class="module-denied">
+                        <td>Dashboard Executivo</td>
+                        <td>❌ Negado</td>
+                        <td>Não está nas permissões do operador_caixa</td>
+                    </tr>
+                    <tr class="module-denied">
+                        <td>Monitor Bar</td>
+                        <td>❌ Negado</td>
+                        <td>Não está nas permissões do operador_caixa</td>
+                    </tr>
+                    <tr class="module-denied">
+                        <td>Atendimento Bar</td>
+                        <td>❌ Negado</td>
+                        <td>Não está nas permissões do operador_caixa</td>
+                    </tr>
+                    <tr class="module-denied">
+                        <td>Monitor Cozinha</td>
+                        <td>❌ Negado</td>
+                        <td>Não está nas permissões do operador_caixa</td>
+                    </tr>
+                    <tr class="module-denied">
+                        <td>Funcionários</td>
+                        <td>❌ Negado</td>
+                        <td>Não está nas permissões do operador_caixa</td>
+                    </tr>
+                    <tr class="module-denied">
+                        <td>Relatórios</td>
+                        <td>❌ Negado</td>
+                        <td>Não está nas permissões do operador_caixa</td>
+                    </tr>
+                    <tr class="module-denied">
+                        <td>Configurações</td>
+                        <td>❌ Negado</td>
+                        <td>Não está nas permissões do operador_caixa</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="success">
+                <h4>🎯 Resultado Esperado para Lulu Santos:</h4>
+                <p><strong>✅ Deve ver APENAS:</strong> Módulo "Gestão de Caixa"</p>
+                <p><strong>❌ NÃO deve ver:</strong> Dashboard, Monitor Bar, Funcionários, etc.</p>
+            </div>
+
+            <div class="info">
+                <h4>🔧 Como Testar:</h4>
+                <ol>
+                    <li>Execute o arquivo <code>teste-usuario-lulu.html</code> para encontrar o email exato do Lulu Santos</li>
+                    <li>Faça login como Lulu Santos no sistema</li>
+                    <li>Verifique se aparece apenas o módulo "Gestão de Caixa" no menu lateral</li>
+                    <li>Se ainda aparecer outros módulos, verifique os logs do console para ver qual role está sendo aplicado</li>
+                </ol>
+            </div>
+
+            <div class="permission-card">
+                <h4>📝 Código das Permissões (authMiddlewareRobust.ts):</h4>
+                <pre>
+operador_caixa: {
+  gestao_caixa: { 
+    visualizar: true, 
+    criar: true, 
+    editar: true, 
+    excluir: true, 
+    administrar: false 
+  }
+}
+                </pre>
+                <p><strong>Nota:</strong> Apenas o módulo <code>gestao_caixa</code> está definido, então apenas ele deve aparecer no menu.</p>
+            </div>
+
+            <div class="error">
+                <h4>⚠️ Se o problema persistir:</h4>
+                <p>Pode ser que o componente de menu não esteja respeitando as permissões corretamente. Nesse caso, seria necessário verificar:</p>
+                <ul>
+                    <li>Como o menu lateral está sendo renderizado</li>
+                    <li>Se está usando as permissões do middleware</li>
+                    <li>Se há algum fallback que mostra todos os módulos</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

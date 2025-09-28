@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Verificar Lulu Santos</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .success { background-color: #d4edda; border: 2px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .error { background-color: #f8d7da; border: 2px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .info { background-color: #d1ecf1; border: 2px solid #bee5eb; color: #0c5460; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 8px; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="section">
+        <h1>🔍 Verificar Lulu Santos</h1>
+        <p>Investigar por que Lulu Santos não tem auth_user_id e se precisa de credenciais</p>
+        
+        <button onclick="verificarLuluSantos()" id="btn-verificar">🔍 Verificar Lulu Santos</button>
+        
+        <div id="resultado"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function verificarLuluSantos() {
+            try {
+                document.getElementById('resultado').innerHTML = `
+                    <div class="info">🔄 Verificando Lulu Santos...</div>
+                `;
+
+                // Login como admin
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                    email: 'riltons@gmail.com',
+                    password: '000000'
+                });
+
+                if (authError) {
+                    throw new Error(`Erro no login: ${authError.message}`);
+                }
+
+                const empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e';
+
+                // Buscar Lulu Santos na tabela employees
+                const { data: luluEmployee, error: employeeError } = await supabase
+                    .from('employees')
+                    .select('*')
+                    .ilike('name', '%lulu%')
+                    .eq('empresa_id', empresaId)
+                    .maybeSingle();
+
+                if (employeeError) {
+                    throw new Error(`Erro ao buscar employee: ${employeeError.message}`);
+                }
+
+                let html = '';
+
+                if (!luluEmployee) {
+                    html += `<div class="error">❌ Lulu Santos não encontrado na tabela employees</div>`;
+                } else {
+                    html += `
+                        <div class="success">✅ Lulu Santos encontrado!</div>
+                        <h3>📋 Dados do Employee:</h3>
+                        <pre>${JSON.stringify(luluEmployee, null, 2)}</pre>
+                    `;
+
+                    // Verificar se tem auth_user_id
+                    if (luluEmployee.auth_user_id) {
+                        html += `<div class="success">✅ Tem auth_user_id: ${luluEmployee.auth_user_id}</div>`;
+                        
+                        // Verificar se existe na tabela usuarios_empresa
+                        const { data: usuarioEmpresa, error: usuarioError } = await supabase
+                            .from('usuarios_empresa')
+                            .select('*')
+                            .eq('user_id', luluEmployee.auth_user_id)
+                            .eq('empresa_id', empresaId)
+                            .maybeSingle();
+
+                        if (usuarioEmpresa) {
+                            html += `
+                                <div class="success">✅ Existe na tabela usuarios_empresa</div>
+                                <h3>👤 Dados do Usuario Empresa:</h3>
+                                <pre>${JSON.stringify(usuarioEmpresa, null, 2)}</pre>
+                            `;
+
+                            // Verificar permissões
+                            const { data: permissoes, error: permError } = await supabase
+                                .from('permissoes_usuario')
+                                .select('*')
+                                .eq('usuario_empresa_id', usuarioEmpresa.id);
+
+                            if (permissoes && permissoes.length > 0) {
+                                html += `
+                                    <div class="success">✅ Tem ${permissoes.length} permissões específicas</div>
+                                    <h3>🔑 Permissões:</h3>
+                                    <pre>${JSON.stringify(permissoes, null, 2)}</pre>
+                                `;
+                            } else {
+                                html += `<div class="info">ℹ️ Não tem permissões específicas (usa padrões do role)</div>`;
+                            }
+                        } else {
+                            html += `<div class="error">❌ NÃO existe na tabela usuarios_empresa</div>`;
+                        }
+                    } else {
+                        html += `
+                            <div class="error">❌ NÃO tem auth_user_id</div>
+                            <div class="info">
+                                <strong>Isso significa:</strong><br>
+                                - Lulu Santos é apenas um funcionário básico<br>
+                                - Não tem credenciais de acesso ao sistema<br>
+                                - Não pode ter permissões específicas<br>
+                                - Precisa criar credenciais primeiro
+                            </div>
+                        `;
+                    }
+
+                    // Verificar se tem email para criar credenciais
+                    if (luluEmployee.email) {
+                        html += `
+                            <div class="success">✅ Tem email: ${luluEmployee.email}</div>
+                            <div class="info">
+                                <strong>Pode criar credenciais:</strong><br>
+                                1. Clique no botão 🏷️ "Criar credenciais"<br>
+                                2. Configure as permissões desejadas<br>
+                                3. Depois pode usar o botão ⚙️ "Gerenciar permissões"
+                            </div>
+                        `;
+                    } else {
+                        html += `
+                            <div class="error">❌ NÃO tem email cadastrado</div>
+                            <div class="info">
+                                <strong>Precisa:</strong><br>
+                                1. Editar o funcionário e adicionar email<br>
+                                2. Depois criar credenciais
+                            </div>
+                        `;
+                    }
+                }
+
+                document.getElementById('resultado').innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('resultado').innerHTML = `
+                    <div class="error">❌ Erro: ${error.message}</div>
+                `;
+                console.error('❌ Erro:', error);
+            }
+        }
+    </script>
+</body>
+</html>
