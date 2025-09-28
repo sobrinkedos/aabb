@@ -11,7 +11,8 @@ import {
   LogOut,
   Zap,
   Coffee,
-  DollarSign
+  DollarSign,
+  Database
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContextSimple';
 import { motion } from 'framer-motion';
@@ -51,6 +52,7 @@ const Sidebar: React.FC = () => {
     { name: 'Estoque', icon: Package, path: '/inventory', module: 'funcionarios' as const }, // Estoque é gerenciado por funcionários
     { name: 'Sócios', icon: Users, path: '/members', module: 'clientes' as const }, // Sócios são um tipo de cliente
     { name: 'Configurações', icon: Settings, path: '/settings', module: 'configuracoes' as const },
+    { name: 'Ambiente', icon: Database, path: '/environment', module: 'configuracoes' as const },
   ];
 
   // Filtrar itens de menu baseado nas permissões

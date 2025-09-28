@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Sistema de Monitoramento Contínuo - Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .metric-card {
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 5px solid #667eea;
+            transition: all 0.3s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .metric-card.success { border-left-color: #10b981; background: #f0fdf4; }
+        .metric-card.warning { border-left-color: #f59e0b; background: #fffbeb; }
+        .metric-card.error { border-left-color: #ef4444; background: #fef2f2; }
+        
+        .metric-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #374151;
+        }
+        
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        
+        .metric-description {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 15px;
+        }
+        
+        .metric-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-ok { background: #d1fae5; color: #065f46; }
+        .status-warning { background: #fef3c7; color: #92400e; }
+        .status-error { background: #fee2e2; color: #991b1b; }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover { background: #5a67d8; transform: translateY(-2px); }
+        .btn.auto { background: #10b981; }
+        .btn.auto:hover { background: #059669; }
+        
+        .log-container {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .alert-section {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .alert-title {
+            color: #991b1b;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .alert-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .alert-item {
+            background: white;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid #ef4444;
+        }
+        
+        .performance-section {
+            background: #fffbeb;
+            border: 1px solid #fed7aa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .performance-title {
+            color: #92400e;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .auto-monitor {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            z-index: 1000;
+        }
+        
+        .auto-monitor.active {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+            50% { box-shadow: 0 4px 20px rgba(16, 185, 129, 0.6); }
+            100% { box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #10b981;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-fill.warning { background: #f59e0b; }
+        .progress-fill.error { background: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="auto-monitor" id="autoMonitor">
+        🔍 Monitoramento Automático: Parado
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Sistema de Monitoramento Contínuo</h1>
+            <p>Dashboard em tempo real para monitorar saúde, performance e segurança do sistema</p>
+        </div>
+
+        <!-- Controles -->
+        <div style="text-align: center; margin-bottom: 30px;">
+            <button class="btn" onclick="executarVerificacaoCompleta()">🔍 Verificação Completa</button>
+            <button class="btn auto" onclick="toggleMonitoramentoAutomatico()" id="autoBtn">🚀 Iniciar Monitoramento Auto</button>
+            <button class="btn" onclick="gerarRelatorio()">📊 Gerar Relatório</button>
+            <button class="btn" onclick="limparLogs()">🧹 Limpar Logs</button>
+        </div>
+
+        <!-- Dashboard de Métricas -->
+        <div class="dashboard-grid" id="metricsGrid">
+            <div class="metric-card" id="systemHealth">
+                <div class="metric-title">🏥 Saúde do Sistema</div>
+                <div class="metric-value" id="healthValue">--</div>
+                <div class="metric-description">Status geral dos serviços</div>
+                <span class="metric-status status-ok" id="healthStatus">Verificando...</span>
+            </div>
+
+            <div class="metric-card" id="databaseStatus">
+                <div class="metric-title">🗄️ Database</div>
+                <div class="metric-value" id="dbValue">--</div>
+                <div class="metric-description">Conectividade e performance</div>
+                <span class="metric-status status-ok" id="dbStatus">Verificando...</span>
+            </div>
+
+            <div class="metric-card" id="userStatus">
+                <div class="metric-title">👤 Usuário Super Admin</div>
+                <div class="metric-value" id="userValue">--</div>
+                <div class="metric-description">riltons@gmail.com</div>
+                <span class="metric-status status-ok" id="userStatusSpan">Verificando...</span>
+            </div>
+
+            <div class="metric-card" id="permissionsStatus">
+                <div class="metric-title">🔐 Permissões</div>
+                <div class="metric-value" id="permissionsValue">--</div>
+                <div class="metric-description">Módulos configurados</div>
+                <span class="metric-status status-ok" id="permissionsStatusSpan">Verificando...</span>
+            </div>
+
+            <div class="metric-card" id="securityStatus">
+                <div class="metric-title">🛡️ Segurança</div>
+                <div class="metric-value" id="securityValue">--</div>
+                <div class="metric-description">Alertas de segurança</div>
+                <span class="metric-status status-ok" id="securityStatusSpan">Verificando...</span>
+            </div>
+
+            <div class="metric-card" id="performanceStatus">
+                <div class="metric-title">⚡ Performance</div>
+                <div class="metric-value" id="performanceValue">--</div>
+                <div class="metric-description">Otimizações pendentes</div>
+                <span class="metric-status status-ok" id="performanceStatusSpan">Verificando...</span>
+            </div>
+        </div>
+
+        <!-- Alertas de Segurança -->
+        <div class="alert-section" id="securityAlerts" style="display: none;">
+            <div class="alert-title">🚨 Alertas de Segurança</div>
+            <ul class="alert-list" id="securityAlertsList"></ul>
+        </div>
+
+        <!-- Recomendações de Performance -->
+        <div class="performance-section" id="performanceRecommendations" style="display: none;">
+            <div class="performance-title">⚡ Recomendações de Performance</div>
+            <ul class="alert-list" id="performanceList"></ul>
+        </div>
+
+        <!-- Gráfico de Saúde -->
+        <div class="chart-container">
+            <h3>📈 Histórico de Saúde do Sistema</h3>
+            <div id="healthChart">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0;">
+                    <span>Saúde Geral</span>
+                    <span id="healthPercentage">100%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="healthProgress" style="width: 100%"></div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0;">
+                    <span>Performance</span>
+                    <span id="performancePercentage">85%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill warning" id="performanceProgress" style="width: 85%"></div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0;">
+                    <span>Segurança</span>
+                    <span id="securityPercentage">90%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="securityProgress" style="width: 90%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="log-container" id="monitoringLogs">
+            Sistema de monitoramento inicializado...
+            Aguardando primeira verificação...
+        </div>
+    </div>
+
+    <script>
+        // Configurações do Supabase
+        const SUPABASE_URL = 'https://jtfdzjmravketpkwjkvp.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0ZmR6am1yYXZrZXRwa3dqa3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNjM1NjIsImV4cCI6MjA3MzkzOTU2Mn0.AOFSlSLFVw-pU1-lpUzxJ2fov3kR95eBlz_92mtSMgs';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        let monitoringInterval = null;
+        let isAutoMonitoring = false;
+        let systemMetrics = {
+            health: 100,
+            database: 100,
+            user: 100,
+            permissions: 100,
+            security: 90,
+            performance: 85
+        };
+
+        // Inicialização
+        window.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Sistema de monitoramento inicializado');
+            log('📊 Carregando métricas iniciais...');
+            executarVerificacaoCompleta();
+        });
+
+        async function executarVerificacaoCompleta() {
+            log('🔍 Iniciando verificação completa do sistema...');
+            
+            try {
+                // Verificar saúde geral
+                await verificarSaudeGeral();
+                
+                // Verificar database
+                await verificarDatabase();
+                
+                // Verificar usuário super admin
+                await verificarUsuarioSuperAdmin();
+                
+                // Verificar permissões
+                await verificarPermissoes();
+                
+                // Verificar segurança
+                await verificarSeguranca();
+                
+                // Verificar performance
+                await verificarPerformance();
+                
+                // Atualizar dashboard
+                atualizarDashboard();
+                
+                log('✅ Verificação completa finalizada');
+                
+            } catch (error) {
+                log('❌ Erro na verificação completa: ' + error.message);
+            }
+        }
+
+        async function verificarSaudeGeral() {
+            log('🏥 Verificando saúde geral do sistema...');
+            
+            try {
+                const response = await fetch(SUPABASE_URL + '/rest/v1/', {
+                    method: 'HEAD',
+                    headers: { 'apikey': SUPABASE_ANON_KEY }
+                });
+                
+                if (response.ok) {
+                    systemMetrics.health = 100;
+                    updateMetricCard('systemHealth', '100%', 'Todos os serviços operacionais', 'success', 'Excelente');
+                    log('✅ Saúde geral: Excelente');
+                } else {
+                    systemMetrics.health = 50;
+                    updateMetricCard('systemHealth', '50%', 'Alguns serviços com problemas', 'warning', 'Atenção');
+                    log('⚠️ Saúde geral: Problemas detectados');
+                }
+            } catch (error) {
+                systemMetrics.health = 0;
+                updateMetricCard('systemHealth', '0%', 'Serviços inacessíveis', 'error', 'Crítico');
+                log('❌ Saúde geral: Crítico - ' + error.message);
+            }
+        }
+
+        async function verificarDatabase() {
+            log('🗄️ Verificando conectividade do database...');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) {
+                    systemMetrics.database = 30;
+                    updateMetricCard('databaseStatus', '30%', 'Problemas de conectividade', 'error', 'Erro');
+                    log('❌ Database: Erro de conectividade - ' + error.message);
+                } else {
+                    systemMetrics.database = 100;
+                    updateMetricCard('databaseStatus', '100%', 'Conectividade perfeita', 'success', 'Online');
+                    log('✅ Database: Online e responsivo');
+                }
+            } catch (error) {
+                systemMetrics.database = 0;
+                updateMetricCard('databaseStatus', '0%', 'Database inacessível', 'error', 'Offline');
+                log('❌ Database: Offline - ' + error.message);
+            }
+        }
+
+        async function verificarUsuarioSuperAdmin() {
+            log('👤 Verificando usuário super admin...');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('usuarios_empresa')
+                    .select('nome_completo, papel, status, tem_acesso_sistema')
+                    .eq('email', 'riltons@gmail.com')
+                    .single();
+                
+                if (error) {
+                    systemMetrics.user = 0;
+                    updateMetricCard('userStatus', '0%', 'Usuário não encontrado', 'error', 'Erro');
+                    log('❌ Super Admin: Usuário não encontrado - ' + error.message);
+                } else if (data.papel === 'SUPER_ADMIN' && data.status === 'ativo' && data.tem_acesso_sistema) {
+                    systemMetrics.user = 100;
+                    updateMetricCard('userStatus', '100%', 'Super Admin ativo', 'success', 'Ativo');
+                    log('✅ Super Admin: ' + data.nome_completo + ' - Status ativo');
+                } else {
+                    systemMetrics.user = 50;
+                    updateMetricCard('userStatus', '50%', 'Configuração incompleta', 'warning', 'Atenção');
+                    log('⚠️ Super Admin: Configuração incompleta');
+                }
+            } catch (error) {
+                systemMetrics.user = 0;
+                updateMetricCard('userStatus', '0%', 'Erro na verificação', 'error', 'Erro');
+                log('❌ Super Admin: Erro na verificação - ' + error.message);
+            }
+        }
+
+        async function verificarPermissoes() {
+            log('🔐 Verificando permissões do sistema...');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('permissoes_usuario')
+                    .select('modulo')
+                    .eq('usuario_empresa_id', 'd0a26d69-f8c5-425d-a4fe-a31eec73ae23');
+                
+                if (error) {
+                    systemMetrics.permissions = 0;
+                    updateMetricCard('permissionsStatus', '0', 'Erro ao carregar permissões', 'error', 'Erro');
+                    log('❌ Permissões: Erro ao carregar - ' + error.message);
+                } else {
+                    const totalModulos = data.length;
+                    systemMetrics.permissions = totalModulos >= 10 ? 100 : (totalModulos / 10) * 100;
+                    updateMetricCard('permissionsStatus', totalModulos.toString(), totalModulos + ' módulos configurados', 'success', 'Completo');
+                    log('✅ Permissões: ' + totalModulos + ' módulos configurados');
+                }
+            } catch (error) {
+                systemMetrics.permissions = 0;
+                updateMetricCard('permissionsStatus', '0', 'Erro na verificação', 'error', 'Erro');
+                log('❌ Permissões: Erro na verificação - ' + error.message);
+            }
+        }
+
+        async function verificarSeguranca() {
+            log('🛡️ Verificando alertas de segurança...');
+            
+            // Simular verificação de segurança (em produção, isso seria uma chamada real à API)
+            const alertasSeguranca = [
+                'Proteção de senha vazada desabilitada',
+                'Múltiplas políticas RLS podem impactar performance'
+            ];
+            
+            if (alertasSeguranca.length > 0) {
+                systemMetrics.security = 90;
+                updateMetricCard('securityStatus', alertasSeguranca.length.toString(), alertasSeguranca.length + ' alertas encontrados', 'warning', 'Atenção');
+                
+                // Mostrar alertas
+                const alertsSection = document.getElementById('securityAlerts');
+                const alertsList = document.getElementById('securityAlertsList');
+                alertsList.innerHTML = '';
+                
+                alertasSeguranca.forEach(alerta => {
+                    const li = document.createElement('li');
+                    li.className = 'alert-item';
+                    li.textContent = alerta;
+                    alertsList.appendChild(li);
+                });
+                
+                alertsSection.style.display = 'block';
+                log('⚠️ Segurança: ' + alertasSeguranca.length + ' alertas encontrados');
+            } else {
+                systemMetrics.security = 100;
+                updateMetricCard('securityStatus', '0', 'Nenhum alerta de segurança', 'success', 'Seguro');
+                document.getElementById('securityAlerts').style.display = 'none';
+                log('✅ Segurança: Nenhum alerta encontrado');
+            }
+        }
+
+        async function verificarPerformance() {
+            log('⚡ Verificando recomendações de performance...');
+            
+            // Simular verificação de performance
+            const recomendacoes = [
+                'Adicionar índices em chaves estrangeiras não indexadas',
+                'Otimizar políticas RLS para melhor performance',
+                'Considerar consolidação de políticas múltiplas'
+            ];
+            
+            if (recomendacoes.length > 0) {
+                systemMetrics.performance = 85;
+                updateMetricCard('performanceStatus', recomendacoes.length.toString(), recomendacoes.length + ' otimizações pendentes', 'warning', 'Otimizar');
+                
+                // Mostrar recomendações
+                const perfSection = document.getElementById('performanceRecommendations');
+                const perfList = document.getElementById('performanceList');
+                perfList.innerHTML = '';
+                
+                recomendacoes.forEach(rec => {
+                    const li = document.createElement('li');
+                    li.className = 'alert-item';
+                    li.style.borderLeftColor = '#f59e0b';
+                    li.textContent = rec;
+                    perfList.appendChild(li);
+                });
+                
+                perfSection.style.display = 'block';
+                log('⚡ Performance: ' + recomendacoes.length + ' otimizações recomendadas');
+            } else {
+                systemMetrics.performance = 100;
+                updateMetricCard('performanceStatus', '0', 'Sistema otimizado', 'success', 'Ótimo');
+                document.getElementById('performanceRecommendations').style.display = 'none';
+                log('✅ Performance: Sistema otimizado');
+            }
+        }
+
+        function updateMetricCard(cardId, value, description, type, status) {
+            const card = document.getElementById(cardId);
+            const valueEl = card.querySelector('.metric-value');
+            const descEl = card.querySelector('.metric-description');
+            const statusEl = card.querySelector('.metric-status');
+            
+            valueEl.textContent = value;
+            descEl.textContent = description;
+            statusEl.textContent = status;
+            
+            // Atualizar classes
+            card.className = 'metric-card ' + type;
+            statusEl.className = 'metric-status status-' + (type === 'success' ? 'ok' : type);
+        }
+
+        function atualizarDashboard() {
+            // Atualizar barras de progresso
+            const healthPercent = Math.round((systemMetrics.health + systemMetrics.database + systemMetrics.user + systemMetrics.permissions) / 4);
+            const securityPercent = systemMetrics.security;
+            const performancePercent = systemMetrics.performance;
+            
+            document.getElementById('healthPercentage').textContent = healthPercent + '%';
+            document.getElementById('healthProgress').style.width = healthPercent + '%';
+            document.getElementById('healthProgress').className = 'progress-fill ' + (healthPercent >= 90 ? '' : healthPercent >= 70 ? 'warning' : 'error');
+            
+            document.getElementById('securityPercentage').textContent = securityPercent + '%';
+            document.getElementById('securityProgress').style.width = securityPercent + '%';
+            document.getElementById('securityProgress').className = 'progress-fill ' + (securityPercent >= 95 ? '' : 'warning');
+            
+            document.getElementById('performancePercentage').textContent = performancePercent + '%';
+            document.getElementById('performanceProgress').style.width = performancePercent + '%';
+            document.getElementById('performanceProgress').className = 'progress-fill ' + (performancePercent >= 95 ? '' : 'warning');
+        }
+
+        function toggleMonitoramentoAutomatico() {
+            const btn = document.getElementById('autoBtn');
+            const monitor = document.getElementById('autoMonitor');
+            
+            if (isAutoMonitoring) {
+                // Parar monitoramento
+                clearInterval(monitoringInterval);
+                isAutoMonitoring = false;
+                btn.textContent = '🚀 Iniciar Monitoramento Auto';
+                btn.className = 'btn auto';
+                monitor.textContent = '🔍 Monitoramento Automático: Parado';
+                monitor.className = 'auto-monitor';
+                log('⏹️ Monitoramento automático parado');
+            } else {
+                // Iniciar monitoramento
+                isAutoMonitoring = true;
+                btn.textContent = '⏹️ Parar Monitoramento Auto';
+                btn.className = 'btn';
+                monitor.textContent = '🔍 Monitoramento Automático: Ativo';
+                monitor.className = 'auto-monitor active';
+                
+                // Executar verificação a cada 30 segundos
+                monitoringInterval = setInterval(executarVerificacaoCompleta, 30000);
+                log('🚀 Monitoramento automático iniciado (30s)');
+            }
+        }
+
+        function gerarRelatorio() {
+            log('📊 Gerando relatório do sistema...');
+            
+            const relatorio = {
+                timestamp: new Date().toISOString(),
+                metricas: systemMetrics,
+                resumo: {
+                    saudeGeral: Math.round((systemMetrics.health + systemMetrics.database + systemMetrics.user + systemMetrics.permissions) / 4),
+                    seguranca: systemMetrics.security,
+                    performance: systemMetrics.performance
+                }
+            };
+            
+            // Criar e baixar arquivo JSON
+            const blob = new Blob([JSON.stringify(relatorio, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'relatorio-sistema-' + new Date().toISOString().split('T')[0] + '.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            log('✅ Relatório gerado e baixado');
+        }
+
+        function limparLogs() {
+            document.getElementById('monitoringLogs').textContent = 'Logs limpos...\n';
+            log('🧹 Logs limpos pelo usuário');
+        }
+
+        function log(message) {
+            const logs = document.getElementById('monitoringLogs');
+            const timestamp = new Date().toLocaleTimeString();
+            logs.textContent += '[' + timestamp + '] ' + message + '\n';
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        // Auto-executar verificação inicial após 2 segundos
+        setTimeout(() => {
+            if (!isAutoMonitoring) {
+                executarVerificacaoCompleta();
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

@@ -4,6 +4,8 @@ import { User, AuthContextType } from '../types/auth';
 import { AUTH_CONFIG } from '../config/auth';
 import { Session } from '@supabase/supabase-js';
 import AuthLoader from '../components/Auth/AuthLoader';
+import { mockAuth, MockUser } from '../services/mockAuth';
+import { useEnvironmentContext } from './EnvironmentContext';
 
 // Versão simplificada do AuthContext para resolver problemas de carregamento
 interface SimpleAuthContextType extends AuthContextType {
@@ -89,23 +91,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (email: string, password: string) => {
-    if (!isSupabaseConfigured) {
-      // Modo demo
-      if (email === AUTH_CONFIG.DEMO_USER.email && password === 'demo123456') {
-        const mockUser: User = {
-          id: 'demo-user-id',
-          name: AUTH_CONFIG.DEMO_USER.name,
-          email: AUTH_CONFIG.DEMO_USER.email,
-          role: AUTH_CONFIG.DEMO_USER.role,
-          avatar: 'https://api.dicebear.com/8.x/initials/svg?seed=Demo'
-        };
-        setUser(mockUser);
-        return { success: true, error: null };
-      } else {
-        return { success: false, error: 'Credenciais inválidas para modo demo' };
+    // Verifica se deve usar sistema mock
+    const configured = await isSupabaseConfigured();
+    const shouldUseMock = !configured;
+
+    if (shouldUseMock) {
+      console.log('🎭 Usando sistema de autenticação mock');
+      
+      try {
+        const { user: mockUser, error } = await mockAuth.signInWithPassword(email, password);
+        
+        if (error) {
+          return { success: false, error: error.message };
+        }
+
+        if (mockUser) {
+          const appUser: User = {
+            id: mockUser.id,
+            name: mockUser.name,
+            email: mockUser.email,
+            role: mockUser.role,
+            department: mockUser.department,
+            avatar: mockUser.avatar
+          };
+          setUser(appUser);
+          return { success: true, error: null };
+        }
+      } catch (error) {
+        return { success: false, error: 'Erro no sistema de autenticação mock' };
       }
     }
 
+    // Se chegou aqui, deve usar Supabase real
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -299,9 +316,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = async () => {
-    if (isSupabaseConfigured) {
+    const configured = await isSupabaseConfigured();
+    const shouldUseMock = !configured;
+
+    if (shouldUseMock) {
+      console.log('🎭 Logout do sistema mock');
+      await mockAuth.signOut();
+    } else {
       await supabase.auth.signOut();
     }
+    
     setUser(null);
   };
 

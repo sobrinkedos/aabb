@@ -28,6 +28,8 @@ import TestNewModal from './components/debug/TestNewModal';
 import { ConfiguracoesEmpresaSimples } from './pages/Auth/ConfiguracoesEmpresaSimples';
 import FuncionariosPage from './pages/Admin/FuncionariosPage';
 import { TestTableDisplay } from './examples';
+import { EnvironmentProvider } from './contexts/EnvironmentContext';
+import EnvironmentSettings from './components/Environment/EnvironmentSettings';
 import './utils/debug-transactions';
 
 
@@ -78,8 +80,9 @@ const RegisterPageWrapper: React.FC = () => {
 function App() {
   return (
     <ErrorBoundaryOptimized>
-      <Router>
-        <AuthProvider>
+      <EnvironmentProvider>
+        <Router>
+          <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginPageWrapper />} />
             <Route path="/register" element={<RegisterPageWrapper />} />
@@ -170,6 +173,13 @@ function App() {
                 </PermissionProtectedRoute>
               } />
               
+              {/* Configurações de Ambiente */}
+              <Route path="environment" element={
+                <PermissionProtectedRoute module="configuracoes">
+                  <EnvironmentSettings />
+                </PermissionProtectedRoute>
+              } />
+              
               {/* Rotas de desenvolvimento */}
               <Route path="test-modal" element={
                 <PermissionProtectedRoute module="configuracoes">
@@ -188,6 +198,7 @@ function App() {
           </Routes>
         </AuthProvider>
       </Router>
+      </EnvironmentProvider>
     </ErrorBoundaryOptimized>
   );
 }

@@ -1,16 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContextSimple';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Lock, Mail, Zap, Users } from 'lucide-react';
 import { AuthErrorDisplay } from './AuthErrorDisplay';
+import MockCredentialsHelper from './MockCredentialsHelper';
+import { isSupabaseConfigured } from '../../lib/supabase';
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [showMockHelper, setShowMockHelper] = useState(false);
   const { login, loginAsDemo, isLoading } = useAuth();
+
+  // Verifica se deve mostrar o helper de credenciais mock
+  useEffect(() => {
+    const checkMockMode = async () => {
+      const configured = await isSupabaseConfigured();
+      setShowMockHelper(!configured);
+    };
+    checkMockMode();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +74,16 @@ const LoginForm: React.FC = () => {
           <Zap className="w-5 h-5" />
           <span>🚀 Entrar como Demo</span>
         </motion.button>
+
+        {/* Mock Credentials Helper */}
+        {showMockHelper && (
+          <MockCredentialsHelper 
+            onCredentialSelect={(email, password) => {
+              setEmail(email);
+              setPassword(password);
+            }}
+          />
+        )}
 
         <div className="relative mb-6">
           <div className="absolute inset-0 flex items-center">

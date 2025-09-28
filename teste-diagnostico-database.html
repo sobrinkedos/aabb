@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Diagnóstico Database - Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+            background: #f8f9ff;
+        }
+        .success { border-left-color: #10b981; background: #f0fdf4; }
+        .error { border-left-color: #ef4444; background: #fef2f2; }
+        .warning { border-left-color: #f59e0b; background: #fffbeb; }
+        .info { border-left-color: #3b82f6; background: #eff6ff; }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover { background: #5a67d8; transform: translateY(-2px); }
+        .btn:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
+        
+        .result {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .status-card {
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #e5e7eb;
+        }
+        
+        .status-ok { border-color: #10b981; background: #f0fdf4; }
+        .status-error { border-color: #ef4444; background: #fef2f2; }
+        .status-warning { border-color: #f59e0b; background: #fffbeb; }
+        
+        .config-display {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .config-item:last-child { border-bottom: none; }
+        
+        .config-label {
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .config-value {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #6b7280;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .hidden-key {
+            color: #9ca3af;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Diagnóstico Database - Supabase</h1>
+            <p>Ferramenta para diagnosticar problemas de conectividade com o banco de dados</p>
+        </div>
+
+        <!-- Configurações Atuais -->
+        <div class="test-section info">
+            <h3>📋 Configurações Atuais</h3>
+            <div class="config-display" id="configDisplay">
+                <div class="config-item">
+                    <span class="config-label">URL do Projeto:</span>
+                    <span class="config-value" id="urlDisplay">Carregando...</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Anon Key:</span>
+                    <span class="config-value hidden-key" id="anonKeyDisplay">Carregando...</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Service Key:</span>
+                    <span class="config-value hidden-key" id="serviceKeyDisplay">Carregando...</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Ambiente:</span>
+                    <span class="config-value" id="environmentDisplay">Carregando...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status dos Serviços -->
+        <div class="test-section">
+            <h3>🔍 Status dos Serviços</h3>
+            <div class="status-grid" id="statusGrid">
+                <div class="status-card" id="urlStatus">
+                    <h4>🌐 URL do Projeto</h4>
+                    <p id="urlStatusText">Verificando...</p>
+                </div>
+                <div class="status-card" id="authStatus">
+                    <h4>🔐 Autenticação</h4>
+                    <p id="authStatusText">Verificando...</p>
+                </div>
+                <div class="status-card" id="dbStatus">
+                    <h4>🗄️ Database</h4>
+                    <p id="dbStatusText">Verificando...</p>
+                </div>
+                <div class="status-card" id="rlsStatus">
+                    <h4>🛡️ RLS Policies</h4>
+                    <p id="rlsStatusText">Verificando...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Testes de Conectividade -->
+        <div class="test-section">
+            <h3>🧪 Testes de Conectividade</h3>
+            <button class="btn" onclick="testarConectividadeBasica()">🔌 Teste Básico</button>
+            <button class="btn" onclick="testarAutenticacao()">🔐 Teste Auth</button>
+            <button class="btn" onclick="testarDatabase()">🗄️ Teste Database</button>
+            <button class="btn" onclick="testarUsuarioRiltons()">👤 Teste Usuário Riltons</button>
+            <button class="btn" onclick="executarDiagnosticoCompleto()">🔍 Diagnóstico Completo</button>
+            
+            <div class="result" id="testResults"></div>
+        </div>
+
+        <!-- Soluções Sugeridas -->
+        <div class="test-section warning" id="solutionsSection" style="display: none;">
+            <h3>💡 Soluções Sugeridas</h3>
+            <div id="suggestedSolutions"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configurações do Supabase
+        const SUPABASE_URL = 'https://jtfdzjmravketpkwjkvp.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0ZmR6am1yYXZrZXRwa3dqa3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNjM1NjIsImV4cCI6MjA3MzkzOTU2Mn0.AOFSlSLFVw-pU1-lpUzxJ2fov3kR95eBlz_92mtSMgs';
+        
+        // Inicializar cliente Supabase
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        let diagnosticResults = {
+            url: null,
+            auth: null,
+            database: null,
+            rls: null,
+            user: null
+        };
+
+        // Carregar configurações na inicialização
+        window.addEventListener('DOMContentLoaded', function() {
+            carregarConfiguracoes();
+            verificarStatusInicial();
+        });
+
+        function carregarConfiguracoes() {
+            document.getElementById('urlDisplay').textContent = SUPABASE_URL;
+            document.getElementById('anonKeyDisplay').textContent = SUPABASE_ANON_KEY.substring(0, 20) + '...';
+            document.getElementById('serviceKeyDisplay').textContent = 'Não disponível no frontend';
+            document.getElementById('environmentDisplay').textContent = 'PRODUÇÃO';
+        }
+
+        async function verificarStatusInicial() {
+            await Promise.all([
+                verificarURL(),
+                verificarAuth(),
+                verificarDatabase(),
+                verificarRLS()
+            ]);
+        }
+
+        async function verificarURL() {
+            try {
+                const response = await fetch(SUPABASE_URL + '/rest/v1/', {
+                    method: 'HEAD',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY
+                    }
+                });
+                
+                if (response.ok) {
+                    updateStatus('urlStatus', 'ok', '✅ URL Acessível');
+                    diagnosticResults.url = true;
+                } else {
+                    updateStatus('urlStatus', 'error', '❌ URL Inacessível');
+                    diagnosticResults.url = false;
+                }
+            } catch (error) {
+                updateStatus('urlStatus', 'error', '❌ Erro de Rede');
+                diagnosticResults.url = false;
+            }
+        }
+
+        async function verificarAuth() {
+            try {
+                const { data, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    updateStatus('authStatus', 'warning', '⚠️ Não Autenticado');
+                    diagnosticResults.auth = false;
+                } else {
+                    updateStatus('authStatus', 'ok', '✅ Auth Funcionando');
+                    diagnosticResults.auth = true;
+                }
+            } catch (error) {
+                updateStatus('authStatus', 'error', '❌ Erro Auth');
+                diagnosticResults.auth = false;
+            }
+        }
+
+        async function verificarDatabase() {
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) {
+                    updateStatus('dbStatus', 'error', '❌ DB Inacessível');
+                    diagnosticResults.database = false;
+                    log('❌ Erro Database: ' + error.message);
+                } else {
+                    updateStatus('dbStatus', 'ok', '✅ DB Conectado');
+                    diagnosticResults.database = true;
+                }
+            } catch (error) {
+                updateStatus('dbStatus', 'error', '❌ Erro DB');
+                diagnosticResults.database = false;
+            }
+        }
+
+        async function verificarRLS() {
+            try {
+                const { data, error } = await supabase
+                    .from('usuarios_empresa')
+                    .select('id')
+                    .limit(1);
+                
+                if (error) {
+                    if (error.message.includes('RLS') || error.message.includes('policy')) {
+                        updateStatus('rlsStatus', 'warning', '⚠️ RLS Restritivo');
+                        diagnosticResults.rls = 'restrictive';
+                    } else {
+                        updateStatus('rlsStatus', 'error', '❌ RLS Erro');
+                        diagnosticResults.rls = false;
+                    }
+                } else {
+                    updateStatus('rlsStatus', 'ok', '✅ RLS OK');
+                    diagnosticResults.rls = true;
+                }
+            } catch (error) {
+                updateStatus('rlsStatus', 'error', '❌ RLS Erro');
+                diagnosticResults.rls = false;
+            }
+        }
+
+        function updateStatus(elementId, status, text) {
+            const element = document.getElementById(elementId);
+            element.className = 'status-card status-' + status;
+            element.querySelector('p').textContent = text;
+        }
+
+        async function testarConectividadeBasica() {
+            log('🔌 Iniciando teste de conectividade básica...');
+            
+            try {
+                // Teste 1: Ping básico
+                log('📡 Testando ping para o servidor...');
+                const startTime = Date.now();
+                const response = await fetch(SUPABASE_URL + '/rest/v1/', {
+                    method: 'HEAD',
+                    headers: { 'apikey': SUPABASE_ANON_KEY }
+                });
+                const endTime = Date.now();
+                
+                if (response.ok) {
+                    log('✅ Servidor respondeu em ' + (endTime - startTime) + 'ms');
+                    log('📋 Status: ' + response.status + ' ' + response.statusText);
+                    log('🔑 Headers recebidos: ' + JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+                } else {
+                    log('❌ Servidor retornou erro: ' + response.status + ' ' + response.statusText);
+                }
+                
+                // Teste 2: Verificar chave API
+                log('🔐 Testando chave API...');
+                const { data: authData, error: authError } = await supabase.auth.getSession();
+                
+                if (authError) {
+                    log('⚠️ Auth não inicializado: ' + authError.message);
+                } else {
+                    log('✅ Cliente Supabase inicializado corretamente');
+                }
+                
+            } catch (error) {
+                log('❌ Erro na conectividade básica: ' + error.message);
+            }
+        }
+
+        async function testarAutenticacao() {
+            log('🔐 Iniciando teste de autenticação...');
+            
+            try {
+                // Teste 1: Verificar sessão atual
+                log('👤 Verificando sessão atual...');
+                const { data: session, error: sessionError } = await supabase.auth.getSession();
+                
+                if (sessionError) {
+                    log('❌ Erro ao obter sessão: ' + sessionError.message);
+                } else if (session.session) {
+                    log('✅ Usuário autenticado: ' + session.session.user.email);
+                    log('🔑 Token válido até: ' + new Date(session.session.expires_at * 1000));
+                } else {
+                    log('⚠️ Nenhum usuário autenticado');
+                }
+                
+                // Teste 2: Verificar usuário atual
+                log('👤 Verificando usuário atual...');
+                const { data: user, error: userError } = await supabase.auth.getUser();
+                
+                if (userError) {
+                    log('❌ Erro ao obter usuário: ' + userError.message);
+                } else if (user.user) {
+                    log('✅ Usuário encontrado: ' + user.user.email);
+                    log('📋 ID: ' + user.user.id);
+                    log('📅 Criado em: ' + user.user.created_at);
+                } else {
+                    log('⚠️ Nenhum usuário encontrado');
+                }
+                
+            } catch (error) {
+                log('❌ Erro no teste de autenticação: ' + error.message);
+            }
+        }
+
+        async function testarDatabase() {
+            log('🗄️ Iniciando teste de database...');
+            
+            try {
+                // Teste 1: Query simples
+                log('📊 Executando query simples...');
+                const { data: simpleData, error: simpleError } = await supabase
+                    .from('profiles')
+                    .select('count')
+                    .limit(1);
+                
+                if (simpleError) {
+                    log('❌ Erro na query simples: ' + simpleError.message);
+                    log('🔍 Detalhes: ' + JSON.stringify(simpleError, null, 2));
+                } else {
+                    log('✅ Query simples executada com sucesso');
+                }
+                
+                // Teste 2: Verificar tabelas principais
+                log('📋 Verificando tabelas principais...');
+                const tabelas = ['profiles', 'usuarios_empresa', 'empresas', 'permissoes_usuario'];
+                
+                for (const tabela of tabelas) {
+                    try {
+                        const { data, error } = await supabase
+                            .from(tabela)
+                            .select('*')
+                            .limit(1);
+                        
+                        if (error) {
+                            log('❌ Tabela ' + tabela + ': ' + error.message);
+                        } else {
+                            log('✅ Tabela ' + tabela + ': Acessível');
+                        }
+                    } catch (err) {
+                        log('❌ Tabela ' + tabela + ': Erro de acesso');
+                    }
+                }
+                
+            } catch (error) {
+                log('❌ Erro no teste de database: ' + error.message);
+            }
+        }
+
+        async function testarUsuarioRiltons() {
+            log('👤 Iniciando teste específico do usuário riltons@gmail.com...');
+            
+            try {
+                // Teste 1: Verificar na tabela profiles
+                log('🔍 Buscando na tabela profiles...');
+                const { data: profileData, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .limit(10);
+                
+                if (profileError) {
+                    log('❌ Erro ao buscar profiles: ' + profileError.message);
+                } else {
+                    log('✅ Profiles encontrados: ' + profileData.length);
+                    const riltonProfile = profileData.find(p => p.name && p.name.toLowerCase().includes('rilton'));
+                    if (riltonProfile) {
+                        log('✅ Profile Rilton encontrado: ' + JSON.stringify(riltonProfile, null, 2));
+                    } else {
+                        log('⚠️ Profile Rilton não encontrado nos primeiros 10 registros');
+                    }
+                }
+                
+                // Teste 2: Verificar na tabela usuarios_empresa
+                log('🔍 Buscando na tabela usuarios_empresa...');
+                const { data: usuarioData, error: usuarioError } = await supabase
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .limit(10);
+                
+                if (usuarioError) {
+                    log('❌ Erro ao buscar usuarios_empresa: ' + usuarioError.message);
+                } else {
+                    log('✅ Usuários empresa encontrados: ' + usuarioData.length);
+                    const riltonUsuario = usuarioData.find(u => u.email === 'riltons@gmail.com');
+                    if (riltonUsuario) {
+                        log('✅ Usuário Rilton encontrado: ' + JSON.stringify(riltonUsuario, null, 2));
+                    } else {
+                        log('⚠️ Usuário riltons@gmail.com não encontrado');
+                    }
+                }
+                
+                // Teste 3: Verificar permissões
+                log('🔍 Verificando permissões...');
+                const { data: permissaoData, error: permissaoError } = await supabase
+                    .from('permissoes_usuario')
+                    .select('*')
+                    .limit(10);
+                
+                if (permissaoError) {
+                    log('❌ Erro ao buscar permissões: ' + permissaoError.message);
+                } else {
+                    log('✅ Permissões encontradas: ' + permissaoData.length);
+                    log('📋 Primeiras permissões: ' + JSON.stringify(permissaoData.slice(0, 3), null, 2));
+                }
+                
+            } catch (error) {
+                log('❌ Erro no teste do usuário Riltons: ' + error.message);
+            }
+        }
+
+        async function executarDiagnosticoCompleto() {
+            log('🔍 Iniciando diagnóstico completo...');
+            log('=' .repeat(50));
+            
+            await testarConectividadeBasica();
+            log('');
+            await testarAutenticacao();
+            log('');
+            await testarDatabase();
+            log('');
+            await testarUsuarioRiltons();
+            log('');
+            
+            // Gerar relatório final
+            log('📊 RELATÓRIO FINAL:');
+            log('=' .repeat(30));
+            log('🌐 URL: ' + (diagnosticResults.url ? '✅ OK' : '❌ FALHA'));
+            log('🔐 Auth: ' + (diagnosticResults.auth ? '✅ OK' : '❌ FALHA'));
+            log('🗄️ Database: ' + (diagnosticResults.database ? '✅ OK' : '❌ FALHA'));
+            log('🛡️ RLS: ' + (diagnosticResults.rls === true ? '✅ OK' : diagnosticResults.rls === 'restrictive' ? '⚠️ RESTRITIVO' : '❌ FALHA'));
+            
+            // Mostrar soluções se houver problemas
+            mostrarSolucoes();
+        }
+
+        function mostrarSolucoes() {
+            const solutions = [];
+            
+            if (!diagnosticResults.url) {
+                solutions.push('🌐 Problema de URL: Verifique se a URL do Supabase está correta e se há conectividade com a internet.');
+            }
+            
+            if (!diagnosticResults.auth) {
+                solutions.push('🔐 Problema de Auth: Verifique se a chave anon está correta. Tente fazer login no sistema.');
+            }
+            
+            if (!diagnosticResults.database) {
+                solutions.push('🗄️ Problema de Database: Verifique as políticas RLS. Pode ser necessário usar service_role key para operações administrativas.');
+            }
+            
+            if (diagnosticResults.rls === 'restrictive') {
+                solutions.push('🛡️ RLS Restritivo: As políticas de segurança estão bloqueando o acesso. Faça login como usuário autenticado ou use service_role key.');
+            }
+            
+            if (solutions.length > 0) {
+                document.getElementById('solutionsSection').style.display = 'block';
+                document.getElementById('suggestedSolutions').innerHTML = solutions.map(s => '<p>• ' + s + '</p>').join('');
+            }
+        }
+
+        function log(message) {
+            const results = document.getElementById('testResults');
+            const timestamp = new Date().toLocaleTimeString();
+            results.textContent += '[' + timestamp + '] ' + message + '\\n';
+            results.scrollTop = results.scrollHeight;
+        }
+    </script>
+</body>
+</html>

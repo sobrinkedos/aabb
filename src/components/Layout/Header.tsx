@@ -1,11 +1,14 @@
 import React from 'react';
-import { Bell, Search } from 'lucide-react';
+import { Bell, Search, Database } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { useEnvironmentContext } from '../../contexts/EnvironmentContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Header: React.FC = () => {
   const { notifications, clearNotifications } = useApp();
+  const { environment, isConnected, config } = useEnvironmentContext();
   const [showNotifications, setShowNotifications] = React.useState(false);
+  const [showEnvironmentInfo, setShowEnvironmentInfo] = React.useState(false);
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
@@ -22,6 +25,55 @@ const Header: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-4">
+          {/* Indicador de Ambiente */}
+          <div className="relative">
+            <button
+              onClick={() => setShowEnvironmentInfo(!showEnvironmentInfo)}
+              className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                environment === 'production' 
+                  ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+              }`}
+            >
+              <Database size={12} />
+              <span>{environment === 'production' ? 'PRODUÇÃO' : 'DESENVOLVIMENTO'}</span>
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+            </button>
+
+            <AnimatePresence>
+              {showEnvironmentInfo && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+                >
+                  <div className="p-4">
+                    <h3 className="font-semibold text-gray-800 mb-2">Informações do Ambiente</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Ambiente:</span>
+                        <span className="font-medium">{environment}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Status:</span>
+                        <span className={`font-medium ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
+                          {isConnected ? 'Conectado' : 'Desconectado'}
+                        </span>
+                      </div>
+                      {config && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Banco:</span>
+                          <span className="font-mono text-xs">{config.databaseName}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           <div className="relative">
             <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
