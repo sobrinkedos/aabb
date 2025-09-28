@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Tag, X } from 'lucide-react';
 import { useProductCategories, ProductCategory } from '../../hooks/useProductCategories';
 
@@ -6,7 +6,7 @@ interface CategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   category?: ProductCategory | null;
-  onSave: () => void;
+  onSave: (formData: any) => Promise<void>;
 }
 
 const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, category, onSave }) => {
@@ -41,13 +41,7 @@ const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, category
     setLoading(true);
 
     try {
-      if (category) {
-        // Atualizar categoria existente - será implementado via props
-        await onSave();
-      } else {
-        // Criar nova categoria - será implementado via props
-        await onSave();
-      }
+      await onSave(formData);
       onClose();
     } catch (error) {
       console.error('Erro ao salvar categoria:', error);
@@ -276,7 +270,7 @@ export const CategoryManager: React.FC = () => {
         isOpen={modalOpen}
         onClose={handleModalClose}
         category={selectedCategory}
-        onSave={() => handleSave}
+        onSave={handleSave}
       />
     </div>
   );
