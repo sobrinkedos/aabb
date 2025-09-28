@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, Settings } from 'lucide-react';
 import { InventoryItem } from '../../types';
 import { useApp } from '../../contexts/AppContext';
+import { CategoryButton } from '../../components/Products';
+import { supabase } from '../../lib/supabase';
 
 interface ItemModalProps {
   isOpen: boolean;
@@ -13,10 +15,43 @@ interface ItemModalProps {
 
 type FormData = Omit<InventoryItem, 'id' | 'lastUpdated' | 'category'>;
 
+interface Category {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  is_active: boolean;
+}
+
 const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
   const { addInventoryItem, updateInventoryItem, inventoryCategories } = useApp();
   const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FormData>();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('product_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadCategories();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (item) {
@@ -103,7 +138,15 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
               </InputField>
 
               {/* Categoria - Largura completa */}
-              <InputField label="Categoria" error={errors.categoryId}>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-semibold text-gray-700">Categoria</label>
+                  <CategoryButton 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs"
+                  />
+                </div>
                 <Controller
                   name="categoryId"
                   control={control}
@@ -112,10 +155,12 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                     <select 
                       {...field} 
                       className="form-select" 
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || loadingCategories}
                     >
-                      <option value="">Selecione uma categoria</option>
-                      {inventoryCategories.map(category => (
+                      <option value="">
+                        {loadingCategories ? 'Carregando categorias...' : 'Selecione uma categoria'}
+                      </option>
+                      {categories.map(category => (
                         <option key={category.id} value={category.id}>
                           {category.name}
                         </option>
@@ -123,7 +168,24 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                     </select>
                   )}
                 />
-              </InputField>
+                {errors.categoryId && (
+                  <p className="text-red-500 text-sm flex items-center space-x-1">
+                    <span className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center">
+                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                    </span>
+                    <span>{errors.categoryId.message}</span>
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={loadCategories}
+                  className="text-xs text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                  disabled={loadingCategories}
+                >
+                  <Settings size={12} />
+                  <span>Atualizar categorias</span>
+                </button>
+              </div>
 
               {/* Estoques - Grid 2 colunas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

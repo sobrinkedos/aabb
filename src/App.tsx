@@ -30,6 +30,7 @@ import FuncionariosPage from './pages/Admin/FuncionariosPage';
 import { TestTableDisplay } from './examples';
 import { EnvironmentProvider } from './contexts/EnvironmentContext';
 import EnvironmentSettings from './components/Environment/EnvironmentSettings';
+import { ProductsPage } from './pages/Products';
 import './utils/debug-transactions';
 
 
@@ -163,6 +164,13 @@ function App() {
               <Route path="inventory/atualizacao-massiva" element={
                 <PermissionProtectedRoute module="funcionarios">
                   <AtualizacaoMassiva />
+                </PermissionProtectedRoute>
+              } />
+              
+              {/* Módulo de Produtos */}
+              <Route path="products" element={
+                <PermissionProtectedRoute module="funcionarios">
+                  <ProductsPage />
                 </PermissionProtectedRoute>
               } />
               
