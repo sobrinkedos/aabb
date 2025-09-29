@@ -661,17 +661,27 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     
     console.log('✅ Nome disponível, prosseguindo com inserção...');
     
-    let { data, error } = await supabase.from('inventory_items').insert(itemToInsert).select().single();
+    // Tentar inserção com UPSERT para contornar problemas de constraint
+    console.log('🔄 Tentando inserção com UPSERT...');
     
-    console.log('📝 Resultado da inserção (primeira tentativa):', { data, error });
+    let { data, error } = await supabase
+      .from('inventory_items')
+      .upsert(itemToInsert, { 
+        onConflict: 'id',
+        ignoreDuplicates: false 
+      })
+      .select()
+      .single();
     
-    // Se falhou, tentar sem .single()
-    if (error && error.code === '409') {
-      console.log('🔄 Tentando inserção alternativa sem .single()...');
+    console.log('📝 Resultado da inserção (UPSERT):', { data, error });
+    
+    // Se UPSERT falhou, tentar inserção simples
+    if (error) {
+      console.log('🔄 UPSERT falhou, tentando inserção simples...');
       const result = await supabase.from('inventory_items').insert(itemToInsert).select();
       data = result.data?.[0];
       error = result.error;
-      console.log('📝 Resultado da inserção (segunda tentativa):', { data, error });
+      console.log('📝 Resultado da inserção (simples):', { data, error });
     }
     
     if (error) { 
