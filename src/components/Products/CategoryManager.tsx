@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Tag, X } from 'lucide-react';
-import { useProductCategoriesSimple as useProductCategories, ProductCategory } from '../../hooks/useProductCategoriesSimple';
+import { useInventoryCategories, ProductCategory } from '../../hooks/useInventoryCategories';
 
 interface CategoryModalProps {
   isOpen: boolean;
@@ -148,7 +148,7 @@ export const CategoryManager: React.FC = () => {
     updateCategory, 
     deleteCategory, 
     refresh 
-  } = useProductCategories();
+  } = useInventoryCategories();
   
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | null>(null);

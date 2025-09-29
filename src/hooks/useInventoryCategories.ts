@@ -13,7 +13,7 @@ export interface ProductCategory {
 }
 
 // Versão super simples que não interfere com autenticação
-export const useProductCategoriesSimple = () => {
+export const useInventoryCategories = () => {
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +55,7 @@ export const useProductCategoriesSimple = () => {
       
       console.log('📋 Carregando categorias...');
       
-      const data = await makeRequest('product_categories?is_active=eq.true&order=name');
+      const data = await makeRequest('inventory_categories?is_active=eq.true&order=name');
       
       setCategories(data || []);
     } catch (err) {
@@ -73,11 +73,12 @@ export const useProductCategoriesSimple = () => {
       const dataToInsert = {
         ...categoryData,
         is_active: true,
+        empresa_id: 'c53c4376-155a-46a2-bcc1-407eb6ed190a', // ID da empresa de desenvolvimento
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
       
-      const data = await makeRequest('product_categories', {
+      const data = await makeRequest('inventory_categories', {
         method: 'POST',
         body: JSON.stringify(dataToInsert),
       });
@@ -99,7 +100,7 @@ export const useProductCategoriesSimple = () => {
         updated_at: new Date().toISOString() 
       };
       
-      const data = await makeRequest(`product_categories?id=eq.${id}`, {
+      const data = await makeRequest(`inventory_categories?id=eq.${id}`, {
         method: 'PATCH',
         body: JSON.stringify(updateData),
       });
@@ -121,7 +122,7 @@ export const useProductCategoriesSimple = () => {
         updated_at: new Date().toISOString() 
       };
       
-      await makeRequest(`product_categories?id=eq.${id}`, {
+      await makeRequest(`inventory_categories?id=eq.${id}`, {
         method: 'PATCH',
         body: JSON.stringify(updateData),
       });
@@ -148,4 +149,4 @@ export const useProductCategoriesSimple = () => {
   };
 };
 
-export default useProductCategoriesSimple;
+export default useInventoryCategories;

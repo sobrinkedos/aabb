@@ -30,7 +30,7 @@ import FuncionariosPage from './pages/Admin/FuncionariosPage';
 import { TestTableDisplay } from './examples';
 import { EnvironmentProvider } from './contexts/EnvironmentContext';
 import EnvironmentSettings from './components/Environment/EnvironmentSettings';
-import { ProductsPage } from './pages/Products';
+
 import './utils/debug-transactions';
 
 
@@ -167,12 +167,7 @@ function App() {
                 </PermissionProtectedRoute>
               } />
               
-              {/* Módulo de Produtos */}
-              <Route path="products" element={
-                <PermissionProtectedRoute module="funcionarios">
-                  <ProductsPage />
-                </PermissionProtectedRoute>
-              } />
+
               
               {/* Configurações */}
               <Route path="settings" element={

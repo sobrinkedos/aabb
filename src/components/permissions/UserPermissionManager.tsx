@@ -75,8 +75,8 @@ const MODULOS_SISTEMA: ModuloSistema[] = [
   { id: 'relatorios', nome: 'Relatórios', descricao: 'Relatórios e análises', categoria: 'Administrativo', icone: '📈' },
   { id: 'configuracoes', nome: 'Configurações', descricao: 'Configurações do sistema', categoria: 'Administrativo', icone: '⚙️' }
 ];
-c
-onst PRESETS_PERMISSOES = {
+
+const PRESETS_PERMISSOES = {
   'apenas_caixa': {
     nome: 'Apenas Caixa',
     descricao: 'Acesso somente ao módulo de gestão de caixa',
