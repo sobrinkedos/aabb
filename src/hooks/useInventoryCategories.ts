@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { fixInventoryCategories } from '../utils/fixInventoryCategories';
 
 export interface ProductCategory {
   id: string;
@@ -93,6 +94,23 @@ export const useInventoryCategories = () => {
       setCategories(data || []);
     } catch (err) {
       console.error('❌ Erro ao carregar categorias:', err);
+      
+      // Se der erro de RLS, tentar corrigir automaticamente
+      if (err instanceof Error && err.message.includes('42501')) {
+        console.log('🔧 Detectado erro de RLS, tentando corrigir...');
+        try {
+          const fixed = await fixInventoryCategories();
+          if (fixed) {
+            console.log('✅ Correção aplicada, tentando carregar novamente...');
+            const retryData = await makeRequest('inventory_categories?is_active=eq.true&order=name');
+            setCategories(retryData || []);
+            return;
+          }
+        } catch (fixError) {
+          console.error('❌ Erro na correção automática:', fixError);
+        }
+      }
+      
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
       setLoading(false);
