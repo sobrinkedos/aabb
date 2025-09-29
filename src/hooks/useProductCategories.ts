@@ -60,6 +60,8 @@ export const useProductCategories = () => {
 
   const updateCategory = async (id: string, categoryData: Partial<ProductCategory>) => {
     try {
+      console.log('🔄 Atualizando categoria:', id, categoryData);
+      
       const { data, error } = await supabase
         .from('product_categories')
         .update({ ...categoryData, updated_at: new Date().toISOString() })
@@ -67,28 +69,34 @@ export const useProductCategories = () => {
         .select()
         .single();
 
+      console.log('📝 Resultado da atualização:', { data, error });
+
       if (error) throw error;
       
       await loadCategories(); // Recarregar a lista
       return data;
     } catch (err) {
-      console.error('Erro ao atualizar categoria:', err);
+      console.error('❌ Erro ao atualizar categoria:', err);
       throw err;
     }
   };
 
   const deleteCategory = async (id: string) => {
     try {
+      console.log('🗑️ Excluindo categoria:', id);
+      
       const { error } = await supabase
         .from('product_categories')
         .update({ is_active: false, updated_at: new Date().toISOString() })
         .eq('id', id);
 
+      console.log('📝 Resultado da exclusão:', { error });
+
       if (error) throw error;
       
       await loadCategories(); // Recarregar a lista
     } catch (err) {
-      console.error('Erro ao excluir categoria:', err);
+      console.error('❌ Erro ao excluir categoria:', err);
       throw err;
     }
   };
