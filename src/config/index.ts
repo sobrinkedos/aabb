@@ -3,18 +3,18 @@
  * Ponto de entrada para inicialização e configuração
  */
 
-import { EnvironmentManager, EnvironmentConfig } from './environment';
+import { EnvironmentManagerImpl, EnvironmentConfig, environmentManager } from './environment';
 import { ConnectivityValidator, HealthCheckResult } from '../utils/connectivity';
 
 export class EnvironmentSystem {
   private static instance: EnvironmentSystem;
-  private environmentManager: EnvironmentManager;
+  private environmentManager: EnvironmentManagerImpl;
   private connectivityValidator: ConnectivityValidator | null = null;
   private isInitialized = false;
   private initializationPromise: Promise<any> | null = null;
 
   private constructor() {
-    this.environmentManager = EnvironmentManager.getInstance();
+    this.environmentManager = environmentManager;
   }
 
   public static getInstance(): EnvironmentSystem {
@@ -178,7 +178,7 @@ export const environmentSystem = EnvironmentSystem.getInstance();
 
 // Exporta tipos e classes para uso direto
 export type { EnvironmentConfig } from './environment';
-export { EnvironmentManager } from './environment';
+export { EnvironmentManagerImpl, environmentManager } from './environment';
 export type { ConnectivityResult, HealthCheckResult } from '../utils/connectivity';
 export { ConnectivityValidator } from '../utils/connectivity';
 

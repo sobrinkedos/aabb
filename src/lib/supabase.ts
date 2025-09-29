@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '../types/supabase';
-import { environmentSystem, EnvironmentConfig } from '../config';
+import { environmentManager, EnvironmentConfig } from '../config/environment';
 
 // Variáveis globais para os clientes Supabase
 let supabaseInstance: SupabaseClient<Database> | null = null;
@@ -41,7 +41,7 @@ const createSupabaseClient = (config: EnvironmentConfig, isAdmin = false): Supab
 // Função para inicializar os clientes Supabase
 const initializeSupabaseClients = async (): Promise<void> => {
   try {
-    const config = await environmentSystem.getConfig();
+    const config = environmentManager.getCurrentEnvironment();
     
     // Só recria os clientes se a configuração mudou
     if (!currentConfig || currentConfig.name !== config.name || currentConfig.supabaseUrl !== config.supabaseUrl) {
@@ -118,7 +118,7 @@ export const reinitializeSupabase = async (): Promise<void> => {
 // Função para verificar se está configurado
 export const isSupabaseConfigured = async (): Promise<boolean> => {
   try {
-    const config = await environmentSystem.getConfig();
+    const config = environmentManager.getCurrentEnvironment();
     
     // Verifica se as configurações são válidas (não são placeholders)
     const isValidUrl = config.supabaseUrl && 
@@ -140,7 +140,7 @@ export const isSupabaseConfigured = async (): Promise<boolean> => {
 // Função para verificar se admin está configurado
 export const isAdminConfigured = async (): Promise<boolean> => {
   try {
-    const config = await environmentSystem.getConfig();
+    const config = environmentManager.getCurrentEnvironment();
     
     // Verifica se as configurações são válidas (não são placeholders)
     const isValidUrl = config.supabaseUrl && 

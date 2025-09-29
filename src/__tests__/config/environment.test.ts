@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { EnvironmentManager } from '../../config/environment';
+import { EnvironmentManagerImpl, environmentManager } from '../../config/environment';
 
 // Mock das variáveis de ambiente
 const mockEnv = {
@@ -18,12 +18,11 @@ const mockEnv = {
 };
 
 describe('EnvironmentManager', () => {
-  let environmentManager: EnvironmentManager;
+  let testEnvironmentManager: EnvironmentManagerImpl;
 
   beforeEach(() => {
-    // Reset singleton instance
-    (EnvironmentManager as any).instance = null;
-    environmentManager = EnvironmentManager.getInstance();
+    // Use a instância singleton existente
+    testEnvironmentManager = environmentManager;
 
     // Mock import.meta.env
     vi.stubGlobal('import', {
@@ -43,8 +42,8 @@ describe('EnvironmentManager', () => {
 
   describe('Singleton Pattern', () => {
     it('deve retornar a mesma instância', () => {
-      const instance1 = EnvironmentManager.getInstance();
-      const instance2 = EnvironmentManager.getInstance();
+      const instance1 = environmentManager;
+      const instance2 = environmentManager;
       expect(instance1).toBe(instance2);
     });
   });
@@ -57,7 +56,7 @@ describe('EnvironmentManager', () => {
         }
       });
 
-      const environment = await environmentManager.detectEnvironment();
+      const environment = await testEnvironmentManager.detectEnvironment();
       expect(environment).toBe('production');
     });
 
@@ -68,7 +67,7 @@ describe('EnvironmentManager', () => {
         }
       });
 
-      const environment = await environmentManager.detectEnvironment();
+      const environment = await testEnvironmentManager.detectEnvironment();
       expect(environment).toBe('development');
     });
 
@@ -85,14 +84,14 @@ describe('EnvironmentManager', () => {
         writable: true
       });
 
-      const environment = await environmentManager.detectEnvironment();
+      const environment = await testEnvironmentManager.detectEnvironment();
       expect(environment).toBe('development');
     });
   });
 
   describe('getCurrentEnvironment', () => {
     it('deve carregar configuração corretamente', async () => {
-      const config = await environmentManager.getCurrentEnvironment();
+      const config = await testEnvironmentManager.getCurrentEnvironment();
 
       expect(config).toEqual({
         name: 'development',
@@ -107,8 +106,8 @@ describe('EnvironmentManager', () => {
     });
 
     it('deve cachear a configuração', async () => {
-      const config1 = await environmentManager.getCurrentEnvironment();
-      const config2 = await environmentManager.getCurrentEnvironment();
+      const config1 = await testEnvironmentManager.getCurrentEnvironment();
+      const config2 = await testEnvironmentManager.getCurrentEnvironment();
 
       expect(config1).toBe(config2); // Mesma referência
     });
@@ -120,7 +119,7 @@ describe('EnvironmentManager', () => {
         }
       });
 
-      await expect(environmentManager.getCurrentEnvironment())
+      await expect(testEnvironmentManager.getCurrentEnvironment())
         .rejects.toThrow('Configuração incompleta');
     });
   });

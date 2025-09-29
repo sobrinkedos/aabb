@@ -1,261 +1,306 @@
 /**
- * Sistema de Configuração de Ambiente
- * Detecta automaticamente o ambiente baseado na branch Git
+ * Gerenciador de Configuração de Ambiente
+ * 
+ * Sistema robusto para gerenciar configurações específicas de cada ambiente
+ * (desenvolvimento e produção) com detecção automática baseada na branch Git.
+ * 
+ * @version 1.0.0
  */
 
+// ============================================================================
+// INTERFACES
+// ============================================================================
+
 export interface EnvironmentConfig {
-  name: 'development' | 'production';
+  name: "development" | "production";
   supabaseUrl: string;
   supabaseAnonKey: string;
   supabaseServiceRoleKey: string;
   databaseName: string;
+  gitBranch: string;
   debugMode: boolean;
-  logLevel: 'debug' | 'info' | 'warn' | 'error';
-  enableMockData: boolean;
+  logLevel: "debug" | "info" | "warn" | "error";
 }
 
-export class EnvironmentManager {
-  private static instance: EnvironmentManager;
+export interface EnvironmentManager {
+  getCurrentEnvironment(): EnvironmentConfig;
+  switchEnvironment(env: "development" | "production"): Promise<void>;
+  validateConnection(config: EnvironmentConfig): Promise<boolean>;
+  getEnvironmentInfo(): Promise<EnvironmentInfo>;
+}
+
+export interface EnvironmentInfo {
+  currentEnvironment: string;
+  gitBranch: string;
+  supabaseConnected: boolean;
+  databaseName: string;
+  lastValidated: Date;
+}
+
+// ============================================================================
+// CONSTANTES
+// ============================================================================
+
+const ENVIRONMENT_CONFIGS: Record<string, Partial<EnvironmentConfig>> = {
+  development: {
+    name: "development",
+    supabaseUrl: import.meta.env.VITE_SUPABASE_URL || "https://wznycskqsavpmejwpksp.supabase.co",
+    supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    supabaseServiceRoleKey: import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
+    databaseName: import.meta.env.VITE_DATABASE_NAME || "wznycskqsavpmejwpksp",
+    gitBranch: "desenvolvimento",
+    debugMode: true,
+    logLevel: "debug"
+  },
+  production: {
+    name: "production",
+    supabaseUrl: import.meta.env.VITE_SUPABASE_URL_PROD || "https://aabb-producao.supabase.co",
+    supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY_PROD,
+    supabaseServiceRoleKey: import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY_PROD,
+    databaseName: import.meta.env.VITE_DATABASE_NAME_PROD || "aabb-producao",
+    gitBranch: "main",
+    debugMode: false,
+    logLevel: "error"
+  }
+};
+
+// ============================================================================
+// CLASSE PRINCIPAL
+// ============================================================================
+
+export class EnvironmentManagerImpl implements EnvironmentManager {
   private currentConfig: EnvironmentConfig | null = null;
+  private lastValidation: Date | null = null;
 
-  private constructor() {}
-
-  public static getInstance(): EnvironmentManager {
-    if (!EnvironmentManager.instance) {
-      EnvironmentManager.instance = new EnvironmentManager();
-    }
-    return EnvironmentManager.instance;
+  constructor() {
+    this.initializeEnvironment();
   }
 
   /**
-   * Detecta o ambiente atual baseado na branch Git
+   * Inicializa o ambiente baseado na configuração atual
    */
-  public async detectEnvironment(): Promise<'development' | 'production'> {
+  private async initializeEnvironment(): Promise<void> {
     try {
-      // Tenta detectar a branch atual via Git
-      const currentBranch = await this.getCurrentGitBranch();
+      console.log('🔧 Inicializando gerenciador de ambiente...');
       
-      // Se estiver na branch main, usa produção
-      if (currentBranch === 'main') {
-        return 'production';
+      // Detecta ambiente baseado na branch Git ou variável de ambiente
+      const environment = this.detectEnvironment();
+      console.log(`🎯 Ambiente detectado: ${environment}`);
+      
+      // Carrega configuração do ambiente
+      await this.loadEnvironmentConfig(environment);
+      
+      // Valida conectividade
+      if (this.currentConfig) {
+        const isValid = await this.validateConnection(this.currentConfig);
+        console.log(`✅ Conectividade validada: ${isValid ? 'OK' : 'FALHA'}`);
       }
       
-      // Para qualquer outra branch (development, feature branches, etc), usa desenvolvimento
-      return 'development';
     } catch (error) {
-      console.warn('Não foi possível detectar a branch Git, usando desenvolvimento como padrão:', error);
-      return 'development';
+      console.error('❌ Erro ao inicializar ambiente:', error);
     }
   }
 
   /**
-   * Obtém a branch Git atual
+   * Detecta o ambiente atual baseado na branch Git e variáveis de ambiente
    */
-  private async getCurrentGitBranch(): Promise<string> {
-    // Em ambiente de produção (build), pode usar variável de ambiente
-    if (import.meta.env.VITE_GIT_BRANCH) {
-      return import.meta.env.VITE_GIT_BRANCH;
+  private detectEnvironment(): "development" | "production" {
+    // 1. Verifica variável de ambiente explícita
+    const envVar = import.meta.env.VITE_ENVIRONMENT;
+    if (envVar === "production") {
+      console.log('🎯 Ambiente forçado via VITE_ENVIRONMENT: production');
+      return "production";
     }
-
-    // No browser, usa fallback baseado na URL ou outras heurísticas
-    if (typeof window !== 'undefined') {
-      // Detecta baseado na URL
-      if (window.location.hostname.includes('localhost') || 
-          window.location.hostname.includes('127.0.0.1') ||
-          window.location.hostname.includes('dev.')) {
-        return 'development';
-      }
-      
-      // Se estiver em produção (domínio real), assume main
-      return 'main';
+    if (envVar === "development") {
+      console.log('🎯 Ambiente forçado via VITE_ENVIRONMENT: development');
+      return "development";
     }
-
-    // Em ambiente Node.js (SSR ou testes)
-    try {
-      // Tenta ler variável de ambiente primeiro
-      if (process.env.GIT_BRANCH) {
-        return process.env.GIT_BRANCH;
-      }
-      
-      // Fallback para desenvolvimento em Node.js
-      return 'development';
-    } catch (error) {
-      console.warn('Não foi possível detectar branch Git:', error);
-      return 'development';
-    }
-  }
-
-  /**
-   * Carrega a configuração do ambiente atual
-   */
-  public async getCurrentEnvironment(): Promise<EnvironmentConfig> {
-    if (this.currentConfig) {
-      return this.currentConfig;
-    }
-
-    const environment = await this.detectEnvironment();
-    this.currentConfig = this.loadEnvironmentConfig(environment);
     
+    // 2. Verifica branch Git via variável de ambiente
+    const gitBranch = import.meta.env.VITE_GIT_BRANCH || "desenvolvimento";
+    console.log(`🌿 Branch Git detectada: ${gitBranch}`);
+    
+    if (gitBranch === "main" || gitBranch === "master") {
+      console.log('🎯 Branch principal detectada → Ambiente: production');
+      return "production";
+    }
+    
+    // 3. Padrão: desenvolvimento
+    console.log('🎯 Ambiente padrão: development');
+    return "development";
+  }
+
+  /**
+   * Carrega configuração do ambiente especificado
+   */
+  private async loadEnvironmentConfig(environment: "development" | "production"): Promise<void> {
+    const config = ENVIRONMENT_CONFIGS[environment];
+    
+    if (!config) {
+      throw new Error(`Configuração não encontrada para ambiente: ${environment}`);
+    }
+
+    // Valida se todas as configurações obrigatórias estão presentes
+    const requiredFields = ['supabaseUrl', 'supabaseAnonKey', 'supabaseServiceRoleKey'];
+    const missingFields = requiredFields.filter(field => !config[field as keyof EnvironmentConfig]);
+    
+    if (missingFields.length > 0) {
+      console.warn(`⚠️ Campos obrigatórios ausentes para ${environment}:`, missingFields);
+    }
+
+    this.currentConfig = config as EnvironmentConfig;
+    console.log(`✅ Configuração carregada para ambiente: ${environment}`);
+    console.log(`📊 Database: ${config.databaseName}`);
+    console.log(`🔗 URL: ${config.supabaseUrl}`);
+  }
+
+  /**
+   * Obtém a configuração do ambiente atual
+   */
+  getCurrentEnvironment(): EnvironmentConfig {
+    if (!this.currentConfig) {
+      throw new Error('Ambiente não inicializado. Chame initializeEnvironment() primeiro.');
+    }
     return this.currentConfig;
   }
 
   /**
-   * Carrega configuração específica do ambiente
+   * Alterna para um ambiente específico
    */
-  private loadEnvironmentConfig(environment: 'development' | 'production'): EnvironmentConfig {
-    const config: EnvironmentConfig = {
-      name: environment,
-      supabaseUrl: import.meta.env.VITE_SUPABASE_URL || '',
-      supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-      supabaseServiceRoleKey: import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '',
-      databaseName: import.meta.env.VITE_DATABASE_NAME || '',
-      debugMode: import.meta.env.VITE_DEBUG_MODE === 'true',
-      logLevel: (import.meta.env.VITE_LOG_LEVEL as any) || 'info',
-      enableMockData: import.meta.env.VITE_ENABLE_MOCK_DATA === 'true'
-    };
-
-    // Validação básica
-    if (!config.supabaseUrl || !config.supabaseAnonKey) {
-      throw new Error(`Configuração incompleta para o ambiente ${environment}`);
-    }
-
-    return config;
-  }
-
-  /**
-   * Força a troca de ambiente (para testes ou casos especiais)
-   */
-  public switchEnvironment(environment: 'development' | 'production'): void {
-    this.currentConfig = this.loadEnvironmentConfig(environment);
-  }
-
-  /**
-   * Valida se a configuração atual está completa e funcional
-   */
-  public async validateEnvironment(): Promise<{
-    isValid: boolean;
-    errors: string[];
-    warnings: string[];
-  }> {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    try {
-      const config = await this.getCurrentEnvironment();
-
-      // Validações obrigatórias
-      if (!config.supabaseUrl) {
-        errors.push('VITE_SUPABASE_URL não configurada');
-      }
-      if (!config.supabaseAnonKey) {
-        errors.push('VITE_SUPABASE_ANON_KEY não configurada');
-      }
-      if (!config.databaseName) {
-        warnings.push('VITE_DATABASE_NAME não configurado');
-      }
-
-      // Validações de formato
-      if (config.supabaseUrl && !config.supabaseUrl.startsWith('https://')) {
-        errors.push('VITE_SUPABASE_URL deve começar com https://');
-      }
-      if (config.supabaseUrl && !config.supabaseUrl.includes('.supabase.co')) {
-        warnings.push('URL do Supabase não parece ser válida');
-      }
-
-      // Validações de ambiente
-      if (config.name === 'production' && config.debugMode) {
-        warnings.push('Debug mode ativado em produção');
-      }
-      if (config.name === 'development' && !config.enableMockData) {
-        warnings.push('Mock data desabilitado em desenvolvimento');
-      }
-
-    } catch (error) {
-      errors.push(`Erro ao carregar configuração: ${error}`);
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings
-    };
-  }
-
-  /**
-   * Testa conectividade com o Supabase
-   */
-  public async testConnectivity(): Promise<{
-    isConnected: boolean;
-    responseTime: number;
-    error?: string;
-  }> {
-    const startTime = Date.now();
+  async switchEnvironment(env: "development" | "production"): Promise<void> {
+    console.log(`🔄 Alternando para ambiente: ${env}`);
     
     try {
-      const config = await this.getCurrentEnvironment();
+      await this.loadEnvironmentConfig(env);
       
-      // Testa conectividade básica
-      const response = await fetch(`${config.supabaseUrl}/rest/v1/`, {
-        method: 'HEAD',
-        headers: {
-          'apikey': config.supabaseAnonKey,
-          'Authorization': `Bearer ${config.supabaseAnonKey}`
+      if (this.currentConfig) {
+        const isValid = await this.validateConnection(this.currentConfig);
+        if (!isValid) {
+          console.warn(`⚠️ Conectividade falhou para ambiente: ${env}`);
         }
-      });
-
-      const responseTime = Date.now() - startTime;
-
-      if (response.ok) {
-        return {
-          isConnected: true,
-          responseTime
-        };
-      } else {
-        return {
-          isConnected: false,
-          responseTime,
-          error: `HTTP ${response.status}: ${response.statusText}`
-        };
       }
+      
+      console.log(`✅ Ambiente alternado com sucesso: ${env}`);
     } catch (error) {
-      return {
-        isConnected: false,
-        responseTime: Date.now() - startTime,
-        error: error instanceof Error ? error.message : 'Erro desconhecido'
-      };
+      console.error(`❌ Erro ao alternar para ambiente ${env}:`, error);
+      throw error;
     }
   }
 
   /**
-   * Recarrega a configuração (útil para hot-reload em desenvolvimento)
+   * Valida conectividade com o Supabase
    */
-  public reloadConfiguration(): void {
-    this.currentConfig = null;
+  async validateConnection(config: EnvironmentConfig): Promise<boolean> {
+    try {
+      console.log(`🔍 Validando conectividade com ${config.name}...`);
+      
+      // Importação dinâmica para evitar problemas de inicialização
+      const { createClient } = await import('@supabase/supabase-js');
+      
+      const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
+      
+      // Testa conectividade com uma query simples
+      const { data, error } = await supabase
+        .from('usuarios_empresa')
+        .select('count')
+        .limit(1);
+      
+      if (error) {
+        console.error(`❌ Erro de conectividade (${config.name}):`, error.message);
+        return false;
+      }
+      
+      this.lastValidation = new Date();
+      console.log(`✅ Conectividade OK (${config.name})`);
+      return true;
+      
+    } catch (error) {
+      console.error(`❌ Erro inesperado na validação (${config.name}):`, error);
+      return false;
+    }
   }
 
   /**
-   * Obtém informações sobre o ambiente atual
+   * Obtém informações detalhadas do ambiente atual
    */
-  public async getEnvironmentInfo(): Promise<{
-    environment: string;
-    branch: string;
-    databaseName: string;
-    debugMode: boolean;
-    isValid: boolean;
-    connectivity: boolean;
-  }> {
-    const config = await this.getCurrentEnvironment();
-    const branch = await this.getCurrentGitBranch().catch(() => 'unknown');
-    const validation = await this.validateEnvironment();
-    const connectivity = await this.testConnectivity();
-
+  async getEnvironmentInfo(): Promise<EnvironmentInfo> {
+    const config = this.getCurrentEnvironment();
+    
+    const isConnected = await this.validateConnection(config);
+    
     return {
-      environment: config.name,
-      branch,
+      currentEnvironment: config.name,
+      gitBranch: config.gitBranch,
+      supabaseConnected: isConnected,
       databaseName: config.databaseName,
-      debugMode: config.debugMode,
-      isValid: validation.isValid,
-      connectivity: connectivity.isConnected
+      lastValidated: this.lastValidation || new Date()
     };
+  }
+}
+
+// ============================================================================
+// INSTÂNCIA SINGLETON
+// ============================================================================
+
+export const environmentManager = new EnvironmentManagerImpl();
+
+// ============================================================================
+// UTILITÁRIOS
+// ============================================================================
+
+/**
+ * Hook para obter configuração do ambiente atual
+ */
+export function useEnvironment(): EnvironmentConfig {
+  return environmentManager.getCurrentEnvironment();
+}
+
+/**
+ * Função para obter informações do ambiente de forma assíncrona
+ */
+export async function getEnvironmentInfo(): Promise<EnvironmentInfo> {
+  return environmentManager.getEnvironmentInfo();
+}
+
+/**
+ * Função para validar se estamos em produção
+ */
+export function isProduction(): boolean {
+  try {
+    const config = environmentManager.getCurrentEnvironment();
+    return config.name === "production";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Função para validar se estamos em desenvolvimento
+ */
+export function isDevelopment(): boolean {
+  try {
+    const config = environmentManager.getCurrentEnvironment();
+    return config.name === "development";
+  } catch {
+    return true; // Padrão para desenvolvimento
+  }
+}
+
+/**
+ * Função para obter logs formatados do ambiente
+ */
+export function logEnvironmentInfo(): void {
+  try {
+    const config = environmentManager.getCurrentEnvironment();
+    console.group('🌍 Informações do Ambiente');
+    console.log(`📍 Ambiente: ${config.name}`);
+    console.log(`🌿 Branch: ${config.gitBranch}`);
+    console.log(`🗄️ Database: ${config.databaseName}`);
+    console.log(`🔗 URL: ${config.supabaseUrl}`);
+    console.log(`🐛 Debug: ${config.debugMode ? 'Ativado' : 'Desativado'}`);
+    console.log(`📊 Log Level: ${config.logLevel}`);
+    console.groupEnd();
+  } catch (error) {
+    console.error('❌ Erro ao obter informações do ambiente:', error);
   }
 }

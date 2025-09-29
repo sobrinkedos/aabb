@@ -3,14 +3,15 @@
  * Valida se todos os componentes estão funcionando corretamente
  */
 
-import { environmentSystem, EnvironmentManager, ConnectivityValidator } from '../config';
+import { environmentSystem, EnvironmentManagerImpl, environmentManager, ConnectivityValidator } from '../config';
 
 async function testEnvironmentDetection() {
   console.log('🧪 Testando detecção de ambiente...');
   
   try {
-    const manager = EnvironmentManager.getInstance();
-    const environment = await manager.detectEnvironment();
+    const manager = environmentManager;
+    const config = await manager.getCurrentEnvironment();
+    const environment = config.name;
     console.log(`✅ Ambiente detectado: ${environment}`);
     
     const envInfo = await manager.getEnvironmentInfo();

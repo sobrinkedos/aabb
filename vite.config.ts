@@ -8,8 +8,7 @@ export default defineConfig({
     exclude: ['lucide-react'],
   },
   define: {
-    // Forçar modo produção
-    'import.meta.env.VITE_ENVIRONMENT': '"production"',
+    // Permitir que as variáveis do .env sejam usadas
     'import.meta.env.VITE_FORCE_REAL_SUPABASE': 'true',
   },
 });

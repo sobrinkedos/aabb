@@ -32,10 +32,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
+  const [supabaseConfigured, setSupabaseConfigured] = useState<boolean | null>(null);
 
   // Função simplificada de verificação online
   const checkOnlineStatus = async () => {
-    if (!isSupabaseConfigured) {
+    if (!supabaseConfigured) {
       setIsOffline(false);
       return true;
     }
@@ -66,8 +67,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }, 2000);
 
       try {
-        if (!isSupabaseConfigured) {
-          console.log('🔧 Modo demo ativo');
+        // Verificar se Supabase está configurado
+        const configured = await isSupabaseConfigured();
+        setSupabaseConfigured(configured);
+        
+        if (!configured) {
+          console.log('🔧 Modo demo ativo - Supabase não configurado');
           clearTimeout(safetyTimeout);
           setIsLoading(false);
           return;
@@ -160,7 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const register = async (name: string, email: string, password: string) => {
-    if (!isSupabaseConfigured) {
+    if (!supabaseConfigured) {
       return { success: false, error: 'Registro não disponível no modo demo' };
     }
 
@@ -340,7 +345,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       isOffline, 
       checkOnlineStatus 
     }}>
-      {!isSupabaseConfigured && (
+      {supabaseConfigured === false && (
         <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-black px-4 py-2 text-sm z-50">
           ⚠️ <strong>Modo Desenvolvimento:</strong> Supabase não configurado. 
           Use: {AUTH_CONFIG.DEMO_USER.email} / demo123456
