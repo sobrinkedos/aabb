@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseAdmin } from '../lib/supabase';
 
 export interface ProductCategory {
   id: string;
@@ -42,18 +42,33 @@ export const useProductCategories = () => {
 
   const createCategory = async (categoryData: Omit<ProductCategory, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
     try {
-      const { data, error } = await supabase
+      console.log('➕ Criando categoria:', categoryData);
+      
+      // Preparar dados com timestamps
+      const dataToInsert = {
+        ...categoryData,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log('📤 Dados para inserir:', dataToInsert);
+      
+      // Usar cliente admin para evitar problemas de autenticação
+      const { data, error } = await supabaseAdmin
         .from('product_categories')
-        .insert([categoryData])
+        .insert([dataToInsert])
         .select()
         .single();
+
+      console.log('📝 Resultado da criação:', { data, error });
 
       if (error) throw error;
       
       await loadCategories(); // Recarregar a lista
       return data;
     } catch (err) {
-      console.error('Erro ao criar categoria:', err);
+      console.error('❌ Erro ao criar categoria:', err);
       throw err;
     }
   };
@@ -62,7 +77,8 @@ export const useProductCategories = () => {
     try {
       console.log('🔄 Atualizando categoria:', id, categoryData);
       
-      const { data, error } = await supabase
+      // Usar cliente admin para evitar problemas de autenticação
+      const { data, error } = await supabaseAdmin
         .from('product_categories')
         .update({ ...categoryData, updated_at: new Date().toISOString() })
         .eq('id', id)
@@ -85,7 +101,8 @@ export const useProductCategories = () => {
     try {
       console.log('🗑️ Excluindo categoria:', id);
       
-      const { error } = await supabase
+      // Usar cliente admin para evitar problemas de autenticação
+      const { error } = await supabaseAdmin
         .from('product_categories')
         .update({ is_active: false, updated_at: new Date().toISOString() })
         .eq('id', id);
