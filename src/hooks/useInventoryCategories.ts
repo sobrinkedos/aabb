@@ -18,6 +18,9 @@ export const useInventoryCategories = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Cache para o ID da empresa
+  const [empresaId, setEmpresaId] = useState<string | null>(null);
+
   // Função para fazer requisições sem autenticação (já que RLS está desabilitado)
   const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
     const url = `https://wznycskqsavpmejwpksp.supabase.co/rest/v1/${endpoint}`;
@@ -48,6 +51,35 @@ export const useInventoryCategories = () => {
     return result;
   };
 
+  // Função para buscar o ID da empresa
+  const getEmpresaId = async (): Promise<string> => {
+    if (empresaId) {
+      return empresaId;
+    }
+
+    try {
+      console.log('🏢 Buscando ID da empresa...');
+      const empresasData = await makeRequest('empresas?select=id,nome&limit=1');
+      
+      if (empresasData && empresasData.length > 0) {
+        const id = empresasData[0].id;
+        console.log('✅ Empresa encontrada:', empresasData[0].nome, 'ID:', id);
+        setEmpresaId(id);
+        return id;
+      } else {
+        console.log('⚠️ Nenhuma empresa encontrada, usando ID padrão');
+        const defaultId = 'c53c4376-155a-46a2-bcc1-407eb6ed190a';
+        setEmpresaId(defaultId);
+        return defaultId;
+      }
+    } catch (err) {
+      console.error('❌ Erro ao buscar empresa:', err);
+      const defaultId = 'c53c4376-155a-46a2-bcc1-407eb6ed190a';
+      setEmpresaId(defaultId);
+      return defaultId;
+    }
+  };
+
   const loadCategories = async () => {
     try {
       setLoading(true);
@@ -70,13 +102,19 @@ export const useInventoryCategories = () => {
     try {
       console.log('➕ Criando categoria:', categoryData);
       
+      // Buscar o ID da empresa
+      const currentEmpresaId = await getEmpresaId();
+      
       const dataToInsert = {
         name: categoryData.name,
         description: categoryData.description || '',
         color: categoryData.color,
         icon: categoryData.icon || '',
-        is_active: true
+        is_active: true,
+        empresa_id: currentEmpresaId
       };
+      
+      console.log('📤 Dados para inserção:', dataToInsert);
       
       const data = await makeRequest('inventory_categories', {
         method: 'POST',
