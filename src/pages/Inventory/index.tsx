@@ -17,7 +17,7 @@ const InventoryModule: React.FC = () => {
   // Carregar inventário completo quando o componente for montado
   React.useEffect(() => {
     loadFullInventory();
-  }, [loadFullInventory]);
+  }, []); // Dependência vazia para executar apenas uma vez
 
   const handleEdit = (item: InventoryItem) => {
     setSelectedItem(item);

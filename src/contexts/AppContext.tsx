@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { MenuItem, Order, InventoryItem, InventoryCategory, Member, Sale, OrderItem } from '../types';
 import type { Database } from '../types/supabase';
@@ -766,7 +766,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     if (data) setMembers(data.map(fromMemberSupabase));
   };
 
-  const loadFullInventory = async () => {
+  const loadFullInventory = useCallback(async () => {
     console.log('📦 Carregando inventário completo...');
     
     // Determinar empresa_id baseado no ambiente
@@ -793,7 +793,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     
     console.log('✅ Inventário carregado:', data?.length || 0, 'itens');
     if (data) setInventory(data.map(fromInventorySupabase));
-  };
+  }, []); // Dependências vazias pois a função não depende de nenhum estado
 
   // Buscar pedidos da cozinha a partir dos comanda_items
   const [kitchenOrders, setKitchenOrders] = useState<Order[]>([]);
