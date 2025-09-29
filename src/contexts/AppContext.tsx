@@ -642,37 +642,63 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     console.log('📤 Dados para inserir:', itemToInsert);
     
     // Verificar se já existe um item com o mesmo nome para esta empresa
-    const { data: existingItem, error: checkError } = await supabase
+    const { data: existingItems, error: checkError } = await supabase
       .from('inventory_items')
       .select('id, name')
       .eq('name', itemToInsert.name)
-      .eq('empresa_id', empresaId)
-      .single();
+      .eq('empresa_id', empresaId);
     
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows found
+    if (checkError) {
       console.error('❌ Erro ao verificar item existente:', checkError);
+      // Continuar mesmo com erro na verificação
     }
     
-    if (existingItem) {
-      console.warn('⚠️ Item já existe:', existingItem);
+    if (existingItems && existingItems.length > 0) {
+      console.warn('⚠️ Item já existe:', existingItems[0]);
       alert('Já existe um item com este nome no inventário!');
       return;
     }
     
     console.log('✅ Nome disponível, prosseguindo com inserção...');
     
-    const { data, error } = await supabase.from('inventory_items').insert(itemToInsert).select().single();
+    let { data, error } = await supabase.from('inventory_items').insert(itemToInsert).select().single();
     
-    console.log('📝 Resultado da inserção:', { data, error });
+    console.log('📝 Resultado da inserção (primeira tentativa):', { data, error });
+    
+    // Se falhou, tentar sem .single()
+    if (error && error.code === '409') {
+      console.log('🔄 Tentando inserção alternativa sem .single()...');
+      const result = await supabase.from('inventory_items').insert(itemToInsert).select();
+      data = result.data?.[0];
+      error = result.error;
+      console.log('📝 Resultado da inserção (segunda tentativa):', { data, error });
+    }
     
     if (error) { 
       console.error('❌ Erro ao inserir item:', error);
-      console.error('❌ Detalhes do erro:', {
+      console.error('❌ Detalhes completos do erro:', {
         code: error.code,
         message: error.message,
         details: error.details,
-        hint: error.hint
+        hint: error.hint,
+        statusCode: (error as any).statusCode,
+        statusText: (error as any).statusText
       });
+      
+      // Tentar inserção mais simples como último recurso
+      if (error.code === '409') {
+        console.log('🔄 Última tentativa: inserção básica...');
+        const basicResult = await supabase.from('inventory_items').insert(itemToInsert);
+        console.log('📝 Resultado da inserção básica:', basicResult);
+        
+        if (!basicResult.error) {
+          console.log('✅ Inserção básica bem-sucedida!');
+          // Recarregar inventário para pegar o item inserido
+          await loadFullInventory();
+          return;
+        }
+      }
+      
       alert('Erro ao salvar produto: ' + error.message + ' (Código: ' + error.code + ')');
       return; 
     }
