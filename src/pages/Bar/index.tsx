@@ -6,7 +6,12 @@ import OrderModal from './OrderModal';
 import OrderCard from './OrderCard';
 
 const BarModule: React.FC = () => {
-  const { orders, barOrders, menuItems } = useApp();
+  const { orders, barOrders, menuItems, loadMenuItems } = useApp();
+  
+  // Carregar menu items quando o componente for montado
+  React.useEffect(() => {
+    loadMenuItems();
+  }, [loadMenuItems]);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');

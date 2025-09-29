@@ -785,18 +785,35 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // Funções de carregamento lazy
   const loadMenuItems = async () => {
-    if (menuItems.length > 0) return; // Já carregado
+    console.log('📋 Carregando menu items...');
+    
+    // Determinar empresa_id baseado no ambiente
+    const currentUrl = window.location.hostname;
+    const isProduction = currentUrl.includes('vercel.app') || 
+                        currentUrl.includes('aabb-system.vercel.app') ||
+                        import.meta.env.VITE_ENVIRONMENT === 'production' || 
+                        import.meta.env.VERCEL_ENV === 'production' ||
+                        import.meta.env.VITE_SUPABASE_URL?.includes('jtfdzjmravketpkwjkvp');
+    
+    const empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e'; // Sempre usar empresa de produção
+    
+    console.log('🏢 Carregando menu items para empresa_id:', empresaId);
     
     const { data, error } = await supabase.from('menu_items').select(`
       *,
-      inventory_items!left(name, image_url)
-    `).order('name');
+      inventory_items!left(name, image_url, current_stock, available_for_sale)
+    `)
+    .eq('empresa_id', empresaId)
+    .eq('available', true)
+    .order('category')
+    .order('name');
     
     if (error) {
       console.error('Erro ao carregar menu items:', error);
       return;
     }
     
+    console.log('📋 Menu items carregados:', data?.length || 0);
     if (data) setMenuItems(data.map(fromMenuItemSupabase));
   };
 
