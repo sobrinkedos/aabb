@@ -54,10 +54,10 @@ const ENVIRONMENT_CONFIGS: Record<string, Partial<EnvironmentConfig>> = {
   },
   production: {
     name: "production",
-    supabaseUrl: import.meta.env.VITE_SUPABASE_URL_PROD || "https://aabb-producao.supabase.co",
-    supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY_PROD,
-    supabaseServiceRoleKey: import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY_PROD,
-    databaseName: import.meta.env.VITE_DATABASE_NAME_PROD || "aabb-producao",
+    supabaseUrl: import.meta.env.VITE_SUPABASE_URL || "https://jtfdzjmravketpkwjkvp.supabase.co",
+    supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    supabaseServiceRoleKey: import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
+    databaseName: import.meta.env.VITE_DATABASE_NAME || "jtfdzjmravketpkwjkvp",
     gitBranch: "main",
     debugMode: false,
     logLevel: "error"
