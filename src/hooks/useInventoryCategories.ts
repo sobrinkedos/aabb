@@ -71,11 +71,11 @@ export const useInventoryCategories = () => {
       console.log('➕ Criando categoria:', categoryData);
       
       const dataToInsert = {
-        ...categoryData,
-        is_active: true,
-        empresa_id: 'c53c4376-155a-46a2-bcc1-407eb6ed190a', // ID da empresa de desenvolvimento
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        name: categoryData.name,
+        description: categoryData.description || '',
+        color: categoryData.color,
+        icon: categoryData.icon || '',
+        is_active: true
       };
       
       const data = await makeRequest('inventory_categories', {
