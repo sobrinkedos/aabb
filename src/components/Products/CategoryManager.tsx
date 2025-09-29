@@ -36,8 +36,7 @@ const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, category
     }
   }, [category]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setLoading(true);
 
     try {
@@ -68,7 +67,7 @@ const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, category
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Nome da Categoria *
@@ -127,14 +126,15 @@ const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, category
               Cancelar
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
               disabled={loading}
             >
               {loading ? 'Salvando...' : (category ? 'Atualizar' : 'Criar')}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
