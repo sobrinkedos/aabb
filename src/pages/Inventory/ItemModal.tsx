@@ -161,6 +161,29 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
               </button>
             </div>
             <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+              {/* TESTE GIGANTE DE PRECIFICAÇÃO */}
+              <div style={{
+                backgroundColor: 'red',
+                color: 'white',
+                padding: '30px',
+                margin: '20px 0',
+                border: '5px solid black',
+                fontSize: '24px',
+                fontWeight: 'bold',
+                textAlign: 'center'
+              }}>
+                🚨🚨🚨 SISTEMA DE PRECIFICAÇÃO TESTE 🚨🚨🚨
+                <div style={{
+                  backgroundColor: 'yellow',
+                  color: 'black',
+                  padding: '15px',
+                  margin: '15px 0',
+                  fontSize: '18px'
+                }}>
+                  Se você está vendo isso, o deploy funcionou!
+                </div>
+              </div>
+
               {/* Nome do Item - Largura completa */}
               <InputField label="Nome do Item" error={errors.name}>
                 <input 
