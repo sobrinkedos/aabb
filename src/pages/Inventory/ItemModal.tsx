@@ -161,26 +161,124 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
               </button>
             </div>
             <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
-              {/* TESTE GIGANTE DE PRECIFICAÇÃO */}
+              {/* SISTEMA DE PRECIFICAÇÃO FUNCIONAL */}
               <div style={{
-                backgroundColor: 'red',
-                color: 'white',
-                padding: '30px',
-                margin: '20px 0',
-                border: '5px solid black',
-                fontSize: '24px',
-                fontWeight: 'bold',
-                textAlign: 'center'
+                backgroundColor: '#f0f9ff',
+                border: '2px solid #3b82f6',
+                borderRadius: '8px',
+                padding: '20px',
+                margin: '15px 0'
               }}>
-                🚨🚨🚨 SISTEMA DE PRECIFICAÇÃO TESTE 🚨🚨🚨
-                <div style={{
-                  backgroundColor: 'yellow',
-                  color: 'black',
-                  padding: '15px',
-                  margin: '15px 0',
-                  fontSize: '18px'
+                <h3 style={{ 
+                  color: '#1e40af', 
+                  fontSize: '18px', 
+                  fontWeight: 'bold',
+                  marginBottom: '15px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
                 }}>
-                  Se você está vendo isso, o deploy funcionou!
+                  💰 Sistema de Precificação
+                </h3>
+                
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                    Método de Precificação:
+                  </label>
+                  <div style={{ display: 'flex', gap: '20px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <input 
+                        type="radio" 
+                        name="pricingMethod" 
+                        value="margin"
+                        defaultChecked
+                        onChange={() => {
+                          console.log('Método selecionado: Margem');
+                          setPricingData(prev => ({ ...prev, pricingMethod: 'margin' }));
+                        }}
+                      />
+                      📈 Por Margem de Lucro
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <input 
+                        type="radio" 
+                        name="pricingMethod" 
+                        value="fixed_price"
+                        onChange={() => {
+                          console.log('Método selecionado: Preço Fixo');
+                          setPricingData(prev => ({ ...prev, pricingMethod: 'fixed_price' }));
+                        }}
+                      />
+                      💵 Preço Fixo
+                    </label>
+                  </div>
+                </div>
+
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                  gap: '15px' 
+                }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                      Custo Base:
+                    </label>
+                    <div style={{
+                      padding: '10px',
+                      backgroundColor: '#f3f4f6',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontWeight: 'bold'
+                    }}>
+                      R$ {(watchedCost || 0).toFixed(2)}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                      Margem de Lucro (%):
+                    </label>
+                    <input 
+                      type="number"
+                      defaultValue="50"
+                      min="0"
+                      step="1"
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '16px'
+                      }}
+                      onChange={(e) => {
+                        const margin = Number(e.target.value);
+                        const cost = watchedCost || 0;
+                        const price = cost * (1 + margin / 100);
+                        console.log(`Margem: ${margin}%, Custo: R$ ${cost}, Preço: R$ ${price.toFixed(2)}`);
+                        setPricingData(prev => ({
+                          ...prev,
+                          marginPercentage: margin,
+                          salePrice: price
+                        }));
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
+                      Preço de Venda:
+                    </label>
+                    <div style={{
+                      padding: '10px',
+                      backgroundColor: '#dcfce7',
+                      border: '1px solid #16a34a',
+                      borderRadius: '6px',
+                      fontWeight: 'bold',
+                      color: '#15803d'
+                    }}>
+                      R$ {((watchedCost || 0) * 1.5).toFixed(2)}
+                    </div>
+                  </div>
                 </div>
               </div>
 
