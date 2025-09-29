@@ -767,13 +767,31 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   };
 
   const loadFullInventory = async () => {
-    const { data, error } = await supabase.from('inventory_items').select('*').order('name');
+    console.log('📦 Carregando inventário completo...');
+    
+    // Determinar empresa_id baseado no ambiente
+    const isProduction = import.meta.env.VITE_ENVIRONMENT === 'production' || 
+                        import.meta.env.VERCEL_ENV === 'production' ||
+                        import.meta.env.VITE_SUPABASE_URL?.includes('jtfdzjmravketpkwjkvp');
+    
+    const empresaId = isProduction 
+      ? '9e445c5a-a382-444d-94f8-9d126ed6414e' // Produção
+      : 'c53c4376-155a-46a2-bcc1-407eb6ed190a'; // Desenvolvimento
+    
+    console.log('🏢 Carregando inventário para empresa_id:', empresaId, '(ambiente:', isProduction ? 'produção' : 'desenvolvimento', ')');
+
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('name');
     
     if (error) {
-      console.error('Erro ao carregar inventory completo:', error);
+      console.error('❌ Erro ao carregar inventory completo:', error);
       return;
     }
     
+    console.log('✅ Inventário carregado:', data?.length || 0, 'itens');
     if (data) setInventory(data.map(fromInventorySupabase));
   };
 

@@ -9,10 +9,15 @@ import { InventoryItem } from '../../types';
 
 const InventoryModule: React.FC = () => {
   const navigate = useNavigate();
-  const { inventory, inventoryCategories, removeInventoryItem } = useApp();
+  const { inventory, inventoryCategories, removeInventoryItem, loadFullInventory } = useApp();
   const [showItemModal, setShowItemModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Carregar inventário completo quando o componente for montado
+  React.useEffect(() => {
+    loadFullInventory();
+  }, [loadFullInventory]);
 
   const handleEdit = (item: InventoryItem) => {
     setSelectedItem(item);
