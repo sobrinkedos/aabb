@@ -32,16 +32,34 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
 
   const loadCategories = async () => {
     try {
+      console.log('🔍 Carregando categorias do inventory_categories...');
       const { data, error } = await supabase
-        .from('product_categories')
+        .from('inventory_categories')
         .select('*')
         .eq('is_active', true)
         .order('name');
 
       if (error) throw error;
+      console.log('✅ Categorias carregadas:', data?.length || 0);
       setCategories(data || []);
     } catch (error) {
-      console.error('Erro ao carregar categorias:', error);
+      console.error('❌ Erro ao carregar categorias:', error);
+      
+      // Fallback: tentar product_categories se inventory_categories falhar
+      try {
+        console.log('🔄 Tentando fallback para product_categories...');
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('product_categories')
+          .select('*')
+          .eq('is_active', true)
+          .order('name');
+
+        if (fallbackError) throw fallbackError;
+        console.log('✅ Categorias do fallback carregadas:', fallbackData?.length || 0);
+        setCategories(fallbackData || []);
+      } catch (fallbackError) {
+        console.error('❌ Erro no fallback também:', fallbackError);
+      }
     } finally {
       setLoadingCategories(false);
     }

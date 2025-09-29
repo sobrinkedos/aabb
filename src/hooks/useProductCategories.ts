@@ -12,9 +12,9 @@ export interface ProductCategory {
   created_by?: string;
 }
 
-// Configuração da API REST direta
-const SUPABASE_URL = 'https://jtfdzjmravketpkwjkvp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0ZmR6am1yYXZrZXRwa3dqa3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNjM1NjIsImV4cCI6MjA3MzkzOTU2Mn0.AOFSlSLFVw-pU1-lpUzxJ2fov3kR95eBlz_92mtSMgs';
+// Configuração da API REST direta - PROJETO DE DESENVOLVIMENTO
+const SUPABASE_URL = 'https://wznycskqsavpmejwpksp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
 
 // Função para fazer requisições diretas à API REST
 const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
@@ -50,7 +50,7 @@ export const useProductCategories = () => {
       
       console.log('📋 Carregando categorias via API REST...');
       
-      const data = await apiRequest('product_categories?is_active=eq.true&order=name');
+      const data = await apiRequest('inventory_categories?is_active=eq.true&order=name');
       
       console.log('📋 Resultado do carregamento:', data);
       
@@ -77,7 +77,7 @@ export const useProductCategories = () => {
       
       console.log('📤 Dados para inserir:', dataToInsert);
       
-      const data = await apiRequest('product_categories', {
+      const data = await apiRequest('inventory_categories', {
         method: 'POST',
         body: JSON.stringify(dataToInsert),
       });
@@ -101,7 +101,7 @@ export const useProductCategories = () => {
         updated_at: new Date().toISOString() 
       };
       
-      const data = await apiRequest(`product_categories?id=eq.${id}`, {
+      const data = await apiRequest(`inventory_categories?id=eq.${id}`, {
         method: 'PATCH',
         body: JSON.stringify(updateData),
       });
@@ -125,7 +125,7 @@ export const useProductCategories = () => {
         updated_at: new Date().toISOString() 
       };
       
-      await apiRequest(`product_categories?id=eq.${id}`, {
+      await apiRequest(`inventory_categories?id=eq.${id}`, {
         method: 'PATCH',
         body: JSON.stringify(updateData),
       });
