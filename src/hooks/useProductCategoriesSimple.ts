@@ -20,7 +20,7 @@ export const useProductCategoriesSimple = () => {
 
   // Função para fazer requisições sem autenticação (já que RLS está desabilitado)
   const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
-    const url = `https://jtfdzjmravketpkwjkvp.supabase.co/rest/v1/${endpoint}`;
+    const url = `https://wznycskqsavpmejwpksp.supabase.co/rest/v1/${endpoint}`;
     
     console.log('🌐 Fazendo requisição para:', url);
     console.log('📤 Opções:', options);
@@ -28,7 +28,7 @@ export const useProductCategoriesSimple = () => {
     const response = await fetch(url, {
       ...options,
       headers: {
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0ZmR6am1yYXZrZXRwa3dqa3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNjM1NjIsImV4cCI6MjA3MzkzOTU2Mn0.AOFSlSLFVw-pU1-lpUzxJ2fov3kR95eBlz_92mtSMgs',
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8',
         'Content-Type': 'application/json',
         'Prefer': 'return=representation',
         ...options.headers,

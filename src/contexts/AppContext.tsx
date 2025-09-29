@@ -625,7 +625,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         supplier: itemData.supplier,
         available_for_sale: itemData.availableForSale || false,
         image_url: itemData.image_url || null,
-        empresa_id: 'd49dc96c-f53a-4ae9-ad9a-30d6085b6549' // ID da empresa AABB Garanhuns
+        empresa_id: 'c53c4376-155a-46a2-bcc1-407eb6ed190a' // ID da empresa AABB6 (desenvolvimento)
     };
     
     console.log('📤 Dados para inserir:', itemToInsert);
@@ -659,7 +659,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         available_for_sale: updatedItem.availableForSale || false,
         image_url: updatedItem.image_url || null,
         last_updated: new Date().toISOString(),
-        empresa_id: 'd49dc96c-f53a-4ae9-ad9a-30d6085b6549' // ID da empresa AABB Garanhuns
+        empresa_id: 'c53c4376-155a-46a2-bcc1-407eb6ed190a' // ID da empresa AABB6 (desenvolvimento)
     };
     
     console.log('📤 Dados para atualizar:', itemToUpdate);
