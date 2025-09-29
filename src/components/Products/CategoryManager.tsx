@@ -153,6 +153,13 @@ export const CategoryManager: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | null>(null);
 
+  // Debug logs
+  console.log('🔍 CategoryManager - Estado atual:', {
+    categoriesCount: categories.length,
+    loading,
+    categories: categories.map(c => ({ id: c.id, name: c.name }))
+  });
+
   const handleEdit = (category: ProductCategory) => {
     setSelectedCategory(category);
     setModalOpen(true);
@@ -198,13 +205,24 @@ export const CategoryManager: React.FC = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Categorias de Produtos</h1>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-        >
-          <Plus size={20} />
-          <span>Nova Categoria</span>
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => {
+              console.log('🔄 Forçando refresh das categorias...');
+              refresh();
+            }}
+            className="flex items-center space-x-2 bg-gray-600 text-white px-3 py-2 rounded-md hover:bg-gray-700 text-sm"
+          >
+            <span>🔄 Refresh</span>
+          </button>
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          >
+            <Plus size={20} />
+            <span>Nova Categoria</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
