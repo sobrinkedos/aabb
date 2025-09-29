@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Tag, X } from 'lucide-react';
-import { useProductCategories, ProductCategory } from '../../hooks/useProductCategories';
+import { useProductCategoriesSimple as useProductCategories, ProductCategory } from '../../hooks/useProductCategoriesSimple';
 
 interface CategoryModalProps {
   isOpen: boolean;
