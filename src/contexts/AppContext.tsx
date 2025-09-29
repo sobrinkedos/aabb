@@ -615,6 +615,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const addInventoryItem = async (itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
     console.log('📦 Adicionando item ao inventário:', itemData);
     
+    // Determinar empresa_id baseado no ambiente
+    const isProduction = import.meta.env.VITE_ENVIRONMENT === 'production' || 
+                        import.meta.env.VERCEL_ENV === 'production' ||
+                        import.meta.env.VITE_SUPABASE_URL?.includes('jtfdzjmravketpkwjkvp');
+    
+    const empresaId = isProduction 
+      ? '9e445c5a-a382-444d-94f8-9d126ed6414e' // Produção
+      : 'c53c4376-155a-46a2-bcc1-407eb6ed190a'; // Desenvolvimento
+    
+    console.log('🏢 Usando empresa_id:', empresaId, '(ambiente:', isProduction ? 'produção' : 'desenvolvimento', ')');
+
     const itemToInsert: any = {
         name: itemData.name,
         category_id: itemData.categoryId,
@@ -625,7 +636,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         supplier: itemData.supplier,
         available_for_sale: itemData.availableForSale || false,
         image_url: itemData.image_url || null,
-        empresa_id: 'c53c4376-155a-46a2-bcc1-407eb6ed190a' // ID da empresa AABB6 (desenvolvimento)
+        empresa_id: empresaId
     };
     
     console.log('📤 Dados para inserir:', itemToInsert);
