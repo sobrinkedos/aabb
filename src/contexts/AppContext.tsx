@@ -615,33 +615,44 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const addInventoryItem = async (itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
     console.log('📦 Adicionando item ao inventário:', itemData);
     
-    // Determinar empresa_id baseado no ambiente
-    const isProduction = import.meta.env.VITE_ENVIRONMENT === 'production' || 
+    // Sempre usar a empresa de produção quando estiver no ambiente de produção
+    const currentUrl = window.location.hostname;
+    const isProduction = currentUrl.includes('vercel.app') || 
+                        currentUrl.includes('aabb-system.vercel.app') ||
+                        import.meta.env.VITE_ENVIRONMENT === 'production' || 
                         import.meta.env.VERCEL_ENV === 'production' ||
                         import.meta.env.VITE_SUPABASE_URL?.includes('jtfdzjmravketpkwjkvp');
     
-    const empresaId = isProduction 
-      ? '9e445c5a-a382-444d-94f8-9d126ed6414e' // Produção
-      : 'c53c4376-155a-46a2-bcc1-407eb6ed190a'; // Desenvolvimento
+    // Sempre usar empresa de produção em produção
+    const empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e'; // AABB Garanhuns
     
     console.log('🏢 Usando empresa_id:', empresaId, '(ambiente:', isProduction ? 'produção' : 'desenvolvimento', ')');
+    console.log('🌐 URL atual:', currentUrl);
+
+    // Validar dados obrigatórios
+    if (!itemData.name || !itemData.unit) {
+      console.error('❌ Dados obrigatórios faltando:', { name: itemData.name, unit: itemData.unit });
+      alert('Nome e unidade são obrigatórios!');
+      return;
+    }
 
     const itemToInsert: any = {
-        name: itemData.name,
-        category_id: itemData.categoryId,
-        current_stock: itemData.currentStock,
-        min_stock: itemData.minStock,
-        unit: itemData.unit,
-        cost: itemData.cost,
-        supplier: itemData.supplier,
-        available_for_sale: itemData.availableForSale || false,
-        image_url: itemData.image_url || null,
+        name: itemData.name.trim(),
+        category_id: itemData.categoryId || null,
+        current_stock: Number(itemData.currentStock) || 0,
+        min_stock: Number(itemData.minStock) || 0,
+        unit: itemData.unit.trim(),
+        cost: itemData.cost ? Number(itemData.cost) : null,
+        supplier: itemData.supplier?.trim() || null,
+        available_for_sale: Boolean(itemData.availableForSale),
+        image_url: itemData.image_url?.trim() || null,
         empresa_id: empresaId
     };
     
-    console.log('📤 Dados para inserir:', itemToInsert);
+    console.log('📤 Dados para inserir (validados):', itemToInsert);
     
     // Verificar se já existe um item com o mesmo nome para esta empresa
+    console.log('🔍 Verificando se item já existe...');
     const { data: existingItems, error: checkError } = await supabase
       .from('inventory_items')
       .select('id, name')
@@ -650,7 +661,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     
     if (checkError) {
       console.error('❌ Erro ao verificar item existente:', checkError);
-      // Continuar mesmo com erro na verificação
+      alert('Erro ao verificar se o item já existe: ' + checkError.message);
+      return;
     }
     
     if (existingItems && existingItems.length > 0) {
@@ -661,28 +673,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     
     console.log('✅ Nome disponível, prosseguindo com inserção...');
     
-    // Tentar inserção com UPSERT para contornar problemas de constraint
-    console.log('🔄 Tentando inserção com UPSERT...');
-    
-    let { data, error } = await supabase
+    // Inserção direta e simples
+    console.log('🔄 Inserindo item...');
+    const { data, error } = await supabase
       .from('inventory_items')
-      .upsert(itemToInsert, { 
-        onConflict: 'id',
-        ignoreDuplicates: false 
-      })
+      .insert(itemToInsert)
       .select()
       .single();
     
-    console.log('📝 Resultado da inserção (UPSERT):', { data, error });
-    
-    // Se UPSERT falhou, tentar inserção simples
-    if (error) {
-      console.log('🔄 UPSERT falhou, tentando inserção simples...');
-      const result = await supabase.from('inventory_items').insert(itemToInsert).select();
-      data = result.data?.[0];
-      error = result.error;
-      console.log('📝 Resultado da inserção (simples):', { data, error });
-    }
+    console.log('📝 Resultado da inserção:', { data, error });
     
     if (error) { 
       console.error('❌ Erro ao inserir item:', error);
@@ -694,20 +693,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         statusCode: (error as any).statusCode,
         statusText: (error as any).statusText
       });
-      
-      // Tentar inserção mais simples como último recurso
-      if (error.code === '409') {
-        console.log('🔄 Última tentativa: inserção básica...');
-        const basicResult = await supabase.from('inventory_items').insert(itemToInsert);
-        console.log('📝 Resultado da inserção básica:', basicResult);
-        
-        if (!basicResult.error) {
-          console.log('✅ Inserção básica bem-sucedida!');
-          // Recarregar inventário para pegar o item inserido
-          await loadFullInventory();
-          return;
-        }
-      }
       
       alert('Erro ao salvar produto: ' + error.message + ' (Código: ' + error.code + ')');
       return; 
