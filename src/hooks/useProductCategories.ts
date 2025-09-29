@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase, supabaseAdmin } from '../lib/supabase';
 
 export interface ProductCategory {
   id: string;
@@ -13,6 +12,32 @@ export interface ProductCategory {
   created_by?: string;
 }
 
+// Configuração da API REST direta
+const SUPABASE_URL = 'https://jtfdzjmravketpkwjkvp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0ZmR6am1yYXZrZXRwa3dqa3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNjM1NjIsImV4cCI6MjA3MzkzOTU2Mn0.AOFSlSLFVw-pU1-lpUzxJ2fov3kR95eBlz_92mtSMgs';
+
+// Função para fazer requisições diretas à API REST
+const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
+  const url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
+  
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation',
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  return response.json();
+};
+
 export const useProductCategories = () => {
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,17 +48,15 @@ export const useProductCategories = () => {
       setLoading(true);
       setError(null);
       
-      const { data, error: supabaseError } = await supabase
-        .from('product_categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
-
-      if (supabaseError) throw supabaseError;
+      console.log('📋 Carregando categorias via API REST...');
+      
+      const data = await apiRequest('product_categories?is_active=eq.true&order=name');
+      
+      console.log('📋 Resultado do carregamento:', data);
       
       setCategories(data || []);
     } catch (err) {
-      console.error('Erro ao carregar categorias:', err);
+      console.error('❌ Erro ao carregar categorias:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
       setLoading(false);
@@ -42,7 +65,7 @@ export const useProductCategories = () => {
 
   const createCategory = async (categoryData: Omit<ProductCategory, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
     try {
-      console.log('➕ Criando categoria:', categoryData);
+      console.log('➕ Criando categoria via API REST:', categoryData);
       
       // Preparar dados com timestamps
       const dataToInsert = {
@@ -54,19 +77,15 @@ export const useProductCategories = () => {
       
       console.log('📤 Dados para inserir:', dataToInsert);
       
-      // Usar cliente admin para evitar problemas de autenticação
-      const { data, error } = await supabaseAdmin
-        .from('product_categories')
-        .insert([dataToInsert])
-        .select()
-        .single();
+      const data = await apiRequest('product_categories', {
+        method: 'POST',
+        body: JSON.stringify(dataToInsert),
+      });
 
-      console.log('📝 Resultado da criação:', { data, error });
-
-      if (error) throw error;
+      console.log('📝 Resultado da criação:', data);
       
       await loadCategories(); // Recarregar a lista
-      return data;
+      return data[0]; // API REST retorna array
     } catch (err) {
       console.error('❌ Erro ao criar categoria:', err);
       throw err;
@@ -75,22 +94,22 @@ export const useProductCategories = () => {
 
   const updateCategory = async (id: string, categoryData: Partial<ProductCategory>) => {
     try {
-      console.log('🔄 Atualizando categoria:', id, categoryData);
+      console.log('🔄 Atualizando categoria via API REST:', id, categoryData);
       
-      // Usar cliente admin para evitar problemas de autenticação
-      const { data, error } = await supabaseAdmin
-        .from('product_categories')
-        .update({ ...categoryData, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-        .single();
+      const updateData = { 
+        ...categoryData, 
+        updated_at: new Date().toISOString() 
+      };
+      
+      const data = await apiRequest(`product_categories?id=eq.${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updateData),
+      });
 
-      console.log('📝 Resultado da atualização:', { data, error });
-
-      if (error) throw error;
+      console.log('📝 Resultado da atualização:', data);
       
       await loadCategories(); // Recarregar a lista
-      return data;
+      return data[0]; // API REST retorna array
     } catch (err) {
       console.error('❌ Erro ao atualizar categoria:', err);
       throw err;
@@ -99,17 +118,19 @@ export const useProductCategories = () => {
 
   const deleteCategory = async (id: string) => {
     try {
-      console.log('🗑️ Excluindo categoria:', id);
+      console.log('🗑️ Excluindo categoria via API REST:', id);
       
-      // Usar cliente admin para evitar problemas de autenticação
-      const { error } = await supabaseAdmin
-        .from('product_categories')
-        .update({ is_active: false, updated_at: new Date().toISOString() })
-        .eq('id', id);
+      const updateData = { 
+        is_active: false, 
+        updated_at: new Date().toISOString() 
+      };
+      
+      await apiRequest(`product_categories?id=eq.${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updateData),
+      });
 
-      console.log('📝 Resultado da exclusão:', { error });
-
-      if (error) throw error;
+      console.log('📝 Categoria excluída com sucesso');
       
       await loadCategories(); // Recarregar a lista
     } catch (err) {
