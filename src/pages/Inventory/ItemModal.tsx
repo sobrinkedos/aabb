@@ -340,17 +340,21 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
               <Controller
                 name="availableForSale"
                 control={control}
-                render={({ field }) => (
-                  field.value && (
+                render={({ field }) => {
+                  console.log('🔍 Disponível para venda:', field.value);
+                  return field.value ? (
                     <PricingComponent
                       cost={watchedCost || 0}
                       salePrice={pricingData.salePrice}
                       marginPercentage={pricingData.marginPercentage}
                       pricingMethod={pricingData.pricingMethod}
-                      onPricingChange={(pricing) => setPricingData(pricing)}
+                      onPricingChange={(pricing) => {
+                        console.log('💰 Precificação alterada:', pricing);
+                        setPricingData(pricing);
+                      }}
                     />
-                  )
-                )}
+                  ) : null;
+                }}
               />
 
               {/* Botões de ação */}

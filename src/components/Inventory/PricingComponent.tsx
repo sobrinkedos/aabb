@@ -20,6 +20,8 @@ const PricingComponent: React.FC<PricingComponentProps> = ({
   pricingMethod = 'margin',
   onPricingChange
 }) => {
+  console.log('🏷️ PricingComponent renderizado com:', { cost, salePrice, marginPercentage, pricingMethod });
+  
   const [method, setMethod] = useState<'margin' | 'fixed_price'>(pricingMethod);
   const [margin, setMargin] = useState<number>(marginPercentage || 50);
   const [fixedPrice, setFixedPrice] = useState<number>(salePrice || 0);
@@ -80,7 +82,7 @@ const PricingComponent: React.FC<PricingComponentProps> = ({
     : margin;
 
   return (
-    <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
+    <div className="space-y-4 p-4 bg-gray-50 rounded-lg border" style={{ minHeight: '200px', border: '2px solid red' }}>
       <div className="flex items-center space-x-2 mb-3">
         <Calculator className="w-5 h-5 text-blue-600" />
         <h3 className="text-lg font-semibold text-gray-800">Precificação</h3>
