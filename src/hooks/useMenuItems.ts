@@ -86,6 +86,17 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
       
       console.log('All menu items:', allData, 'Error:', allError);
       
+      // Determinar empresa_id baseado no ambiente
+      const isProduction = import.meta.env.VITE_ENVIRONMENT === 'production' || 
+                          import.meta.env.VERCEL_ENV === 'production' ||
+                          import.meta.env.VITE_SUPABASE_URL?.includes('jtfdzjmravketpkwjkvp');
+      
+      const empresaId = isProduction 
+        ? '9e445c5a-a382-444d-94f8-9d126ed6414e' // Produção
+        : 'c53c4376-155a-46a2-bcc1-407eb6ed190a'; // Desenvolvimento
+      
+      console.log('🏢 Carregando menu items para empresa_id:', empresaId, '(ambiente:', isProduction ? 'produção' : 'desenvolvimento', ')');
+
       // Buscar itens do menu baseado no filtro
       let query = supabase
         .from('menu_items')
@@ -101,6 +112,7 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
           )
         `)
         .eq('available', true)
+        .eq('empresa_id', empresaId)
         .order('category', { ascending: true })
         .order('name', { ascending: true });
         
