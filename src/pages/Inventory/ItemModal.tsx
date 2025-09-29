@@ -6,7 +6,7 @@ import { InventoryItem } from '../../types';
 import { useApp } from '../../contexts/AppContext';
 import { CategoryButton } from '../../components/Products';
 import { supabase } from '../../lib/supabase';
-import PricingComponent from '../../components/Inventory/PricingComponent';
+import SimplePricingComponent from '../../components/Inventory/SimplePricingComponent';
 
 interface ItemModalProps {
   isOpen: boolean;
@@ -343,11 +343,8 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                 render={({ field }) => {
                   console.log('🔍 Disponível para venda:', field.value);
                   return field.value ? (
-                    <PricingComponent
+                    <SimplePricingComponent
                       cost={watchedCost || 0}
-                      salePrice={pricingData.salePrice}
-                      marginPercentage={pricingData.marginPercentage}
-                      pricingMethod={pricingData.pricingMethod}
                       onPricingChange={(pricing) => {
                         console.log('💰 Precificação alterada:', pricing);
                         setPricingData(pricing);
