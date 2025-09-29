@@ -613,6 +613,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   };
 
   const addInventoryItem = async (itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
+    console.log('📦 Adicionando item ao inventário:', itemData);
+    
     const itemToInsert: any = {
         name: itemData.name,
         category_id: itemData.categoryId,
@@ -622,14 +624,30 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         cost: itemData.cost,
         supplier: itemData.supplier,
         available_for_sale: itemData.availableForSale || false,
-        image_url: itemData.image_url || null
+        image_url: itemData.image_url || null,
+        empresa_id: 'd49dc96c-f53a-4ae9-ad9a-30d6085b6549' // ID da empresa AABB Garanhuns
     };
+    
+    console.log('📤 Dados para inserir:', itemToInsert);
+    
     const { data, error } = await supabase.from('inventory_items').insert(itemToInsert).select().single();
-    if (error) { console.error(error); return; }
-    if (data) setInventory(prev => [fromInventorySupabase(data), ...prev].sort((a,b) => a.name.localeCompare(b.name)));
+    
+    console.log('📝 Resultado da inserção:', { data, error });
+    
+    if (error) { 
+      console.error('❌ Erro ao inserir item:', error); 
+      alert('Erro ao salvar produto: ' + error.message);
+      return; 
+    }
+    if (data) {
+      console.log('✅ Item inserido com sucesso!');
+      setInventory(prev => [fromInventorySupabase(data), ...prev].sort((a,b) => a.name.localeCompare(b.name)));
+    }
   };
 
   const updateInventoryItem = async (updatedItem: InventoryItem) => {
+    console.log('🔄 Atualizando item do inventário:', updatedItem);
+    
     const itemToUpdate: any = {
         name: updatedItem.name,
         category_id: updatedItem.categoryId,
@@ -640,11 +658,25 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         supplier: updatedItem.supplier,
         available_for_sale: updatedItem.availableForSale || false,
         image_url: updatedItem.image_url || null,
-        last_updated: new Date().toISOString()
+        last_updated: new Date().toISOString(),
+        empresa_id: 'd49dc96c-f53a-4ae9-ad9a-30d6085b6549' // ID da empresa AABB Garanhuns
     };
+    
+    console.log('📤 Dados para atualizar:', itemToUpdate);
+    
     const { data, error } = await supabase.from('inventory_items').update(itemToUpdate).eq('id', updatedItem.id).select().single();
-    if (error) { console.error(error); return; }
-    if (data) setInventory(prev => prev.map(item => item.id === data.id ? fromInventorySupabase(data) : item).sort((a,b) => a.name.localeCompare(b.name)));
+    
+    console.log('📝 Resultado da atualização:', { data, error });
+    
+    if (error) { 
+      console.error('❌ Erro ao atualizar item:', error); 
+      alert('Erro ao atualizar produto: ' + error.message);
+      return; 
+    }
+    if (data) {
+      console.log('✅ Item atualizado com sucesso!');
+      setInventory(prev => prev.map(item => item.id === data.id ? fromInventorySupabase(data) : item).sort((a,b) => a.name.localeCompare(b.name)));
+    }
   };
 
   const removeInventoryItem = async (itemId: string) => {
