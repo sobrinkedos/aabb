@@ -336,21 +336,41 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                 </div>
               </div>
 
+              {/* TESTE: Componente de Precificação sempre visível para debug */}
+              <div className="bg-red-100 border-2 border-red-500 p-4 rounded">
+                <h3 className="text-red-800 font-bold">🚨 TESTE DE PRECIFICAÇÃO</h3>
+                <SimplePricingComponent
+                  cost={watchedCost || 0}
+                  onPricingChange={(pricing) => {
+                    console.log('💰 Precificação alterada:', pricing);
+                    setPricingData(pricing);
+                  }}
+                />
+              </div>
+
               {/* Componente de Precificação - Mostrar apenas se disponível para venda */}
               <Controller
                 name="availableForSale"
                 control={control}
                 render={({ field }) => {
                   console.log('🔍 Disponível para venda:', field.value);
+                  console.log('🔍 Custo observado:', watchedCost);
                   return field.value ? (
-                    <SimplePricingComponent
-                      cost={watchedCost || 0}
-                      onPricingChange={(pricing) => {
-                        console.log('💰 Precificação alterada:', pricing);
-                        setPricingData(pricing);
-                      }}
-                    />
-                  ) : null;
+                    <div className="bg-green-100 border-2 border-green-500 p-2 rounded">
+                      <p className="text-green-800 font-bold">✅ Disponível para venda ATIVO</p>
+                      <SimplePricingComponent
+                        cost={watchedCost || 0}
+                        onPricingChange={(pricing) => {
+                          console.log('💰 Precificação alterada:', pricing);
+                          setPricingData(pricing);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-yellow-100 border-2 border-yellow-500 p-2 rounded">
+                      <p className="text-yellow-800 font-bold">⚠️ Disponível para venda INATIVO</p>
+                    </div>
+                  );
                 }}
               />
 
