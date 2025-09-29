@@ -21,7 +21,7 @@ export const useInventoryCategories = () => {
   // Cache para o ID da empresa
   const [empresaId, setEmpresaId] = useState<string | null>(null);
 
-  // Função para fazer requisições sem autenticação (já que RLS está desabilitado)
+  // Função para fazer requisições (RLS deve estar desabilitado na tabela)
   const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
     const url = `https://wznycskqsavpmejwpksp.supabase.co/rest/v1/${endpoint}`;
     
@@ -32,6 +32,7 @@ export const useInventoryCategories = () => {
       ...options,
       headers: {
         'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8',
         'Content-Type': 'application/json',
         'Prefer': 'return=representation',
         ...options.headers,
