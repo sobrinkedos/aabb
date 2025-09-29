@@ -38,6 +38,15 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
     pricingMethod: item?.pricingMethod || 'margin' as 'margin' | 'fixed_price'
   });
   
+  // Ref para capturar valores atuais de precificação
+  const currentPricingRef = React.useRef(pricingData);
+  
+  // Sincronizar ref com estado
+  React.useEffect(() => {
+    currentPricingRef.current = pricingData;
+    console.log('🔄 Ref de precificação atualizada:', pricingData);
+  }, [pricingData]);
+  
   // Observar mudanças no custo para recalcular preços
   const watchedCost = watch('cost', item?.cost || 0);
 
@@ -95,6 +104,16 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
         availableForSale: item.availableForSale,
         image_url: item.image_url
       });
+      
+      // Atualizar dados de precificação para item existente
+      const itemPricingData = {
+        salePrice: item.salePrice,
+        marginPercentage: item.marginPercentage || 50,
+        pricingMethod: item.pricingMethod || 'margin' as 'margin' | 'fixed_price'
+      };
+      setPricingData(itemPricingData);
+      currentPricingRef.current = itemPricingData;
+      console.log('📝 Carregando dados de precificação do item:', itemPricingData);
     } else {
       reset({
         name: '',
@@ -113,10 +132,20 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
+      // Capturar valores atuais de precificação
+      const currentPricing = currentPricingRef.current;
+      
+      console.log('💾 Salvando item com dados:', data);
+      console.log('💰 Dados de precificação:', currentPricing);
+      
       const itemDataWithPricing = {
         ...data,
-        ...pricingData
+        salePrice: currentPricing.salePrice,
+        marginPercentage: currentPricing.marginPercentage,
+        pricingMethod: currentPricing.pricingMethod
       };
+      
+      console.log('📦 Dados finais para salvar:', itemDataWithPricing);
       
       if (item) {
         await updateInventoryItem({ ...item, ...itemDataWithPricing });
@@ -194,7 +223,9 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                         defaultChecked
                         onChange={() => {
                           console.log('Método selecionado: Margem');
-                          setPricingData(prev => ({ ...prev, pricingMethod: 'margin' }));
+                          const newData = { ...currentPricingRef.current, pricingMethod: 'margin' as 'margin' | 'fixed_price' };
+                          setPricingData(newData);
+                          currentPricingRef.current = newData;
                         }}
                       />
                       📈 Por Margem de Lucro
@@ -206,7 +237,9 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                         value="fixed_price"
                         onChange={() => {
                           console.log('Método selecionado: Preço Fixo');
-                          setPricingData(prev => ({ ...prev, pricingMethod: 'fixed_price' }));
+                          const newData = { ...currentPricingRef.current, pricingMethod: 'fixed_price' as 'margin' | 'fixed_price' };
+                          setPricingData(newData);
+                          currentPricingRef.current = newData;
                         }}
                       />
                       💵 Preço Fixo
@@ -254,12 +287,18 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                         const margin = Number(e.target.value);
                         const cost = watchedCost || 0;
                         const price = cost * (1 + margin / 100);
-                        console.log(`Margem: ${margin}%, Custo: R$ ${cost}, Preço: R$ ${price.toFixed(2)}`);
-                        setPricingData(prev => ({
-                          ...prev,
+                        console.log(`💰 Margem: ${margin}%, Custo: R$ ${cost}, Preço: R$ ${price.toFixed(2)}`);
+                        
+                        const newData = {
+                          ...currentPricingRef.current,
                           marginPercentage: margin,
-                          salePrice: price
-                        }));
+                          salePrice: price,
+                          pricingMethod: 'margin' as 'margin' | 'fixed_price'
+                        };
+                        
+                        setPricingData(newData);
+                        currentPricingRef.current = newData;
+                        console.log('📊 Dados de precificação atualizados:', newData);
                       }}
                     />
                   </div>
