@@ -641,13 +641,39 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     
     console.log('📤 Dados para inserir:', itemToInsert);
     
+    // Verificar se já existe um item com o mesmo nome para esta empresa
+    const { data: existingItem, error: checkError } = await supabase
+      .from('inventory_items')
+      .select('id, name')
+      .eq('name', itemToInsert.name)
+      .eq('empresa_id', empresaId)
+      .single();
+    
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows found
+      console.error('❌ Erro ao verificar item existente:', checkError);
+    }
+    
+    if (existingItem) {
+      console.warn('⚠️ Item já existe:', existingItem);
+      alert('Já existe um item com este nome no inventário!');
+      return;
+    }
+    
+    console.log('✅ Nome disponível, prosseguindo com inserção...');
+    
     const { data, error } = await supabase.from('inventory_items').insert(itemToInsert).select().single();
     
     console.log('📝 Resultado da inserção:', { data, error });
     
     if (error) { 
-      console.error('❌ Erro ao inserir item:', error); 
-      alert('Erro ao salvar produto: ' + error.message);
+      console.error('❌ Erro ao inserir item:', error);
+      console.error('❌ Detalhes do erro:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      alert('Erro ao salvar produto: ' + error.message + ' (Código: ' + error.code + ')');
       return; 
     }
     if (data) {
