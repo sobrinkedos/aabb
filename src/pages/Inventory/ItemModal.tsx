@@ -336,16 +336,20 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                 </div>
               </div>
 
-              {/* TESTE: Componente de Precificação sempre visível para debug */}
-              <div className="bg-red-100 border-2 border-red-500 p-4 rounded">
-                <h3 className="text-red-800 font-bold">🚨 TESTE DE PRECIFICAÇÃO</h3>
-                <SimplePricingComponent
-                  cost={watchedCost || 0}
-                  onPricingChange={(pricing) => {
-                    console.log('💰 Precificação alterada:', pricing);
-                    setPricingData(pricing);
-                  }}
-                />
+              {/* TESTE INLINE: Componente de Precificação */}
+              <div style={{ 
+                backgroundColor: 'red', 
+                color: 'white', 
+                padding: '20px', 
+                margin: '10px 0',
+                border: '3px solid black',
+                fontSize: '18px',
+                fontWeight: 'bold'
+              }}>
+                🚨 TESTE DE PRECIFICAÇÃO INLINE
+                <div style={{ backgroundColor: 'white', color: 'black', padding: '10px', margin: '10px 0' }}>
+                  Custo: R$ {(watchedCost || 0).toFixed(2)}
+                </div>
               </div>
 
               {/* Componente de Precificação - Mostrar apenas se disponível para venda */}
@@ -355,20 +359,62 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                 render={({ field }) => {
                   console.log('🔍 Disponível para venda:', field.value);
                   console.log('🔍 Custo observado:', watchedCost);
-                  return field.value ? (
-                    <div className="bg-green-100 border-2 border-green-500 p-2 rounded">
-                      <p className="text-green-800 font-bold">✅ Disponível para venda ATIVO</p>
-                      <SimplePricingComponent
-                        cost={watchedCost || 0}
-                        onPricingChange={(pricing) => {
-                          console.log('💰 Precificação alterada:', pricing);
-                          setPricingData(pricing);
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="bg-yellow-100 border-2 border-yellow-500 p-2 rounded">
-                      <p className="text-yellow-800 font-bold">⚠️ Disponível para venda INATIVO</p>
+                  
+                  return (
+                    <div style={{ 
+                      backgroundColor: field.value ? 'green' : 'yellow', 
+                      color: field.value ? 'white' : 'black',
+                      padding: '15px', 
+                      margin: '10px 0',
+                      border: '2px solid black'
+                    }}>
+                      {field.value ? '✅ DISPONÍVEL PARA VENDA ATIVO' : '⚠️ DISPONÍVEL PARA VENDA INATIVO'}
+                      
+                      {field.value && (
+                        <div style={{ backgroundColor: 'white', color: 'black', padding: '10px', margin: '10px 0' }}>
+                          <h4>💰 Configuração de Preços</h4>
+                          <div style={{ margin: '10px 0' }}>
+                            <label style={{ display: 'block', margin: '5px 0' }}>
+                              <input 
+                                type="radio" 
+                                name="pricingMethod" 
+                                value="margin"
+                                defaultChecked
+                                onChange={() => console.log('Método: Margem')}
+                              /> 
+                              Por Margem de Lucro
+                            </label>
+                            <label style={{ display: 'block', margin: '5px 0' }}>
+                              <input 
+                                type="radio" 
+                                name="pricingMethod" 
+                                value="fixed_price"
+                                onChange={() => console.log('Método: Preço Fixo')}
+                              /> 
+                              Preço Fixo
+                            </label>
+                          </div>
+                          <div style={{ margin: '10px 0' }}>
+                            <label style={{ display: 'block', margin: '5px 0' }}>
+                              Margem (%):
+                              <input 
+                                type="number" 
+                                defaultValue="50"
+                                style={{ marginLeft: '10px', padding: '5px' }}
+                                onChange={(e) => {
+                                  const margin = Number(e.target.value);
+                                  const price = (watchedCost || 0) * (1 + margin / 100);
+                                  console.log(`Margem: ${margin}%, Preço: R$ ${price.toFixed(2)}`);
+                                  setPricingData({
+                                    marginPercentage: margin,
+                                    pricingMethod: 'margin'
+                                  });
+                                }}
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 }}
