@@ -89,28 +89,49 @@ export const useInventoryCategories = () => {
       
       console.log('📋 Carregando categorias...');
       
-      const data = await makeRequest('inventory_categories?is_active=eq.true&order=name');
+      // Tentar diferentes queries para encontrar a estrutura correta
+      let data = null;
       
-      setCategories(data || []);
-    } catch (err) {
-      console.error('❌ Erro ao carregar categorias:', err);
-      
-      // Se der erro de RLS, tentar corrigir automaticamente
-      if (err instanceof Error && err.message.includes('42501')) {
-        console.log('🔧 Detectado erro de RLS, tentando corrigir...');
+      try {
+        // Tentativa 1: Query completa
+        data = await makeRequest('inventory_categories?is_active=eq.true&order=name');
+      } catch (err1) {
+        console.log('⚠️ Tentativa 1 falhou, tentando sem filtro is_active...');
         try {
-          const fixed = await fixInventoryCategories();
-          if (fixed) {
-            console.log('✅ Correção aplicada, tentando carregar novamente...');
-            const retryData = await makeRequest('inventory_categories?is_active=eq.true&order=name');
-            setCategories(retryData || []);
-            return;
+          // Tentativa 2: Sem filtro is_active
+          data = await makeRequest('inventory_categories?order=name');
+        } catch (err2) {
+          console.log('⚠️ Tentativa 2 falhou, tentando query básica...');
+          try {
+            // Tentativa 3: Query básica
+            data = await makeRequest('inventory_categories');
+          } catch (err3) {
+            console.log('⚠️ Tabela pode não existir, tentando corrigir...');
+            
+            // Se der erro de RLS ou tabela não existe, tentar corrigir
+            if (err3 instanceof Error && (err3.message.includes('42501') || err3.message.includes('42P01'))) {
+              console.log('🔧 Detectado erro de RLS/tabela, tentando corrigir...');
+              try {
+                const fixed = await fixInventoryCategories();
+                if (fixed) {
+                  console.log('✅ Correção aplicada, tentando carregar novamente...');
+                  data = await makeRequest('inventory_categories?is_active=eq.true&order=name');
+                }
+              } catch (fixError) {
+                console.error('❌ Erro na correção automática:', fixError);
+                throw err3;
+              }
+            } else {
+              throw err3;
+            }
           }
-        } catch (fixError) {
-          console.error('❌ Erro na correção automática:', fixError);
         }
       }
       
+      setCategories(data || []);
+      
+    } catch (err) {
+      console.error('❌ Erro ao carregar categorias:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
       setLoading(false);
@@ -121,29 +142,63 @@ export const useInventoryCategories = () => {
     try {
       console.log('➕ Criando categoria:', categoryData);
       
-      // Buscar o ID da empresa
-      const currentEmpresaId = await getEmpresaId();
+      // Tentar diferentes estruturas de dados até uma funcionar
+      const attempts = [
+        // Tentativa 1: Estrutura completa
+        {
+          name: categoryData.name,
+          description: categoryData.description || '',
+          color: categoryData.color,
+          icon: categoryData.icon || '',
+          is_active: true,
+          empresa_id: await getEmpresaId()
+        },
+        // Tentativa 2: Sem empresa_id
+        {
+          name: categoryData.name,
+          description: categoryData.description || '',
+          color: categoryData.color,
+          icon: categoryData.icon || '',
+          is_active: true
+        },
+        // Tentativa 3: Apenas campos básicos
+        {
+          name: categoryData.name,
+          color: categoryData.color,
+          is_active: true
+        },
+        // Tentativa 4: Mínimo absoluto
+        {
+          name: categoryData.name
+        }
+      ];
+
+      for (let i = 0; i < attempts.length; i++) {
+        try {
+          console.log(`📤 Tentativa ${i + 1} - Dados para inserção:`, attempts[i]);
+          
+          const data = await makeRequest('inventory_categories', {
+            method: 'POST',
+            body: JSON.stringify(attempts[i]),
+          });
+          
+          console.log('✅ Sucesso na tentativa', i + 1);
+          await loadCategories();
+          return Array.isArray(data) ? data[0] : data;
+          
+        } catch (attemptError) {
+          console.log(`❌ Tentativa ${i + 1} falhou:`, attemptError);
+          
+          if (i === attempts.length - 1) {
+            // Se todas as tentativas falharam, lançar o último erro
+            throw attemptError;
+          }
+          // Continuar para próxima tentativa
+        }
+      }
       
-      const dataToInsert = {
-        name: categoryData.name,
-        description: categoryData.description || '',
-        color: categoryData.color,
-        icon: categoryData.icon || '',
-        is_active: true,
-        empresa_id: currentEmpresaId
-      };
-      
-      console.log('📤 Dados para inserção:', dataToInsert);
-      
-      const data = await makeRequest('inventory_categories', {
-        method: 'POST',
-        body: JSON.stringify(dataToInsert),
-      });
-      
-      await loadCategories();
-      return Array.isArray(data) ? data[0] : data;
     } catch (err) {
-      console.error('❌ Erro ao criar categoria:', err);
+      console.error('❌ Erro ao criar categoria (todas as tentativas falharam):', err);
       throw err;
     }
   };
