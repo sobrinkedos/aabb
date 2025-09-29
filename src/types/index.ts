@@ -111,6 +111,10 @@ export interface MenuItem {
   created_at?: string;
   updated_at?: string;
   inventory_items?: InventoryItem; // Para joins quando é item direto
+  // Campos de precificação
+  costPerServing?: number; // Custo por porção
+  marginPercentage?: number; // Margem de lucro em %
+  pricingMethod?: 'margin' | 'fixed_price'; // Método de precificação
 }
 
 export interface Order {
@@ -165,6 +169,10 @@ export interface InventoryItem {
   cost: number;
   availableForSale?: boolean; // Disponível para venda direta
   image_url?: string; // URL da imagem do item
+  // Campos de precificação
+  salePrice?: number; // Preço de venda fixo
+  marginPercentage?: number; // Margem de lucro em %
+  pricingMethod?: 'margin' | 'fixed_price'; // Método de precificação
 }
 
 export interface Supplier {

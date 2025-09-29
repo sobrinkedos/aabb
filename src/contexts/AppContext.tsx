@@ -20,7 +20,11 @@ const fromInventorySupabase = (item: Tables<'inventory_items'>): InventoryItem =
   supplier: item.supplier || undefined,
   cost: item.cost || 0,
   availableForSale: item.available_for_sale || false,
-  image_url: item.image_url || undefined
+  image_url: item.image_url || undefined,
+  // Campos de precificação
+  salePrice: (item as any).sale_price || undefined,
+  marginPercentage: (item as any).margin_percentage || undefined,
+  pricingMethod: (item as any).pricing_method || 'margin'
 });
 
 const fromInventoryCategorySupabase = (category: Tables<'inventory_categories'>): InventoryCategory => ({
@@ -65,7 +69,11 @@ const fromMenuItemSupabase = (item: any): MenuItem => {
         available: item.available,
         preparation_time: item.preparation_time || undefined,
         item_type: (item.item_type as MenuItem['item_type']) || 'prepared',
-        direct_inventory_item_id: item.direct_inventory_item_id || undefined
+        direct_inventory_item_id: item.direct_inventory_item_id || undefined,
+        // Campos de precificação
+        costPerServing: item.cost_per_serving || undefined,
+        marginPercentage: item.margin_percentage || undefined,
+        pricingMethod: item.pricing_method || 'margin'
     };
 };
 
@@ -646,7 +654,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         supplier: itemData.supplier?.trim() || null,
         available_for_sale: Boolean(itemData.availableForSale),
         image_url: itemData.image_url?.trim() || null,
-        empresa_id: empresaId
+        empresa_id: empresaId,
+        // Campos de precificação
+        sale_price: itemData.salePrice ? Number(itemData.salePrice) : null,
+        margin_percentage: itemData.marginPercentage ? Number(itemData.marginPercentage) : null,
+        pricing_method: itemData.pricingMethod || 'margin'
     };
     
     console.log('📤 Dados para inserir (validados):', itemToInsert);
@@ -717,7 +729,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         available_for_sale: updatedItem.availableForSale || false,
         image_url: updatedItem.image_url || null,
         last_updated: new Date().toISOString(),
-        empresa_id: 'c53c4376-155a-46a2-bcc1-407eb6ed190a' // ID da empresa AABB6 (desenvolvimento)
+        empresa_id: '9e445c5a-a382-444d-94f8-9d126ed6414e', // Sempre usar empresa de produção
+        // Campos de precificação
+        sale_price: updatedItem.salePrice ? Number(updatedItem.salePrice) : null,
+        margin_percentage: updatedItem.marginPercentage ? Number(updatedItem.marginPercentage) : null,
+        pricing_method: updatedItem.pricingMethod || 'margin'
     };
     
     console.log('📤 Dados para atualizar:', itemToUpdate);

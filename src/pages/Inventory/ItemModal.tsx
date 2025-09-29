@@ -6,6 +6,7 @@ import { InventoryItem } from '../../types';
 import { useApp } from '../../contexts/AppContext';
 import { CategoryButton } from '../../components/Products';
 import { supabase } from '../../lib/supabase';
+import PricingComponent from '../../components/Inventory/PricingComponent';
 
 interface ItemModalProps {
   isOpen: boolean;
@@ -25,10 +26,20 @@ interface Category {
 
 const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
   const { addInventoryItem, updateInventoryItem, inventoryCategories } = useApp();
-  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FormData>();
+  const { register, handleSubmit, control, reset, formState: { errors }, watch } = useForm<FormData>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  
+  // Estados para precificação
+  const [pricingData, setPricingData] = useState({
+    salePrice: item?.salePrice,
+    marginPercentage: item?.marginPercentage || 50,
+    pricingMethod: item?.pricingMethod || 'margin' as 'margin' | 'fixed_price'
+  });
+  
+  // Observar mudanças no custo para recalcular preços
+  const watchedCost = watch('cost', item?.cost || 0);
 
   const loadCategories = async () => {
     try {
@@ -102,10 +113,15 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
+      const itemDataWithPricing = {
+        ...data,
+        ...pricingData
+      };
+      
       if (item) {
-        await updateInventoryItem({ ...item, ...data });
+        await updateInventoryItem({ ...item, ...itemDataWithPricing });
       } else {
-        await addInventoryItem(data);
+        await addInventoryItem(itemDataWithPricing);
       }
       onClose();
     } catch (error) {
@@ -319,6 +335,23 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                   </p>
                 </div>
               </div>
+
+              {/* Componente de Precificação - Mostrar apenas se disponível para venda */}
+              <Controller
+                name="availableForSale"
+                control={control}
+                render={({ field }) => (
+                  field.value && (
+                    <PricingComponent
+                      cost={watchedCost || 0}
+                      salePrice={pricingData.salePrice}
+                      marginPercentage={pricingData.marginPercentage}
+                      pricingMethod={pricingData.pricingMethod}
+                      onPricingChange={(pricing) => setPricingData(pricing)}
+                    />
+                  )
+                )}
+              />
 
               {/* Botões de ação */}
               <div className="pt-6 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3 border-t border-gray-200">
