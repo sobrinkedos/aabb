@@ -44,10 +44,10 @@ export interface EnvironmentInfo {
 const ENVIRONMENT_CONFIGS: Record<string, Partial<EnvironmentConfig>> = {
   development: {
     name: "development",
-    supabaseUrl: import.meta.env.VITE_SUPABASE_URL || "https://wznycskqsavpmejwpksp.supabase.co",
-    supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-    supabaseServiceRoleKey: import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
-    databaseName: import.meta.env.VITE_DATABASE_NAME || "wznycskqsavpmejwpksp",
+    supabaseUrl: "https://wznycskqsavpmejwpksp.supabase.co",
+    supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY_DEV,
+    supabaseServiceRoleKey: import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY_DEV,
+    databaseName: "wznycskqsavpmejwpksp",
     gitBranch: "desenvolvimento",
     debugMode: true,
     logLevel: "debug"
@@ -55,8 +55,8 @@ const ENVIRONMENT_CONFIGS: Record<string, Partial<EnvironmentConfig>> = {
   production: {
     name: "production",
     supabaseUrl: import.meta.env.VITE_SUPABASE_URL || "https://jtfdzjmravketpkwjkvp.supabase.co",
-    supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-    supabaseServiceRoleKey: import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
+    supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0ZmR6am1yYXZrZXRwa3dqa3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNjM1NjIsImV4cCI6MjA3MzkzOTU2Mn0.AOFSlSLFVw-pU1-lpUzxJ2fov3kR95eBlz_92mtSMgs",
+    supabaseServiceRoleKey: import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0ZmR6am1yYXZrZXRwa3dqa3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNjM1NjIsImV4cCI6MjA3MzkzOTU2Mn0.AOFSlSLFVw-pU1-lpUzxJ2fov3kR95eBlz_92mtSMgs",
     databaseName: import.meta.env.VITE_DATABASE_NAME || "jtfdzjmravketpkwjkvp",
     gitBranch: "main",
     debugMode: false,
@@ -107,6 +107,8 @@ export class EnvironmentManagerImpl implements EnvironmentManager {
   private detectEnvironment(): "development" | "production" {
     // 1. Verifica variável de ambiente explícita
     const envVar = import.meta.env.VITE_ENVIRONMENT;
+    console.log(`🔍 VITE_ENVIRONMENT: ${envVar}`);
+    
     if (envVar === "production") {
       console.log('🎯 Ambiente forçado via VITE_ENVIRONMENT: production');
       return "production";
@@ -116,7 +118,25 @@ export class EnvironmentManagerImpl implements EnvironmentManager {
       return "development";
     }
     
-    // 2. Verifica branch Git via variável de ambiente
+    // 2. Verifica se está na Vercel em produção
+    const vercelEnv = import.meta.env.VERCEL_ENV;
+    console.log(`🔍 VERCEL_ENV: ${vercelEnv}`);
+    
+    if (vercelEnv === "production") {
+      console.log('🎯 Vercel produção detectada → Ambiente: production');
+      return "production";
+    }
+    
+    // 3. Verifica URL do Supabase para determinar ambiente
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    console.log(`🔍 VITE_SUPABASE_URL: ${supabaseUrl}`);
+    
+    if (supabaseUrl && supabaseUrl.includes('jtfdzjmravketpkwjkvp')) {
+      console.log('🎯 URL de produção detectada → Ambiente: production');
+      return "production";
+    }
+    
+    // 4. Verifica branch Git via variável de ambiente
     const gitBranch = import.meta.env.VITE_GIT_BRANCH || "desenvolvimento";
     console.log(`🌿 Branch Git detectada: ${gitBranch}`);
     
@@ -125,7 +145,7 @@ export class EnvironmentManagerImpl implements EnvironmentManager {
       return "production";
     }
     
-    // 3. Padrão: desenvolvimento
+    // 5. Padrão: desenvolvimento
     console.log('🎯 Ambiente padrão: development');
     return "development";
   }
