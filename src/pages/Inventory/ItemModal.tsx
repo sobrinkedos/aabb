@@ -137,6 +137,7 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
       
       console.log('💾 Salvando item com dados:', data);
       console.log('💰 Dados de precificação:', currentPricing);
+      console.log('🔄 Modo:', item ? 'EDITANDO' : 'CRIANDO NOVO');
       
       const itemDataWithPricing = {
         ...data,
@@ -148,8 +149,12 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
       console.log('📦 Dados finais para salvar:', itemDataWithPricing);
       
       if (item) {
+        console.log('✏️ EDITANDO item existente:', item.id);
+        console.log('📊 Margem anterior:', item.marginPercentage);
+        console.log('📊 Margem nova:', currentPricing.marginPercentage);
         await updateInventoryItem({ ...item, ...itemDataWithPricing });
       } else {
+        console.log('➕ CRIANDO novo item');
         await addInventoryItem(itemDataWithPricing);
       }
       onClose();
@@ -207,7 +212,7 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                   alignItems: 'center',
                   gap: '8px'
                 }}>
-                  💰 Sistema de Precificação
+                  💰 Sistema de Precificação - VERSÃO ATUALIZADA ✅
                 </h3>
                 
                 <div style={{ marginBottom: '15px' }}>
@@ -273,7 +278,8 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                     </label>
                     <input 
                       type="number"
-                      defaultValue="50"
+                      key={`margin-${item?.id || 'new'}`}
+                      defaultValue={pricingData.marginPercentage || 50}
                       min="0"
                       step="1"
                       style={{
@@ -287,7 +293,7 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                         const margin = Number(e.target.value);
                         const cost = watchedCost || 0;
                         const price = cost * (1 + margin / 100);
-                        console.log(`💰 Margem: ${margin}%, Custo: R$ ${cost}, Preço: R$ ${price.toFixed(2)}`);
+                        console.log(`💰 EDITANDO - Margem: ${margin}%, Custo: R$ ${cost}, Preço: R$ ${price.toFixed(2)}`);
                         
                         const newData = {
                           ...currentPricingRef.current,
@@ -298,7 +304,7 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                         
                         setPricingData(newData);
                         currentPricingRef.current = newData;
-                        console.log('📊 Dados de precificação atualizados:', newData);
+                        console.log('📊 EDITANDO - Dados de precificação atualizados:', newData);
                       }}
                     />
                   </div>
