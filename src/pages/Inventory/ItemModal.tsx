@@ -179,11 +179,11 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
             transition={{ duration: 0.2 }}
             className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
           >
-            <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-red-500 rounded-t-xl">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-green-500 rounded-t-xl">
               <div>
-                <h2 className="text-2xl font-bold text-white">🚨 TESTE: {item ? 'Editar Item' : 'Novo Item no Estoque'}</h2>
+                <h2 className="text-2xl font-bold text-white">✅ DEPLOY ATUALIZADO: {item ? 'Editar Item' : 'Novo Item no Estoque'}</h2>
                 <p className="text-sm text-white mt-1">
-                  🔥 VERSÃO DE TESTE COM PRECIFICAÇÃO - {item ? 'Atualize as informações do item' : 'Adicione um novo item ao inventário'}
+                  🚀 VERSÃO FINAL COM PRECIFICAÇÃO FUNCIONANDO - {new Date().toLocaleTimeString()} - {item ? 'Atualize as informações do item' : 'Adicione um novo item ao inventário'}
                 </p>
               </div>
               <button 
