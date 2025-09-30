@@ -254,6 +254,8 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, menuItems }) =
                     </div>
                   </div>
 
+                  {/* Seção Inferior - Observações e Totalização */}
+                  <div className="px-6 pb-6 space-y-4 flex-shrink-0 border-t border-gray-200 pt-4 mt-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Observações
