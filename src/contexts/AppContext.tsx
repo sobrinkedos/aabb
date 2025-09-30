@@ -750,6 +750,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     if (data) {
       console.log('✅ Item atualizado com sucesso!');
       setInventory(prev => prev.map(item => item.id === data.id ? fromInventorySupabase(data) : item).sort((a,b) => a.name.localeCompare(b.name)));
+      
+      // Recarregar menu items se o item está disponível para venda
+      if (data.available_for_sale) {
+        console.log('🔄 Recarregando menu items devido à atualização de precificação...');
+        await loadMenuItems(true);
+      }
     }
   };
 
@@ -800,8 +806,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const clearNotifications = () => setNotifications([]);
 
   // Funções de carregamento lazy
-  const loadMenuItems = async () => {
-    console.log('📋 Carregando menu items...');
+  const loadMenuItems = async (forceReload = false) => {
+    console.log('📋 Carregando menu items...', forceReload ? '(FORÇADO)' : '');
     
     // Determinar empresa_id baseado no ambiente
     const currentUrl = window.location.hostname;
@@ -830,7 +836,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
     
     console.log('📋 Menu items carregados:', data?.length || 0);
-    if (data) setMenuItems(data.map(fromMenuItemSupabase));
+    if (data) {
+      setMenuItems(data.map(fromMenuItemSupabase));
+      console.log('💰 Preços atualizados dos menu items:', data.map(item => ({ name: item.name, price: item.price })));
+    }
   };
 
   const loadMembers = async () => {
