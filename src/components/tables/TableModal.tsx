@@ -8,6 +8,7 @@ import {
 import { BarTable, TableStatus } from '../../types/bar-attendance';
 import { useBarTables } from '../../hooks/useBarTables';
 import { supabase } from '../../lib/supabase';
+import { findNextAvailablePosition } from '../../utils/table-layout';
 
 interface TableModalProps {
   isOpen: boolean;
@@ -20,7 +21,7 @@ const TableModal: React.FC<TableModalProps> = ({
   onClose,
   table
 }) => {
-  const { refetch } = useBarTables();
+  const { refetch, tables } = useBarTables();
   const [formData, setFormData] = useState({
     number: '',
     capacity: 2,
@@ -34,6 +35,15 @@ const TableModal: React.FC<TableModalProps> = ({
 
   const isEditing = !!table;
 
+  // Função para calcular próxima posição disponível
+  const calculateNextPosition = () => {
+    const existingPositions = tables
+      .filter(t => t.position_x !== null && t.position_y !== null)
+      .map(t => ({ x: t.position_x!, y: t.position_y! }));
+    
+    return findNextAvailablePosition(existingPositions);
+  };
+
   useEffect(() => {
     if (table) {
       setFormData({
@@ -45,17 +55,19 @@ const TableModal: React.FC<TableModalProps> = ({
         position_y: table.position_y || 100
       });
     } else {
+      // Para nova mesa, calcular posição automática
+      const nextPosition = calculateNextPosition();
       setFormData({
         number: '',
         capacity: 2,
         status: 'available',
         notes: '',
-        position_x: 100,
-        position_y: 100
+        position_x: nextPosition.x,
+        position_y: nextPosition.y
       });
     }
     setError(null);
-  }, [table, isOpen]);
+  }, [table, isOpen, tables.length]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { BarTable, BarTableInsert, BarTableUpdate, TableStatus } from '../types/bar-attendance';
+import { organizeTablesInGrid, DEFAULT_LAYOUT_CONFIG } from '../utils/table-layout';
 
 export const useBarTables = () => {
   const [tables, setTables] = useState<BarTable[]>([]);
@@ -128,6 +129,27 @@ export const useBarTables = () => {
     return tables.filter(table => table.status === status);
   };
 
+  // Função para organizar todas as mesas automaticamente
+  const organizeTablesAutomatically = async (layoutWidth: number = 800, layoutHeight: number = 600) => {
+    const config = {
+      ...DEFAULT_LAYOUT_CONFIG,
+      layoutWidth,
+      layoutHeight
+    };
+    
+    const organizedTables = organizeTablesInGrid(tables, config);
+    
+    const updatePromises = organizedTables.map(({ id, position }) => 
+      updateTablePosition(id, position.x, position.y)
+    );
+
+    try {
+      await Promise.all(updatePromises);
+    } catch (error) {
+      throw new Error('Erro ao organizar mesas automaticamente');
+    }
+  };
+
   useEffect(() => {
     fetchTables();
 
@@ -168,6 +190,7 @@ export const useBarTables = () => {
     deleteTable,
     updateTableStatus,
     updateTablePosition,
+    organizeTablesAutomatically,
     getTableById,
     getTableByNumber,
     getAvailableTables,

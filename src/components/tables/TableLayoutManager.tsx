@@ -15,6 +15,7 @@ import { BarTable, TableStatus } from '../../types/bar-attendance';
 import { useBarTables } from '../../hooks/useBarTables';
 import TableModal from './TableModal';
 import TableContextMenu from './TableContextMenu';
+import { calculateAutoPosition, DEFAULT_LAYOUT_CONFIG } from '../../utils/table-layout';
 
 interface TableLayoutManagerProps {
   readonly?: boolean;
@@ -31,7 +32,7 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
   onTableSelect,
   selectedTableId
 }) => {
-  const { tables, loading, updateTablePosition } = useBarTables();
+  const { tables, loading, updateTablePosition, organizeTablesAutomatically: organizeTablesHook } = useBarTables();
   const [showModal, setShowModal] = useState(false);
   const [editingTable, setEditingTable] = useState<BarTable | null>(null);
   const [contextMenu, setContextMenu] = useState<{
@@ -124,6 +125,24 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
     setContextMenu(null);
   };
 
+
+
+  // Função para organizar mesas automaticamente
+  const organizeTablesAutomatically = async () => {
+    if (!layoutRef.current) return;
+    
+    const layoutRect = layoutRef.current.getBoundingClientRect();
+    const layoutWidth = layoutRect.width;
+    const layoutHeight = layoutRect.height;
+
+    try {
+      await organizeTablesHook(layoutWidth, layoutHeight);
+    } catch (error) {
+      console.error('Erro ao organizar mesas:', error);
+      alert('Erro ao organizar mesas. Tente novamente.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -165,6 +184,15 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
                     Modo Edição
                   </>
                 )}
+              </button>
+
+              <button
+                onClick={organizeTablesAutomatically}
+                className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                title="Organizar mesas automaticamente"
+              >
+                <ArrowsPointingOutIcon className="h-4 w-4 inline mr-1" />
+                Organizar
               </button>
 
               <button

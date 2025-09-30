@@ -45,7 +45,7 @@ const BalcaoViewNew: React.FC = () => {
   const { createOrder, loading: orderLoading } = useBalcaoOrders();
   const { currentSession } = useCashManagement();
   const { inventory } = useApp();
-  
+
   // Estados do carrinho e pedido
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<BarCustomer | null>(null);
@@ -53,11 +53,11 @@ const BalcaoViewNew: React.FC = () => {
   const [customerNotes, setCustomerNotes] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Estados de UI
   const [showCustomerSearch, setShowCustomerSearch] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [stockWarnings, setStockWarnings] = useState<{[key: string]: string}>({});
+  const [stockWarnings, setStockWarnings] = useState<{ [key: string]: string }>({});
 
   // Obter categorias únicas do menu
   const categories = useMemo(() => {
@@ -68,18 +68,18 @@ const BalcaoViewNew: React.FC = () => {
   // Filtrar itens do menu
   const filteredMenuItems = useMemo(() => {
     let items = menuItems.filter(item => item.available);
-    
+
     if (categoryFilter !== 'all') {
       items = items.filter(item => item.category === categoryFilter);
     }
-    
+
     if (searchTerm) {
       items = items.filter(item =>
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.description?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     return items;
   }, [menuItems, categoryFilter, searchTerm]);
 
@@ -101,36 +101,36 @@ const BalcaoViewNew: React.FC = () => {
     // Se é item direto do estoque, verificar disponibilidade
     if (menuItem.item_type === 'direct' && menuItem.direct_inventory_item_id) {
       const inventoryItem = inventory.find(item => item.id === menuItem.direct_inventory_item_id);
-      
+
       if (!inventoryItem) {
-        return { 
-          available: false, 
-          warning: 'Item não encontrado no estoque' 
+        return {
+          available: false,
+          warning: 'Item não encontrado no estoque'
         };
       }
-      
+
       if (inventoryItem.currentStock < quantity) {
-        return { 
-          available: false, 
+        return {
+          available: false,
           currentStock: inventoryItem.currentStock,
-          warning: `Estoque insuficiente. Disponível: ${inventoryItem.currentStock} ${inventoryItem.unit}` 
+          warning: `Estoque insuficiente. Disponível: ${inventoryItem.currentStock} ${inventoryItem.unit}`
         };
       }
-      
+
       if (inventoryItem.currentStock <= inventoryItem.minStock) {
-        return { 
-          available: true, 
+        return {
+          available: true,
           currentStock: inventoryItem.currentStock,
-          warning: `Estoque baixo! Disponível: ${inventoryItem.currentStock} ${inventoryItem.unit}` 
+          warning: `Estoque baixo! Disponível: ${inventoryItem.currentStock} ${inventoryItem.unit}`
         };
       }
-      
-      return { 
-        available: true, 
-        currentStock: inventoryItem.currentStock 
+
+      return {
+        available: true,
+        currentStock: inventoryItem.currentStock
       };
     }
-    
+
     // Se é item preparado, sempre disponível
     return { available: true };
   };
@@ -139,24 +139,24 @@ const BalcaoViewNew: React.FC = () => {
   const addToCart = (menuItem: MenuItem) => {
     // Verificar estoque antes de adicionar
     const stockCheck = checkStock(menuItem, 1);
-    
+
     if (!stockCheck.available) {
       alert(stockCheck.warning);
       return;
     }
-    
+
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.menu_item_id === menuItem.id);
-      
+
       if (existingItem) {
         const newQuantity = existingItem.quantity + 1;
         const newStockCheck = checkStock(menuItem, newQuantity);
-        
+
         if (!newStockCheck.available) {
           alert(newStockCheck.warning);
           return prevCart;
         }
-        
+
         // Atualizar warnings se necessário
         if (newStockCheck.warning) {
           setStockWarnings(prev => ({ ...prev, [menuItem.id]: newStockCheck.warning! }));
@@ -167,7 +167,7 @@ const BalcaoViewNew: React.FC = () => {
             return newWarnings;
           });
         }
-        
+
         return prevCart.map(item =>
           item.menu_item_id === menuItem.id
             ? { ...item, quantity: newQuantity }
@@ -178,7 +178,7 @@ const BalcaoViewNew: React.FC = () => {
         if (stockCheck.warning) {
           setStockWarnings(prev => ({ ...prev, [menuItem.id]: stockCheck.warning! }));
         }
-        
+
         return [...prevCart, {
           menu_item_id: menuItem.id,
           name: menuItem.name,
@@ -209,12 +209,12 @@ const BalcaoViewNew: React.FC = () => {
     const menuItem = menuItems.find(item => item.id === menuItemId);
     if (menuItem) {
       const stockCheck = checkStock(menuItem, newQuantity);
-      
+
       if (!stockCheck.available) {
         alert(stockCheck.warning);
         return;
       }
-      
+
       // Atualizar warnings
       if (stockCheck.warning) {
         setStockWarnings(prev => ({ ...prev, [menuItemId]: stockCheck.warning! }));
@@ -247,7 +247,7 @@ const BalcaoViewNew: React.FC = () => {
   // Verificar se todos os itens do carrinho têm estoque suficiente
   const validateCartStock = (): { valid: boolean; errors: string[] } => {
     const errors: string[] = [];
-    
+
     for (const cartItem of cart) {
       const menuItem = menuItems.find(item => item.id === cartItem.menu_item_id);
       if (menuItem) {
@@ -257,7 +257,7 @@ const BalcaoViewNew: React.FC = () => {
         }
       }
     }
-    
+
     return { valid: errors.length === 0, errors };
   };
 
@@ -289,13 +289,13 @@ const BalcaoViewNew: React.FC = () => {
       };
 
       const orderId = await createOrder(orderData);
-      
+
       // Limpar formulário
       clearCart();
-      
+
       // Mostrar notificação de sucesso
       alert(`Pedido #${orderId.slice(-4).toUpperCase()} criado com sucesso!\n\nO pedido está aguardando pagamento no caixa.`);
-      
+
     } catch (error) {
       console.error('Erro ao criar pedido:', error);
       if (error instanceof Error && error.message.includes('Estoque insuficiente')) {
@@ -325,7 +325,7 @@ const BalcaoViewNew: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900">Criar Pedido de Balcão</h1>
             <p className="text-gray-600">O pedido ficará pendente até o pagamento ser processado no caixa</p>
           </div>
-          
+
           {/* Status do Caixa */}
           <div className="flex items-center space-x-4">
             {currentSession ? (
@@ -367,7 +367,7 @@ const BalcaoViewNew: React.FC = () => {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              
+
               {/* Filtro por categoria */}
               <select
                 value={categoryFilter}
@@ -389,20 +389,19 @@ const BalcaoViewNew: React.FC = () => {
                 const stockInfo = checkStock(item, 1);
                 const isLowStock = stockInfo.warning && stockInfo.available;
                 const isOutOfStock = !stockInfo.available;
-                
+
                 return (
                   <motion.div
                     key={item.id}
                     whileHover={{ scale: isOutOfStock ? 1 : 1.02 }}
                     whileTap={{ scale: isOutOfStock ? 1 : 0.98 }}
                     onClick={() => !isOutOfStock && addToCart(item)}
-                    className={`bg-white rounded-lg p-4 shadow-sm border transition-all duration-200 relative ${
-                      isOutOfStock 
-                        ? 'cursor-not-allowed opacity-50 border-red-300' 
-                        : isLowStock 
-                        ? 'cursor-pointer hover:shadow-lg hover:border-yellow-400 hover:bg-yellow-50 border-yellow-300' 
+                    className={`bg-white rounded-lg p-4 shadow-sm border transition-all duration-200 relative ${isOutOfStock
+                      ? 'cursor-not-allowed opacity-50 border-red-300'
+                      : isLowStock
+                        ? 'cursor-pointer hover:shadow-lg hover:border-yellow-400 hover:bg-yellow-50 border-yellow-300'
                         : 'cursor-pointer hover:shadow-lg hover:border-blue-400 hover:bg-blue-50 border-gray-200'
-                    }`}
+                      }`}
                   >
                     {/* Indicador de estoque */}
                     {isOutOfStock && (
@@ -417,23 +416,21 @@ const BalcaoViewNew: React.FC = () => {
                         <span>Baixo</span>
                       </div>
                     )}
-                    
+
                     <div className="text-center">
                       <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">{item.name}</h3>
                       <p className="text-sm text-gray-600 mb-2">{item.category}</p>
-                      
+
                       {/* Informação de estoque */}
                       {item.item_type === 'direct' && stockInfo.currentStock !== undefined && (
-                        <p className={`text-xs mb-2 ${
-                          isOutOfStock ? 'text-red-600' : isLowStock ? 'text-yellow-600' : 'text-gray-500'
-                        }`}>
+                        <p className={`text-xs mb-2 ${isOutOfStock ? 'text-red-600' : isLowStock ? 'text-yellow-600' : 'text-gray-500'
+                          }`}>
                           Estoque: {stockInfo.currentStock}
                         </p>
                       )}
-                      
-                      <p className={`text-lg font-bold ${
-                        isOutOfStock ? 'text-gray-400' : 'text-blue-600'
-                      }`}>
+
+                      <p className={`text-lg font-bold ${isOutOfStock ? 'text-gray-400' : 'text-blue-600'
+                        }`}>
                         {formatCurrency(item.price)}
                       </p>
                     </div>
@@ -475,7 +472,7 @@ const BalcaoViewNew: React.FC = () => {
                     <div className="flex-1">
                       <h4 className="font-medium text-gray-900">{item.name}</h4>
                       <p className="text-sm text-gray-600">{formatCurrency(item.price)} cada</p>
-                      
+
                       {/* Aviso de estoque */}
                       {stockWarnings[item.menu_item_id] && (
                         <div className="flex items-center space-x-1 mt-1">
@@ -484,7 +481,7 @@ const BalcaoViewNew: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => updateQuantity(item.menu_item_id, item.quantity - 1)}
@@ -492,16 +489,16 @@ const BalcaoViewNew: React.FC = () => {
                       >
                         <MinusIcon className="h-4 w-4" />
                       </button>
-                      
+
                       <span className="w-8 text-center font-medium">{item.quantity}</span>
-                      
+
                       <button
                         onClick={() => updateQuantity(item.menu_item_id, item.quantity + 1)}
                         className="p-1 rounded hover:bg-gray-200"
                       >
                         <PlusIcon className="h-4 w-4" />
                       </button>
-                      
+
                       <button
                         onClick={() => removeFromCart(item.menu_item_id)}
                         className="p-1 rounded hover:bg-red-100 text-red-600 ml-2"

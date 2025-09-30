@@ -14,6 +14,7 @@ import { useComandas } from '../../hooks/useComandas';
 import TableLayoutManager from './TableLayoutManager';
 import NovaComandaModal from '../../pages/BarAttendance/components/NovaComandaModal';
 import { formatCurrency } from '../../types/cash-management';
+import { calculateAutoPosition } from '../../utils/table-layout';
 
 interface TableWithComandaData extends BarTable {
   currentComanda?: any;
@@ -177,16 +178,22 @@ const TableWithComandaIntegration: React.FC = () => {
           {tablesWithComandas.map((table) => {
             const statusInfo = getTableStatusInfo(table);
             
+            // Calcular posição padrão se não estiver definida
+            const tableIndex = tablesWithComandas.findIndex(t => t.id === table.id);
+            const defaultPos = calculateAutoPosition(tableIndex);
+            const posX = table.position_x ?? defaultPos.x;
+            const posY = table.position_y ?? defaultPos.y;
+
             return (
               <motion.div
                 key={table.id}
                 initial={{ 
-                  x: table.position_x || 100, 
-                  y: table.position_y || 100 
+                  x: posX, 
+                  y: posY 
                 }}
                 animate={{ 
-                  x: table.position_x || 100, 
-                  y: table.position_y || 100 
+                  x: posX, 
+                  y: posY 
                 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
