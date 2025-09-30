@@ -148,10 +148,13 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, menuItems }) =
                 </div>
               </div>
 
-              <div className="w-1/3 bg-gray-50 p-6 border-l border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Pedido</h3>
+              <div className="w-1/3 bg-gray-50 border-l border-gray-200 flex flex-col">
+                <div className="p-6 pb-4">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Pedido</h3>
+                </div>
                 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="flex flex-col h-full">
+                  <div className="px-6 space-y-4 flex-shrink-0">
                   {/* Seção do Cliente */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -206,67 +209,80 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, menuItems }) =
                     />
                   </div>
 
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                    {selectedItems.map((item) => {
-                      const menuItem = menuItems.find(mi => mi.id === item.menuItemId);
-                      return (
-                        <div key={item.id} className="flex items-center justify-between bg-white p-3 rounded-lg">
-                          <div>
-                            <p className="font-medium text-gray-800">{menuItem?.name}</p>
-                            <p className="text-sm text-gray-600">R$ {item.price.toFixed(2)}</p>
+                  </div>
+
+                  {/* Seção de Itens Selecionados - Expansível */}
+                  <div className="px-6 flex-1 min-h-0">
+                    <div className="space-y-2">
+                      {selectedItems.map((item) => {
+                        const menuItem = menuItems.find(mi => mi.id === item.menuItemId);
+                        return (
+                          <div key={item.id} className="flex items-center justify-between bg-white p-3 rounded-lg shadow-sm">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-800 truncate">{menuItem?.name}</p>
+                              <p className="text-sm text-gray-600">R$ {item.price.toFixed(2)}</p>
+                            </div>
+                            <div className="flex items-center space-x-2 ml-2">
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.menuItemId, item.quantity - 1)}
+                                className="text-gray-400 hover:text-gray-600 p-1"
+                                disabled={isSubmitting}
+                              >
+                                <Minus size={16} />
+                              </button>
+                              <span className="w-8 text-center font-medium">{item.quantity}</span>
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.menuItemId, item.quantity + 1)}
+                                className="text-gray-400 hover:text-gray-600 p-1"
+                                disabled={isSubmitting}
+                              >
+                                <Plus size={16} />
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(item.menuItemId, item.quantity - 1)}
-                              className="text-gray-400 hover:text-gray-600"
-                              disabled={isSubmitting}
-                            >
-                              <Minus size={16} />
-                            </button>
-                            <span className="w-8 text-center">{item.quantity}</span>
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(item.menuItemId, item.quantity + 1)}
-                              className="text-gray-400 hover:text-gray-600"
-                              disabled={isSubmitting}
-                            >
-                              <Plus size={16} />
-                            </button>
-                          </div>
+                        );
+                      })}
+                      
+                      {selectedItems.length === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>Nenhum item selecionado</p>
+                          <p className="text-sm">Adicione itens do cardápio</p>
                         </div>
-                      );
-                    })}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Observações
-                    </label>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Observações especiais..."
-                      rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="text-lg font-semibold text-gray-800">Total:</span>
-                      <span className="text-xl font-bold text-green-600">
-                        R$ {total.toFixed(2)}
-                      </span>
+                      )}
                     </div>
-                    <button
-                      type="submit"
-                      disabled={selectedItems.length === 0 || isSubmitting || !selectedCustomer}
-                      className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {isSubmitting ? 'Confirmando...' : 'Confirmar Pedido'}
-                    </button>
+                  </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Observações
+                      </label>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Observações especiais..."
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+
+                    <div className="border-t border-gray-200 pt-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-lg font-semibold text-gray-800">Total:</span>
+                        <span className="text-xl font-bold text-green-600">
+                          R$ {total.toFixed(2)}
+                        </span>
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={selectedItems.length === 0 || isSubmitting || !selectedCustomer}
+                        className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isSubmitting ? 'Confirmando...' : 'Confirmar Pedido'}
+                      </button>
+                    </div>
                   </div>
                 </form>
               </div>
