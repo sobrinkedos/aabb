@@ -44,10 +44,10 @@ export interface EnvironmentInfo {
 const ENVIRONMENT_CONFIGS: Record<string, Partial<EnvironmentConfig>> = {
   development: {
     name: "development",
-    supabaseUrl: "https://wznycskqsavpmejwpksp.supabase.co",
-    supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY_DEV,
-    supabaseServiceRoleKey: import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY_DEV,
-    databaseName: "wznycskqsavpmejwpksp",
+    supabaseUrl: import.meta.env.VITE_SUPABASE_URL || "https://wznycskqsavpmejwpksp.supabase.co",
+    supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    supabaseServiceRoleKey: import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
+    databaseName: import.meta.env.VITE_DATABASE_NAME || "wznycskqsavpmejwpksp",
     gitBranch: "desenvolvimento",
     debugMode: true,
     logLevel: "debug"

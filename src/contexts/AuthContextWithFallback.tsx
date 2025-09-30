@@ -103,7 +103,10 @@ export const AuthProviderWithFallback: React.FC<AuthProviderProps> = ({ children
    * Login com fallback para usuarios_empresa
    */
   const login = async (email: string, password: string) => {
-    if (!supabaseConfigured) {
+    // Verifica se o modo demo está desabilitado
+    const isDemoDisabled = import.meta.env.VITE_DISABLE_DEMO_MODE === 'true';
+    
+    if (!supabaseConfigured && !isDemoDisabled) {
       // Modo demo
       if (email === AUTH_CONFIG.DEMO_USER.email && password === 'demo123456') {
         const mockUser: User = {
@@ -118,6 +121,9 @@ export const AuthProviderWithFallback: React.FC<AuthProviderProps> = ({ children
       } else {
         return { success: false, error: 'Credenciais inválidas para modo demo' };
       }
+    } else if (!supabaseConfigured && isDemoDisabled) {
+      return { success: false, error: 'Supabase não configurado e modo demo desabilitado' };
+    }
     }
 
     try {
@@ -309,6 +315,13 @@ export const AuthProviderWithFallback: React.FC<AuthProviderProps> = ({ children
   };
 
   const loginAsDemo = async () => {
+    // Verifica se o modo demo está desabilitado
+    const isDemoDisabled = import.meta.env.VITE_DISABLE_DEMO_MODE === 'true';
+    
+    if (isDemoDisabled) {
+      return { success: false, error: 'Modo demo desabilitado' };
+    }
+    
     const mockUser: User = {
       id: 'demo-user-id',
       name: AUTH_CONFIG.DEMO_USER.name,
@@ -338,7 +351,7 @@ export const AuthProviderWithFallback: React.FC<AuthProviderProps> = ({ children
       isOffline, 
       checkOnlineStatus 
     }}>
-      {supabaseConfigured === false && (
+      {supabaseConfigured === false && import.meta.env.VITE_DISABLE_DEMO_MODE !== 'true' && (
         <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-black px-4 py-2 text-sm z-50">
           ⚠️ <strong>Modo Desenvolvimento:</strong> Supabase não configurado. 
           Use: {AUTH_CONFIG.DEMO_USER.email} / demo123456

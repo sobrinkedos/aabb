@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:prod": "VITE_ENVIRONMENT=production vite build --mode production",
+    "build:analyze": "npm run build && npx vite-bundle-analyzer dist",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
@@ -17,7 +19,12 @@
     "perf:enable": "node scripts/performance-test.js enable",
     "perf:disable": "node scripts/performance-test.js disable",
     "perf:status": "node scripts/performance-test.js status",
-    "perf:test": "node scripts/performance-test.js"
+    "perf:test": "node scripts/performance-test.js",
+    "deploy": "node scripts/deploy.js",
+    "deploy:prod": "node scripts/deploy.js --prod",
+    "deploy:check": "node scripts/deploy.js --check-only",
+    "commit:optimizations": "node scripts/commit-optimizations.js",
+    "release": "npm run commit:optimizations && npm run deploy:prod"
   },
   "dependencies": {
     "@faker-js/faker": "^10.0.0",
