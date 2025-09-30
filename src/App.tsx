@@ -28,6 +28,7 @@ import TestNewModal from './components/debug/TestNewModal';
 import { ConfiguracoesEmpresaSimples } from './pages/Auth/ConfiguracoesEmpresaSimples';
 import FuncionariosPage from './pages/Admin/FuncionariosPage';
 import { TestTableDisplay } from './examples';
+import { TableManagementView } from './components/tables';
 import { EnvironmentProvider } from './contexts/EnvironmentContext';
 import EnvironmentSettings from './components/Environment/EnvironmentSettings';
 
@@ -107,6 +108,11 @@ function App() {
               <Route path="bar/attendance" element={
                 <PermissionProtectedRoute module="atendimento_bar">
                   <BarAttendance />
+                </PermissionProtectedRoute>
+              } />
+              <Route path="tables" element={
+                <PermissionProtectedRoute module="atendimento_bar">
+                  <TableManagementView />
                 </PermissionProtectedRoute>
               } />
               

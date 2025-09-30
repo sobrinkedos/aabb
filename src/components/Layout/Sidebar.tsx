@@ -46,6 +46,7 @@ const Sidebar: React.FC = () => {
     { name: 'Dashboard', icon: LayoutDashboard, path: '/', module: 'dashboard' as const },
     { name: 'Monitor Bar', icon: Wine, path: '/bar', module: 'monitor_bar' as const },
     { name: 'Atendimento Bar', icon: Coffee, path: '/bar/attendance', module: 'atendimento_bar' as const },
+    { name: 'Gerenciar Mesas', icon: Tag, path: '/tables', module: 'atendimento_bar' as const },
     { name: 'Monitor Cozinha', icon: ChefHat, path: '/kitchen', module: 'monitor_cozinha' as const },
     { name: 'Gestão de Caixa', icon: DollarSign, path: '/cash', module: 'gestao_caixa' as const },
     { name: 'Clientes', icon: Users, path: '/bar-customers', module: 'clientes' as const },
