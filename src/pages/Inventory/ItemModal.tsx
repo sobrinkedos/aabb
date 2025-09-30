@@ -278,8 +278,8 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                     </label>
                     <input 
                       type="number"
-                      key={`margin-${item?.id || 'new'}`}
-                      defaultValue={pricingData.marginPercentage || 50}
+                      key={`margin-${item?.id || 'new'}-${pricingData.marginPercentage}`}
+                      value={pricingData.marginPercentage || 50}
                       min="0"
                       step="1"
                       style={{
@@ -321,7 +321,7 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                       fontWeight: 'bold',
                       color: '#15803d'
                     }}>
-                      R$ {((watchedCost || 0) * 1.5).toFixed(2)}
+                      R$ {(pricingData.salePrice || ((watchedCost || 0) * (1 + (pricingData.marginPercentage || 50) / 100))).toFixed(2)}
                     </div>
                   </div>
                 </div>
