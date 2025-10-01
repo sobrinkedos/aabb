@@ -21,6 +21,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
 }) => {
   const { updateOrderStatus } = useApp();
 
+  // Debug: verificar dados dos itens
+  console.log('OrderCard - Order:', order.id, {
+    items: order.items,
+    menuItemsCount: menuItems.length,
+    firstMenuItem: menuItems[0]
+  });
+
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
@@ -109,10 +116,12 @@ const OrderCard: React.FC<OrderCardProps> = ({
       <div className="space-y-2 mb-4">
         {order.items.map((item) => {
           const menuItem = menuItems.find(mi => mi.id === item.menuItemId);
+          const itemName = menuItem?.name || item.menuItem?.name || `Item ${item.menuItemId.slice(-4)}`;
+          
           return (
             <div key={item.id} className="flex justify-between text-sm">
               <span className="text-gray-600">
-                {item.quantity}x {menuItem?.name}
+                {item.quantity}x {itemName}
               </span>
               <span className="text-gray-800">
                 R$ {(item.price * item.quantity).toFixed(2)}
