@@ -29,6 +29,8 @@ import { ConfiguracoesEmpresaSimples } from './pages/Auth/ConfiguracoesEmpresaSi
 import FuncionariosPage from './pages/Admin/FuncionariosPage';
 import { TestTableDisplay } from './examples';
 import { TableManagementView } from './components/tables';
+import TestBarTablesConnection from './components/debug/TestBarTablesConnection';
+import InitializeBarTables from './components/debug/InitializeBarTables';
 import { EnvironmentProvider } from './contexts/EnvironmentContext';
 import EnvironmentSettings from './components/Environment/EnvironmentSettings';
 
@@ -198,6 +200,16 @@ function App() {
               <Route path="test-table-display" element={
                 <PermissionProtectedRoute module="configuracoes">
                   <TestTableDisplay />
+                </PermissionProtectedRoute>
+              } />
+              <Route path="test-bar-tables" element={
+                <PermissionProtectedRoute module="configuracoes">
+                  <TestBarTablesConnection />
+                </PermissionProtectedRoute>
+              } />
+              <Route path="init-bar-tables" element={
+                <PermissionProtectedRoute module="configuracoes">
+                  <InitializeBarTables />
                 </PermissionProtectedRoute>
               } />
             </Route>
