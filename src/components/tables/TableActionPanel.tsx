@@ -27,24 +27,35 @@ const TableActionPanel: React.FC<TableActionPanelProps> = ({
   onStartOrder
 }) => {
   const { updateTableStatus, deleteTable } = useBarTables();
+  
+  console.log('TableActionPanel - Hook functions:', { 
+    updateTableStatus: typeof updateTableStatus, 
+    deleteTable: typeof deleteTable,
+    tableId: table.id,
+    tableStatus: table.status
+  });
 
   const handleStatusChange = async (newStatus: TableStatus) => {
+    console.log('Alterando status da mesa:', table.id, 'para:', newStatus);
     try {
       await updateTableStatus(table.id, newStatus);
+      console.log('Status alterado com sucesso');
     } catch (error) {
       console.error('Erro ao alterar status da mesa:', error);
-      alert('Erro ao alterar status da mesa');
+      alert('Erro ao alterar status da mesa: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };
 
   const handleDeleteTable = async () => {
+    console.log('Tentando excluir mesa:', table.id, table.number);
     if (window.confirm(`Tem certeza que deseja excluir a Mesa ${table.number}?`)) {
       try {
         await deleteTable(table.id);
+        console.log('Mesa excluída com sucesso');
         onClose();
       } catch (error) {
         console.error('Erro ao excluir mesa:', error);
-        alert('Erro ao excluir mesa');
+        alert('Erro ao excluir mesa: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
       }
     }
   };
@@ -149,7 +160,10 @@ const TableActionPanel: React.FC<TableActionPanelProps> = ({
             <div className="grid grid-cols-2 gap-2">
               {table.status !== 'available' && (
                 <button
-                  onClick={() => handleStatusChange('available')}
+                  onClick={(e) => {
+                    console.log('Clique no botão Disponível', e);
+                    handleStatusChange('available');
+                  }}
                   className="flex items-center justify-center space-x-1 px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm"
                 >
                   <CheckCircleIcon className="h-4 w-4" />
@@ -159,7 +173,10 @@ const TableActionPanel: React.FC<TableActionPanelProps> = ({
               
               {table.status !== 'occupied' && (
                 <button
-                  onClick={() => handleStatusChange('occupied')}
+                  onClick={(e) => {
+                    console.log('Clique no botão Ocupada', e);
+                    handleStatusChange('occupied');
+                  }}
                   className="flex items-center justify-center space-x-1 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm"
                 >
                   <UserGroupIcon className="h-4 w-4" />
@@ -211,7 +228,10 @@ const TableActionPanel: React.FC<TableActionPanelProps> = ({
           </button>
           
           <button
-            onClick={handleDeleteTable}
+            onClick={(e) => {
+              console.log('Clique no botão Excluir', e);
+              handleDeleteTable();
+            }}
             className="flex-1 flex items-center justify-center space-x-2 bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors"
           >
             <TrashIcon className="h-4 w-4" />
