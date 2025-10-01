@@ -16,6 +16,7 @@ import { useBarTables } from '../../hooks/useBarTables';
 import TableModal from './TableModal';
 import TableContextMenu from './TableContextMenu';
 import TableActionPanel from './TableActionPanel';
+import TableComandasPanel from './TableComandasPanel';
 import { calculateAutoPosition, DEFAULT_LAYOUT_CONFIG } from '../../utils/table-layout';
 
 interface TableLayoutManagerProps {
@@ -42,6 +43,7 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
     y: number;
   } | null>(null);
   const [selectedTable, setSelectedTable] = useState<BarTable | null>(null);
+  const [comandasTable, setComandasTable] = useState<BarTable | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [draggedTables, setDraggedTables] = useState<Set<string>>(new Set());
   const layoutRef = useRef<HTMLDivElement>(null);
@@ -161,6 +163,12 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
       console.error('Erro ao iniciar atendimento:', error);
       alert('Erro ao iniciar atendimento: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
+  };
+
+  const handleManageComandas = (table: BarTable) => {
+    console.log('Gerenciando comandas para mesa:', table.number);
+    setSelectedTable(null);
+    setComandasTable(table);
   };
 
 
@@ -411,6 +419,22 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
             handleEditTable(table);
           }}
           onStartOrder={handleStartOrder}
+          onManageComandas={handleManageComandas}
+        />
+      )}
+
+      {/* Table Comandas Panel */}
+      {comandasTable && (
+        <TableComandasPanel
+          table={comandasTable}
+          onClose={() => setComandasTable(null)}
+          onCreateComanda={(comanda) => {
+            console.log('Nova comanda criada:', comanda);
+            // Atualizar status da mesa se necessário
+            if (comandasTable.status === 'available') {
+              updateTableStatus(comandasTable.id, 'occupied');
+            }
+          }}
         />
       )}
     </div>

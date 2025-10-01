@@ -8,31 +8,41 @@ import {
   XCircleIcon,
   ExclamationTriangleIcon,
   WrenchScrewdriverIcon,
-  SparklesIcon
+  SparklesIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import { BarTable, TableStatus } from '../../types/bar-attendance';
 import { useBarTables } from '../../hooks/useBarTables';
+import { useComandas } from '../../hooks/useComandas';
 
 interface TableActionPanelProps {
   table: BarTable;
   onClose: () => void;
   onEdit: (table: BarTable) => void;
   onStartOrder?: (table: BarTable) => void;
+  onManageComandas?: (table: BarTable) => void;
 }
 
 const TableActionPanel: React.FC<TableActionPanelProps> = ({
   table,
   onClose,
   onEdit,
-  onStartOrder
+  onStartOrder,
+  onManageComandas
 }) => {
   const { updateTableStatus, deleteTable } = useBarTables();
+  const { getOpenComandasByTableId, getComandasByTableId } = useComandas();
+  
+  const openComandas = getOpenComandasByTableId(table.id);
+  const allComandas = getComandasByTableId(table.id);
   
   console.log('TableActionPanel - Hook functions:', { 
     updateTableStatus: typeof updateTableStatus, 
     deleteTable: typeof deleteTable,
     tableId: table.id,
-    tableStatus: table.status
+    tableStatus: table.status,
+    openComandas: openComandas.length,
+    allComandas: allComandas.length
   });
 
   const handleStatusChange = async (newStatus: TableStatus) => {
@@ -130,8 +140,43 @@ const TableActionPanel: React.FC<TableActionPanelProps> = ({
           </div>
         </div>
 
+        {/* Comandas Info */}
+        {allComandas.length > 0 && (
+          <div className="px-6 py-3 bg-blue-50 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <DocumentTextIcon className="h-5 w-5 text-blue-600" />
+                <span className="text-sm font-medium text-blue-900">
+                  {allComandas.length} comanda{allComandas.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              {openComandas.length > 0 && (
+                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                  {openComandas.length} aberta{openComandas.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Ações Principais */}
         <div className="px-6 py-4 space-y-3">
+          {/* Gerenciar Comandas */}
+          {onManageComandas && (
+            <button
+              onClick={() => onManageComandas(table)}
+              className="w-full flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <DocumentTextIcon className="h-5 w-5" />
+              <span>
+                {allComandas.length > 0 
+                  ? `Gerenciar Comandas (${allComandas.length})`
+                  : 'Criar Nova Comanda'
+                }
+              </span>
+            </button>
+          )}
+
           {/* Iniciar Atendimento - só se disponível */}
           {table.status === 'available' && onStartOrder && (
             <button
@@ -147,7 +192,7 @@ const TableActionPanel: React.FC<TableActionPanelProps> = ({
           {table.status === 'occupied' && (
             <button
               onClick={() => handleStatusChange('available')}
-              className="w-full flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+              className="w-full flex items-center justify-center space-x-2 bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 transition-colors"
             >
               <CheckCircleIcon className="h-5 w-5" />
               <span>Finalizar Atendimento</span>

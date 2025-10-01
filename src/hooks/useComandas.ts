@@ -1,272 +1,290 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Comanda, ComandaItem, BillSplitConfig, BillSplit, ComandaWithItems } from '../types/bar-attendance';
-import { useNotificationSound } from './useNotificationSound';
-import { useApp } from '../contexts/AppContext';
+import { 
+  Comanda, 
+  ComandaInsert, 
+  ComandaUpdate, 
+  ComandaWithItems,
+  ComandaItem,
+  ComandaStatus 
+} from '../types/bar-attendance';
 
 export const useComandas = () => {
-  const [comandas, setComandas] = useState<ComandaWithItems[]>([]);
+  const [comandas, setComandasState] = useState<Comanda[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const notificationSound = useNotificationSound();
-  const { refreshKitchenOrders, refreshBarOrders } = useApp();
 
   const fetchComandas = async () => {
     try {
       setLoading(true);
+      console.log('useComandas - Fetching comandas...');
+      
       const { data, error } = await supabase
         .from('comandas')
         .select(`
           *,
-          table:bar_tables(*),
-          customer:bar_customers(*),
-          employee:profiles(*),
-          items:comanda_items(
+          bar_tables (
+            id,
+            number,
+            capacity
+          ),
+          comanda_items (
             *,
-            menu_item:menu_items(*)
+            menu_items (
+              name,
+              price,
+              category
+            )
           )
         `)
-        .order('opened_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
+      console.log('useComandas - Query result:', { data, error });
+      
       if (error) throw error;
-      setComandas(data || []);
+      setComandasState(data || []);
+      console.log('useComandas - Comandas set:', data || []);
     } catch (err) {
+      console.error('useComandas - Error:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar comandas');
     } finally {
       setLoading(false);
     }
   };
 
-  const createComanda = async (comandaData: {
-    table_id?: string;
-    customer_id?: string;
-    customer_name?: string;
-    employee_id: string;
-    people_count: number;
-    notes?: string;
-  }) => {
+  const createComanda = async (comandaData: Omit<ComandaInsert, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
         .from('comandas')
-        .insert([comandaData])
-        .select(`
-          *,
-          table:bar_tables(*),
-          customer:bar_customers(*),
-          employee:profiles(*)
-        `)
+        .insert({
+          ...comandaData,
+          status: 'open',
+          opened_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
         .single();
 
       if (error) throw error;
       
-      // Adicionar a nova comanda ao estado
-      setComandas(prev => [data, ...prev]);
+      // Atualizar o estado local
+      setComandasState(prev => [data, ...prev]);
       return data;
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Erro ao criar comanda');
     }
   };
 
-  const updateComandaStatus = async (comandaId: string, status: string) => {
+  const updateComanda = async (comandaId: string, updates: Partial<ComandaUpdate>) => {
     try {
-      const updateData: any = { status };
-      if (status === 'closed') {
-        updateData.closed_at = new Date().toISOString();
-      }
-
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('comandas')
-        .update(updateData)
-        .eq('id', comandaId);
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', comandaId)
+        .select()
+        .single();
 
       if (error) throw error;
       
       // Atualizar o estado local
-      setComandas(prev => prev.map(comanda => 
-        comanda.id === comandaId ? { ...comanda, status, ...updateData } : comanda
+      setComandasState(prev => prev.map(comanda => 
+        comanda.id === comandaId ? data : comanda
       ));
+      return data;
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Erro ao atualizar comanda');
     }
   };
 
-  const addItemToComanda = async (comandaId: string, itemData: {
-    menu_item_id: string;
-    quantity: number;
-    price: number;
-    notes?: string;
-  }) => {
-    try {
-      const { data, error } = await supabase
-        .from('comanda_items')
-        .insert([{ comanda_id: comandaId, ...itemData }])
-        .select(`
-          *,
-          menu_item:menu_items(*)
-        `)
-        .single();
-
-      if (error) throw error;
-      
-      // Atualizar o estado local adicionando o item à comanda
-      setComandas(prev => prev.map(comanda => {
-        if (comanda.id === comandaId) {
-          return {
-            ...comanda,
-            items: [...(comanda.items || []), data]
-          };
-        }
-        return comanda;
-      }));
-      
-      // Atualizar pedidos da cozinha e bar imediatamente
-      console.log('🍳 Atualizando pedidos da cozinha e bar após adicionar item...');
-      await Promise.all([refreshKitchenOrders(), refreshBarOrders()]);
-      
-      return data;
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Erro ao adicionar item à comanda');
-    }
-  };
-
-  const updateItemStatus = async (itemId: string, status: string) => {
-    try {
-      const updateData: any = { status };
-      if (status === 'ready') {
-        updateData.prepared_at = new Date().toISOString();
-      } else if (status === 'delivered') {
-        updateData.delivered_at = new Date().toISOString();
-      }
-
-      const { error } = await supabase
-        .from('comanda_items')
-        .update(updateData)
-        .eq('id', itemId);
-
-      if (error) throw error;
-      
-      // Notificação sonora quando pedido fica pronto
-      if (status === 'ready') {
-        notificationSound.play();
-      }
-      
-      // Atualizar o estado local
-      setComandas(prev => prev.map(comanda => ({
-        ...comanda,
-        items: comanda.items?.map(item => 
-          item.id === itemId ? { ...item, status, ...updateData } : item
-        )
-      })));
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Erro ao atualizar item');
-    }
-  };
-
-  const getComandaByTable = async (tableId: string) => {
+  const closeComanda = async (comandaId: string, paymentMethod?: string) => {
     try {
       const { data, error } = await supabase
         .from('comandas')
-        .select(`
-          *,
-          table:bar_tables(*),
-          customer:bar_customers(*),
-          employee:profiles(*),
-          items:comanda_items(
-            *,
-            menu_item:menu_items(*)
-          )
-        `)
-        .eq('table_id', tableId)
-        .eq('status', 'open')
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
-      return data;
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Erro ao buscar comanda da mesa');
-    }
-  };
-
-  const removeItemFromComanda = async (itemId: string) => {
-    try {
-      const { error } = await supabase
-        .from('comanda_items')
-        .delete()
-        .eq('id', itemId);
-
-      if (error) throw error;
-      
-      // Atualizar o estado local removendo o item
-      setComandas(prev => prev.map(comanda => ({
-        ...comanda,
-        items: comanda.items?.filter(item => item.id !== itemId)
-      })));
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Erro ao remover item da comanda');
-    }
-  };
-
-  const createBillSplit = async (comandaId: string, splitConfig: BillSplitConfig) => {
-    try {
-      const { data, error } = await supabase
-        .from('bill_splits')
-        .insert([{
-          comanda_id: comandaId,
-          split_type: splitConfig.type,
-          person_count: splitConfig.person_count,
-          splits: splitConfig.splits,
-          service_charge_percentage: splitConfig.service_charge_percentage,
-          discount_amount: splitConfig.discount_amount
-        }])
+        .update({
+          status: 'closed',
+          closed_at: new Date().toISOString(),
+          payment_method: paymentMethod,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', comandaId)
         .select()
         .single();
 
       if (error) throw error;
+      
+      // Atualizar o estado local
+      setComandasState(prev => prev.map(comanda => 
+        comanda.id === comandaId ? data : comanda
+      ));
       return data;
     } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Erro ao criar divisão de conta');
+      throw new Error(err instanceof Error ? err.message : 'Erro ao fechar comanda');
     }
   };
 
-  const getBillSplit = async (comandaId: string) => {
+  const deleteComanda = async (comandaId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('bill_splits')
+      const { error } = await supabase
+        .from('comandas')
+        .delete()
+        .eq('id', comandaId);
+
+      if (error) throw error;
+      
+      // Atualizar o estado local
+      setComandasState(prev => prev.filter(comanda => comanda.id !== comandaId));
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Erro ao excluir comanda');
+    }
+  };
+
+  // Funções específicas para relacionamento com mesas
+  const getComandasByTableId = (tableId: string) => {
+    return comandas.filter(comanda => comanda.table_id === tableId);
+  };
+
+  const getOpenComandasByTableId = (tableId: string) => {
+    return comandas.filter(comanda => 
+      comanda.table_id === tableId && comanda.status === 'open'
+    );
+  };
+
+  const createComandaForTable = async (
+    tableId: string, 
+    employeeId: string, 
+    customerName?: string,
+    peopleCount?: number
+  ) => {
+    return createComanda({
+      table_id: tableId,
+      employee_id: employeeId,
+      customer_name: customerName,
+      people_count: peopleCount
+    });
+  };
+
+  const transferComandaToTable = async (comandaId: string, newTableId: string) => {
+    return updateComanda(comandaId, { table_id: newTableId });
+  };
+
+  const mergeComandas = async (sourceComandaId: string, targetComandaId: string) => {
+    try {
+      // Buscar itens da comanda origem
+      const { data: sourceItems, error: itemsError } = await supabase
+        .from('comanda_items')
         .select('*')
-        .eq('comanda_id', comandaId)
-        .single();
+        .eq('comanda_id', sourceComandaId);
 
-      if (error && error.code !== 'PGRST116') throw error;
-      return data;
+      if (itemsError) throw itemsError;
+
+      // Transferir itens para comanda destino
+      const updatePromises = sourceItems.map(item => 
+        supabase
+          .from('comanda_items')
+          .update({ comanda_id: targetComandaId })
+          .eq('id', item.id)
+      );
+
+      await Promise.all(updatePromises);
+
+      // Excluir comanda origem
+      await deleteComanda(sourceComandaId);
+
+      // Recalcular total da comanda destino
+      await recalculateComandaTotal(targetComandaId);
+
     } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Erro ao buscar divisão de conta');
+      throw new Error(err instanceof Error ? err.message : 'Erro ao mesclar comandas');
     }
   };
 
-  const processMultiplePayments = async (comandaId: string, payments: Array<{
-    person_name: string;
-    amount: number;
-    payment_method: string;
-    status: string;
-  }>) => {
+  const recalculateComandaTotal = async (comandaId: string) => {
     try {
-      // Atualizar status da comanda para fechada
-      await updateComandaStatus(comandaId, 'closed');
+      const { data: items, error } = await supabase
+        .from('comanda_items')
+        .select('price, quantity')
+        .eq('comanda_id', comandaId);
 
-      // Em uma implementação real, aqui você registraria cada pagamento individual
-      // Por exemplo, criando registros na tabela de pagamentos
+      if (error) throw error;
+
+      const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       
-      // Simular processamento dos pagamentos
-      console.log('Processando pagamentos múltiplos:', payments);
-      
-      return { success: true, payments };
+      return updateComanda(comandaId, { total });
     } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Erro ao processar pagamentos');
+      throw new Error(err instanceof Error ? err.message : 'Erro ao recalcular total');
     }
+  };
+
+  // Funções de filtro e busca
+  const getComandaById = (comandaId: string) => {
+    return comandas.find(comanda => comanda.id === comandaId);
+  };
+
+  const getOpenComandas = () => {
+    return comandas.filter(comanda => comanda.status === 'open');
+  };
+
+  const getComandasByStatus = (status: ComandaStatus) => {
+    return comandas.filter(comanda => comanda.status === status);
+  };
+
+  const getComandasByEmployee = (employeeId: string) => {
+    return comandas.filter(comanda => comanda.employee_id === employeeId);
+  };
+
+  const getComandasByCustomer = (customerName: string) => {
+    return comandas.filter(comanda => 
+      comanda.customer_name?.toLowerCase().includes(customerName.toLowerCase())
+    );
+  };
+
+  // Estatísticas
+  const getTotalSales = () => {
+    return comandas
+      .filter(comanda => comanda.status === 'closed')
+      .reduce((sum, comanda) => sum + (comanda.total || 0), 0);
+  };
+
+  const getAverageComandaValue = () => {
+    const closedComandas = comandas.filter(comanda => comanda.status === 'closed');
+    if (closedComandas.length === 0) return 0;
+    
+    const total = closedComandas.reduce((sum, comanda) => sum + (comanda.total || 0), 0);
+    return total / closedComandas.length;
   };
 
   useEffect(() => {
     fetchComandas();
+
+    // Configurar real-time subscription
+    const subscription = supabase
+      .channel('comandas_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comandas' },
+        (payload) => {
+          console.log('Mudança em comandas:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            setComandasState(prev => [payload.new as Comanda, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setComandasState(prev => prev.map(comanda => 
+              comanda.id === payload.new.id ? payload.new as Comanda : comanda
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            setComandasState(prev => prev.filter(comanda => comanda.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   return {
@@ -274,14 +292,30 @@ export const useComandas = () => {
     loading,
     error,
     refetch: fetchComandas,
+    
+    // CRUD básico
     createComanda,
-    updateComandaStatus,
-    addItemToComanda,
-    updateItemStatus,
-    getComandaByTable,
-    removeItemFromComanda,
-    createBillSplit,
-    getBillSplit,
-    processMultiplePayments
+    updateComanda,
+    closeComanda,
+    deleteComanda,
+    
+    // Relacionamento com mesas
+    getComandasByTableId,
+    getOpenComandasByTableId,
+    createComandaForTable,
+    transferComandaToTable,
+    mergeComandas,
+    recalculateComandaTotal,
+    
+    // Filtros e busca
+    getComandaById,
+    getOpenComandas,
+    getComandasByStatus,
+    getComandasByEmployee,
+    getComandasByCustomer,
+    
+    // Estatísticas
+    getTotalSales,
+    getAverageComandaValue
   };
 };
