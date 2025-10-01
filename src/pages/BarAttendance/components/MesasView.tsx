@@ -1,8 +1,8 @@
 import React from 'react';
-import SimpleTableLayout from '../../../components/tables/SimpleTableLayout';
+import TableManagementView from '../../../components/tables/TableManagementView';
 
 const MesasView: React.FC = () => {
-  return <SimpleTableLayout />;
+  return <TableManagementView />;
 };
 
 export default MesasView;

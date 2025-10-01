@@ -213,7 +213,7 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
       </div>
 
       {/* Layout Area */}
-      <div className="flex-1 relative overflow-hidden" ref={layoutRef}>
+      <div className="flex-1 relative overflow-visible" ref={layoutRef}>
         <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200">
           {/* Grid Pattern */}
           <div 
@@ -229,7 +229,15 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
 
           {/* Tables */}
           {tables.map((table) => {
-            console.log('Renderizando mesa:', table.number, 'Posição:', table.position_x, table.position_y);
+            // Ajustar posições para caber no container
+            const originalX = table.position_x || 100;
+            const originalY = table.position_y || 100;
+            
+            // Escalar posições para caber no container
+            const x = Math.min(originalX * 0.6, 600); // Reduzir mais para caber
+            const y = Math.min(originalY * 0.8, 400);
+            
+            console.log('Renderizando mesa:', table.number, 'Original:', originalX, originalY, 'Scaled:', x, y);
             return (
             <motion.div
               key={table.id}
@@ -246,12 +254,12 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
                 });
               }}
               initial={{ 
-                x: table.position_x || 100, 
-                y: table.position_y || 100 
+                x: x, 
+                y: y 
               }}
               animate={{ 
-                x: table.position_x || 100, 
-                y: table.position_y || 100 
+                x: x, 
+                y: y 
               }}
               whileHover={!draggedTables.has(table.id) ? { scale: 1.05 } : {}}
               whileDrag={{ scale: 1.1, zIndex: 1000 }}
