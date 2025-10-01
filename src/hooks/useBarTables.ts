@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { BarTable } from '../types';
+import { BarTable, BarTableInsert, BarTableUpdate, TableStatus } from '../types/bar-attendance';
+import { organizeTablesInGrid, DEFAULT_LAYOUT_CONFIG } from '../utils/table-layout';
 
 export const useBarTables = () => {
   const [tables, setTables] = useState<BarTable[]>([]);
@@ -10,43 +11,96 @@ export const useBarTables = () => {
   const fetchTables = async () => {
     try {
       setLoading(true);
+      console.log('useBarTables - Fetching tables...');
       const { data, error } = await supabase
         .from('bar_tables')
         .select('*')
         .order('number');
 
+      console.log('useBarTables - Query result:', { data, error });
+      
       if (error) throw error;
       setTables(data || []);
+      console.log('useBarTables - Tables set:', data || []);
     } catch (err) {
+      console.error('useBarTables - Error:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar mesas');
     } finally {
       setLoading(false);
     }
   };
 
-  const updateTableStatus = async (tableId: string, status: BarTable['status']) => {
+  const createTable = async (tableData: Omit<BarTableInsert, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('bar_tables')
-        .update({ status })
-        .eq('id', tableId);
+        .insert({
+          ...tableData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      // Atualizar o estado local
+      setTables(prev => [...prev, data]);
+      return data;
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Erro ao criar mesa');
+    }
+  };
+
+  const updateTable = async (tableId: string, updates: Partial<BarTableUpdate>) => {
+    try {
+      const { data, error } = await supabase
+        .from('bar_tables')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', tableId)
+        .select()
+        .single();
 
       if (error) throw error;
       
       // Atualizar o estado local
       setTables(prev => prev.map(table => 
-        table.id === tableId ? { ...table, status } : table
+        table.id === tableId ? data : table
       ));
+      return data;
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Erro ao atualizar mesa');
     }
+  };
+
+  const deleteTable = async (tableId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bar_tables')
+        .delete()
+        .eq('id', tableId);
+
+      if (error) throw error;
+      
+      // Atualizar o estado local
+      setTables(prev => prev.filter(table => table.id !== tableId));
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Erro ao excluir mesa');
+    }
+  };
+
+  const updateTableStatus = async (tableId: string, status: TableStatus) => {
+    return updateTable(tableId, { status });
   };
 
   const updateTablePosition = async (tableId: string, position_x: number, position_y: number) => {
     try {
       const { error } = await supabase
         .from('bar_tables')
-        .update({ position_x, position_y })
+        .update({ position_x, position_y, updated_at: new Date().toISOString() })
         .eq('id', tableId);
 
       if (error) throw error;
@@ -60,8 +114,80 @@ export const useBarTables = () => {
     }
   };
 
+  const getTableById = (tableId: string) => {
+    return tables.find(table => table.id === tableId);
+  };
+
+  const getTableByNumber = (number: string) => {
+    return tables.find(table => table.number === number);
+  };
+
+  const getAvailableTables = () => {
+    return tables.filter(table => table.status === 'available');
+  };
+
+  const getOccupiedTables = () => {
+    return tables.filter(table => table.status === 'occupied');
+  };
+
+  const getTablesByStatus = (status: TableStatus) => {
+    return tables.filter(table => table.status === status);
+  };
+
+  // Função para organizar todas as mesas automaticamente
+  const organizeTablesAutomatically = async (layoutWidth: number = 800, layoutHeight: number = 600) => {
+    console.log('Organizing tables with dimensions:', { layoutWidth, layoutHeight, tablesCount: tables.length });
+    
+    const config = {
+      ...DEFAULT_LAYOUT_CONFIG,
+      layoutWidth: Math.max(layoutWidth - 100, 600), // Margem de segurança
+      layoutHeight: Math.max(layoutHeight - 150, 400) // Espaço para toolbar e legenda
+    };
+    
+    const organizedTables = organizeTablesInGrid(tables, config);
+    
+    const updatePromises = organizedTables.map(({ id, position }) => {
+      console.log(`Updating table ${id} to position:`, position);
+      return updateTablePosition(id, position.x, position.y);
+    });
+
+    try {
+      await Promise.all(updatePromises);
+      console.log('All tables organized successfully');
+    } catch (error) {
+      console.error('Error organizing tables:', error);
+      throw new Error('Erro ao organizar mesas automaticamente');
+    }
+  };
+
   useEffect(() => {
     fetchTables();
+
+    // Configurar real-time subscription
+    const subscription = supabase
+      .channel('bar_tables_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bar_tables' },
+        (payload) => {
+          console.log('Mudança em mesas:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            setTables(prev => [...prev, payload.new as BarTable]);
+          } else if (payload.eventType === 'UPDATE') {
+            setTables(prev => prev.map(table => 
+              table.id === payload.new.id ? payload.new as BarTable : table
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            setTables(prev => prev.filter(table => table.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   return {
@@ -69,7 +195,16 @@ export const useBarTables = () => {
     loading,
     error,
     refetch: fetchTables,
+    createTable,
+    updateTable,
+    deleteTable,
     updateTableStatus,
-    updateTablePosition
+    updateTablePosition,
+    organizeTablesAutomatically,
+    getTableById,
+    getTableByNumber,
+    getAvailableTables,
+    getOccupiedTables,
+    getTablesByStatus
   };
 };
