@@ -36,7 +36,7 @@ const FinalizarAtendimentoModal: React.FC<FinalizarAtendimentoModalProps> = ({
   onClose,
   onFinalized
 }) => {
-  const { getOpenComandasByTableId, updateComanda } = useComandas();
+  const { getOpenComandasByTableId, finalizarComandasPagas } = useComandas();
   const { updateTableStatus } = useBarTables();
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
@@ -149,32 +149,27 @@ const FinalizarAtendimentoModal: React.FC<FinalizarAtendimentoModalProps> = ({
     setIsProcessing(true);
 
     try {
-      // 1. Atualizar status das comandas para "pending_payment"
-      const updatePromises = openComandas.map(comanda => 
-        updateComanda(comanda.id, { 
-          status: 'pending_payment',
-          payment_method: selectedPaymentMethod 
-        })
-      );
-      
-      await Promise.all(updatePromises);
+      // 1. Finalizar comandas como pagas (status 'closed')
+      const comandaIds = openComandas.map(comanda => comanda.id);
+      await finalizarComandasPagas(comandaIds, selectedPaymentMethod);
 
       // 2. Atualizar status da mesa para disponível
       await updateTableStatus(table.id, 'available');
 
-      // 3. Simular envio para o caixa
-      console.log('Comandas enviadas para o caixa:', {
+      // 3. Log do processamento
+      console.log('Comandas finalizadas e pagas:', {
         mesa: table.number,
         comandas: openComandas.length,
         total: totalGeral,
-        paymentMethod: selectedPaymentMethod
+        paymentMethod: selectedPaymentMethod,
+        comandaIds
       });
 
       // 4. Imprimir comanda
       handlePrintComanda();
 
       // 5. Notificar sucesso
-      alert(`Atendimento finalizado com sucesso!\n\nMesa ${table.number} liberada\nTotal: ${formatCurrency(totalGeral)}\nEnviado para o caixa`);
+      alert(`Atendimento finalizado com sucesso!\n\nMesa ${table.number} liberada\nTotal: ${formatCurrency(totalGeral)}\nPagamento: ${selectedPaymentMethod}\nComandas fechadas definitivamente`);
 
       if (onFinalized) {
         onFinalized();

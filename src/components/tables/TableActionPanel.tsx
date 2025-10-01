@@ -142,40 +142,66 @@ const TableActionPanel: React.FC<TableActionPanelProps> = ({
           </div>
         </div>
 
-        {/* Comandas Info */}
-        {allComandas.length > 0 && (
+        {/* Comandas Info - só mostra se há comandas abertas */}
+        {openComandas.length > 0 && (
           <div className="px-6 py-3 bg-blue-50 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <DocumentTextIcon className="h-5 w-5 text-blue-600" />
                 <span className="text-sm font-medium text-blue-900">
-                  {allComandas.length} comanda{allComandas.length !== 1 ? 's' : ''}
+                  {openComandas.length} comanda{openComandas.length !== 1 ? 's' : ''} aberta{openComandas.length !== 1 ? 's' : ''}
                 </span>
               </div>
-              {openComandas.length > 0 && (
-                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                  {openComandas.length} aberta{openComandas.length !== 1 ? 's' : ''}
+              <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                ATIVA{openComandas.length !== 1 ? 'S' : ''}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Info de comandas fechadas (histórico) */}
+        {openComandas.length === 0 && allComandas.length > 0 && (
+          <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <DocumentTextIcon className="h-5 w-5 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">
+                  {allComandas.length} comanda{allComandas.length !== 1 ? 's' : ''} no histórico
                 </span>
-              )}
+              </div>
+              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                FECHADA{allComandas.length !== 1 ? 'S' : ''}
+              </span>
             </div>
           </div>
         )}
 
         {/* Ações Principais */}
         <div className="px-6 py-4 space-y-3">
-          {/* Gerenciar Comandas */}
-          {onManageComandas && (
+          {/* Gerenciar Comandas - só se há comandas abertas OU mesa disponível para nova comanda */}
+          {onManageComandas && (openComandas.length > 0 || table.status === 'available') && (
             <button
               onClick={() => onManageComandas(table)}
               className="w-full flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors"
             >
               <DocumentTextIcon className="h-5 w-5" />
               <span>
-                {allComandas.length > 0 
-                  ? `Gerenciar Comandas (${allComandas.length})`
+                {openComandas.length > 0 
+                  ? `Gerenciar Comandas (${openComandas.length})`
                   : 'Criar Nova Comanda'
                 }
               </span>
+            </button>
+          )}
+
+          {/* Visualizar Histórico - só se há comandas fechadas e nenhuma aberta */}
+          {onManageComandas && openComandas.length === 0 && allComandas.length > 0 && table.status !== 'available' && (
+            <button
+              onClick={() => onManageComandas(table)}
+              className="w-full flex items-center justify-center space-x-2 bg-gray-600 text-white px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              <DocumentTextIcon className="h-5 w-5" />
+              <span>Ver Histórico ({allComandas.length})</span>
             </button>
           )}
 

@@ -126,6 +126,44 @@ export const useComandas = () => {
     }
   };
 
+  // Função específica para finalizar comandas após pagamento
+  const finalizarComandasPagas = async (comandaIds: string[], paymentMethod: string) => {
+    try {
+      const updatePromises = comandaIds.map(comandaId => 
+        supabase
+          .from('comandas')
+          .update({
+            status: 'closed',
+            closed_at: new Date().toISOString(),
+            payment_method: paymentMethod,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', comandaId)
+          .select()
+          .single()
+      );
+
+      const results = await Promise.all(updatePromises);
+      
+      // Verificar se houve erros
+      const errors = results.filter(result => result.error);
+      if (errors.length > 0) {
+        throw new Error(`Erro ao finalizar ${errors.length} comandas`);
+      }
+
+      // Atualizar estado local
+      const updatedComandas = results.map(result => result.data).filter(Boolean);
+      setComandasState(prev => prev.map(comanda => {
+        const updated = updatedComandas.find(updated => updated.id === comanda.id);
+        return updated || comanda;
+      }));
+
+      return updatedComandas;
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Erro ao finalizar comandas pagas');
+    }
+  };
+
   const deleteComanda = async (comandaId: string) => {
     try {
       const { error } = await supabase
@@ -298,6 +336,7 @@ export const useComandas = () => {
     updateComanda,
     closeComanda,
     deleteComanda,
+    finalizarComandasPagas,
     
     // Relacionamento com mesas
     getComandasByTableId,
