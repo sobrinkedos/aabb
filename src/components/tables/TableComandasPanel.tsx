@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { BarTable, Comanda } from '../../types/bar-attendance';
 import { useComandas } from '../../hooks/useComandas';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextSimple';
 
 interface TableComandasPanelProps {
   table: BarTable;
@@ -43,7 +43,7 @@ const TableComandasPanel: React.FC<TableComandasPanelProps> = ({
   const openComandas = getOpenComandasByTableId(table.id);
 
   const handleCreateComanda = async () => {
-    if (!user?.id) {
+    if (!user) {
       alert('Usuário não autenticado');
       return;
     }
