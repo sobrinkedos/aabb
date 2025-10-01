@@ -42,6 +42,12 @@ const TableComandasPanel: React.FC<TableComandasPanelProps> = ({
   const allComandas = getComandasByTableId(table.id);
   const openComandas = getOpenComandasByTableId(table.id);
 
+  // Debug: verificar estrutura dos dados
+  console.log('TableComandasPanel - Comandas da mesa:', table.id, allComandas);
+  if (allComandas.length > 0) {
+    console.log('Primeira comanda com itens:', allComandas[0]);
+  }
+
   const handleCreateComanda = async () => {
     if (!user) {
       alert('Usuário não autenticado');
@@ -275,6 +281,30 @@ const TableComandasPanel: React.FC<TableComandasPanelProps> = ({
                           <span className="font-semibold text-green-600">
                             {formatCurrency(comanda.total)}
                           </span>
+                        </div>
+                      )}
+
+                      {/* Itens da Comanda */}
+                      {(comanda as any).comanda_items && (comanda as any).comanda_items.length > 0 && (
+                        <div className="mt-3 border-t pt-3">
+                          <span className="text-sm font-medium text-gray-700 mb-2 block">
+                            Itens ({(comanda as any).comanda_items.length}):
+                          </span>
+                          <div className="space-y-1">
+                            {(comanda as any).comanda_items.map((item: any, index: number) => (
+                              <div key={item.id || index} className="flex justify-between items-center text-sm">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-gray-600">{item.quantity}x</span>
+                                  <span className="text-gray-900">
+                                    {item.menu_items?.name || 'Item sem nome'}
+                                  </span>
+                                </div>
+                                <span className="text-gray-600">
+                                  {formatCurrency(item.price * item.quantity)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
 
