@@ -15,8 +15,8 @@ export interface LayoutConfig {
 }
 
 export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
-  tableSize: 100, // 80px da mesa + 20px de margem
-  margin: 20,
+  tableSize: 120, // 80px da mesa + 40px de espaçamento
+  margin: 50,
   layoutWidth: 800,
   layoutHeight: 600
 };
@@ -114,10 +114,64 @@ export const organizeTablesInGrid = (
   tables: Array<{ id: string; position_x?: number | null; position_y?: number | null }>,
   config: Partial<LayoutConfig> = {}
 ): Array<{ id: string; position: TablePosition }> => {
-  return tables.map((table, index) => ({
-    id: table.id,
-    position: calculateAutoPosition(index, config)
-  }));
+  const finalConfig = { ...DEFAULT_LAYOUT_CONFIG, ...config };
+  
+  // Calcular quantas colunas e linhas cabem no layout
+  const maxCols = Math.floor((finalConfig.layoutWidth - finalConfig.margin) / finalConfig.tableSize);
+  const maxRows = Math.floor((finalConfig.layoutHeight - finalConfig.margin) / finalConfig.tableSize);
+  const maxCapacity = maxCols * maxRows;
+  
+  console.log('Grid Organization:', {
+    layoutWidth: finalConfig.layoutWidth,
+    layoutHeight: finalConfig.layoutHeight,
+    tableSize: finalConfig.tableSize,
+    margin: finalConfig.margin,
+    maxCols,
+    maxRows,
+    maxCapacity,
+    tablesCount: tables.length
+  });
+  
+  // Se há mais mesas do que capacidade, ajustar o tamanho das mesas
+  let adjustedTableSize = finalConfig.tableSize;
+  let adjustedMargin = finalConfig.margin;
+  
+  if (tables.length > maxCapacity) {
+    // Calcular novo tamanho baseado no número de mesas
+    const idealCols = Math.ceil(Math.sqrt(tables.length));
+    const idealRows = Math.ceil(tables.length / idealCols);
+    
+    adjustedTableSize = Math.min(
+      Math.floor((finalConfig.layoutWidth - 40) / idealCols),
+      Math.floor((finalConfig.layoutHeight - 40) / idealRows)
+    );
+    adjustedMargin = 20;
+    
+    console.log('Adjusted for capacity:', {
+      idealCols,
+      idealRows,
+      adjustedTableSize,
+      adjustedMargin
+    });
+  }
+  
+  return tables.map((table, index) => {
+    const cols = Math.floor((finalConfig.layoutWidth - adjustedMargin) / adjustedTableSize);
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    
+    const position = {
+      x: adjustedMargin + (col * adjustedTableSize),
+      y: adjustedMargin + (row * adjustedTableSize)
+    };
+    
+    console.log(`Mesa ${index + 1}:`, { col, row, position });
+    
+    return {
+      id: table.id,
+      position
+    };
+  });
 };
 
 /**

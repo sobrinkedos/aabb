@@ -213,8 +213,8 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
       </div>
 
       {/* Layout Area */}
-      <div className="flex-1 relative overflow-visible" ref={layoutRef}>
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200">
+      <div className="flex-1 relative min-h-[600px] overflow-visible" ref={layoutRef}>
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 min-h-[600px]">
           {/* Grid Pattern */}
           <div 
             className="absolute inset-0 opacity-20"
@@ -228,16 +228,12 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
           />
 
           {/* Tables */}
-          {tables.map((table) => {
-            // Ajustar posições para caber no container
-            const originalX = table.position_x || 100;
-            const originalY = table.position_y || 100;
+          {tables.map((table, index) => {
+            // Usar as posições do banco de dados ou posição padrão
+            const x = table.position_x ?? 50 + (index % 5) * 120;
+            const y = table.position_y ?? 50 + Math.floor(index / 5) * 120;
             
-            // Escalar posições para caber no container
-            const x = Math.min(originalX * 0.6, 600); // Reduzir mais para caber
-            const y = Math.min(originalY * 0.8, 400);
-            
-            console.log('Renderizando mesa:', table.number, 'Original:', originalX, originalY, 'Scaled:', x, y);
+            console.log('Mesa:', table.number, 'Posição:', { x, y, dbX: table.position_x, dbY: table.position_y });
             return (
             <motion.div
               key={table.id}

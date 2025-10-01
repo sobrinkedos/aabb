@@ -152,53 +152,43 @@ const TableModal: React.FC<TableModalProps> = ({
   ];
 
   return (
-    <AnimatePresence>
+    <>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-              onClick={onClose}
-            />
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50"
+            onClick={onClose}
+          />
 
-            {/* Modal */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6"
-            >
-              <div className="absolute top-0 right-0 pt-4 pr-4">
+          {/* Modal */}
+          <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  {isEditing ? 'Editar Mesa' : 'Nova Mesa'}
+                </h3>
                 <button
                   onClick={onClose}
-                  className="bg-white rounded-md text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="text-gray-400 hover:text-gray-600 focus:outline-none"
                 >
                   <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
 
-              <div className="sm:flex sm:items-start">
-                <div className="w-full">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                    {isEditing ? 'Editar Mesa' : 'Nova Mesa'}
-                  </h3>
-
-                  {error && (
-                    <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
-                      <div className="flex">
-                        <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
-                        <div className="ml-3">
-                          <p className="text-sm text-red-800">{error}</p>
-                        </div>
-                      </div>
+              {error && (
+                <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
+                  <div className="flex">
+                    <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
+                    <div className="ml-3">
+                      <p className="text-sm text-red-800">{error}</p>
                     </div>
-                  )}
+                  </div>
+                </div>
+              )}
 
-                  <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Número da Mesa */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -290,52 +280,50 @@ const TableModal: React.FC<TableModalProps> = ({
                       />
                     </div>
 
-                    {/* Botões */}
-                    <div className="flex justify-between pt-4">
-                      <div>
-                        {isEditing && (
-                          <button
-                            type="button"
-                            onClick={handleDelete}
-                            disabled={loading}
-                            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-                          >
-                            Excluir
-                          </button>
-                        )}
-                      </div>
-                      
-                      <div className="flex space-x-3">
-                        <button
-                          type="button"
-                          onClick={onClose}
-                          disabled={loading}
-                          className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={loading}
-                          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 flex items-center"
-                        >
-                          {loading ? (
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          ) : (
-                            <CheckIcon className="h-4 w-4 mr-2" />
-                          )}
-                          {isEditing ? 'Salvar' : 'Criar'}
-                        </button>
-                      </div>
-                    </div>
-                  </form>
+                {/* Botões */}
+                <div className="flex justify-between pt-4">
+                  <div>
+                    {isEditing && (
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={loading}
+                        className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                      >
+                        Excluir
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="flex space-x-3">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      disabled={loading}
+                      className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 flex items-center"
+                    >
+                      {loading ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      ) : (
+                        <CheckIcon className="h-4 w-4 mr-2" />
+                      )}
+                      {isEditing ? 'Salvar' : 'Criar'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
+              </form>
+            </div>
           </div>
         </div>
       )}
-    </AnimatePresence>
+    </>
   );
 };
 

@@ -136,21 +136,26 @@ export const useBarTables = () => {
 
   // Função para organizar todas as mesas automaticamente
   const organizeTablesAutomatically = async (layoutWidth: number = 800, layoutHeight: number = 600) => {
+    console.log('Organizing tables with dimensions:', { layoutWidth, layoutHeight, tablesCount: tables.length });
+    
     const config = {
       ...DEFAULT_LAYOUT_CONFIG,
-      layoutWidth,
-      layoutHeight
+      layoutWidth: Math.max(layoutWidth - 100, 600), // Margem de segurança
+      layoutHeight: Math.max(layoutHeight - 150, 400) // Espaço para toolbar e legenda
     };
     
     const organizedTables = organizeTablesInGrid(tables, config);
     
-    const updatePromises = organizedTables.map(({ id, position }) => 
-      updateTablePosition(id, position.x, position.y)
-    );
+    const updatePromises = organizedTables.map(({ id, position }) => {
+      console.log(`Updating table ${id} to position:`, position);
+      return updateTablePosition(id, position.x, position.y);
+    });
 
     try {
       await Promise.all(updatePromises);
+      console.log('All tables organized successfully');
     } catch (error) {
+      console.error('Error organizing tables:', error);
       throw new Error('Erro ao organizar mesas automaticamente');
     }
   };
