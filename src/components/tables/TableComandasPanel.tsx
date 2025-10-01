@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { BarTable, Comanda } from '../../types/bar-attendance';
 import { useComandas } from '../../hooks/useComandas';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TableComandasPanelProps {
   table: BarTable;
