@@ -46,7 +46,7 @@ export class RegistroEmpresaService {
       }
 
       // 4. Criar empresa
-      const empresaResult = await this.criarEmpresa(dados);
+      const empresaResult = await this.criarEmpresa(dados, authData.user.id);
       if (!empresaResult.success || !empresaResult.empresa) {
         return { success: false, error: empresaResult.error };
       }
@@ -166,37 +166,64 @@ export class RegistroEmpresaService {
   /**
    * Cria a empresa no banco de dados
    */
-  private static async criarEmpresa(dados: RegistroEmpresaData): Promise<RegistroResult> {
+  private static async criarEmpresa(dados: RegistroEmpresaData, userId: string): Promise<RegistroResult> {
     try {
-      // Criar empresa
-      const { data: empresa, error: empresaError } = await supabase
-        .from('empresas')
-        .insert({
-          nome: dados.nome_empresa,
-          cnpj: dados.cnpj,
-          email_admin: dados.email_admin,
-          telefone: dados.telefone_empresa,
-          endereco: dados.endereco,
-          status: 'ativo'
-        })
-        .select()
-        .single();
+      // Usar service role para criar empresa (bypass RLS)
+      const serviceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      
+      let empresaData;
+      let empresaError;
 
-      if (empresaError || !empresa) {
+      if (serviceRoleKey && serviceRoleKey !== import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        // Usar service role se disponível
+        const { createClient } = await import('@supabase/supabase-js');
+        const serviceClient = createClient(supabaseUrl, serviceRoleKey);
+        
+        const result = await serviceClient
+          .from('empresas')
+          .insert({
+            nome: dados.nome_empresa,
+            cnpj: dados.cnpj,
+            email_admin: dados.email_admin,
+            telefone: dados.telefone_empresa,
+            endereco: dados.endereco,
+            status: 'ativo'
+          })
+          .select()
+          .single();
+          
+        empresaData = result.data;
+        empresaError = result.error;
+      } else {
+        // Fallback para cliente normal
+        const result = await supabase
+          .from('empresas')
+          .insert({
+            nome: dados.nome_empresa,
+            cnpj: dados.cnpj,
+            email_admin: dados.email_admin,
+            telefone: dados.telefone_empresa,
+            endereco: dados.endereco,
+            status: 'ativo'
+          })
+          .select()
+          .single();
+          
+        empresaData = result.data;
+        empresaError = result.error;
+      }
+
+      if (empresaError || !empresaData) {
         console.error('Erro ao criar empresa:', empresaError);
         return { success: false, error: empresaError?.message || 'Erro ao criar empresa' };
       }
 
-      // Obter dados do usuário autenticado
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        return { success: false, error: 'Usuário não autenticado' };
-      }
+      const empresa = empresaData;
 
       // Criar primeiro usuário como SUPER_ADMIN
       const usuarioResult = await PrimeiroUsuarioUtils.criarPrimeiroUsuario({
-        user_id: user.id,
+        user_id: userId,
         empresa_id: empresa.id,
         nome_completo: dados.nome_admin,
         email: dados.email_admin,

@@ -35,9 +35,12 @@
       }
     }
   },
-  "kiroAgent.agentModelSelection": "claude-sonnet-4",
+  "kiroAgent.agentModelSelection": "claude-sonnet-4.5",
   "kiroAgent.enableDebugLogs": true,
   "kiroAgent.enableTabAutocomplete": true,
   "typescript.autoClosingTags": false,
-  "html.autoClosingTags": false
+  "html.autoClosingTags": false,
+  "editor.rulers": [
+    
+  ]
 }

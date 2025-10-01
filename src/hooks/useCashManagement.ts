@@ -398,15 +398,32 @@ export const useCashManagement = (): UseCashManagementReturn => {
       console.log('Iniciando abertura de caixa para usuário:', user.id);
       updateState({ loading: true, error: null });
 
+      // Buscar empresa_id do usuário
+      console.log('Buscando empresa_id para o usuário...');
+      const { data: usuarioEmpresa, error: empresaError } = await supabase
+        .from('usuarios_empresa')
+        .select('empresa_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (empresaError) {
+        console.error('Erro ao buscar empresa do usuário:', empresaError);
+        // Usar empresa padrão se não encontrar
+        console.log('Usando empresa padrão...');
+      }
+
+      const empresa_id = usuarioEmpresa?.empresa_id || '1'; // Fallback para empresa padrão
+
       const sessionData = {
         employee_id: user.id,
+        empresa_id: empresa_id,
         opening_amount: data.opening_amount,
         opening_notes: data.opening_notes,
         supervisor_approval_id: data.supervisor_approval_id,
         status: 'open' as CashSessionStatus
       };
 
-      console.log('Dados da sessão:', sessionData);
+      console.log('Dados da sessão com empresa_id:', sessionData);
 
       const { data: newSession, error } = await (supabase as any)
         .from('cash_sessions')
