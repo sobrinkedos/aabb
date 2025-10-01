@@ -36,7 +36,7 @@ const FinalizarAtendimentoModal: React.FC<FinalizarAtendimentoModalProps> = ({
   onClose,
   onFinalized
 }) => {
-  const { getOpenComandasByTableId, finalizarComandasPagas } = useComandas();
+  const { getOpenComandasByTableId, updateComanda } = useComandas();
   const { updateTableStatus } = useBarTables();
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
@@ -149,27 +149,33 @@ const FinalizarAtendimentoModal: React.FC<FinalizarAtendimentoModalProps> = ({
     setIsProcessing(true);
 
     try {
-      // 1. Finalizar comandas como pagas (status 'closed')
-      const comandaIds = openComandas.map(comanda => comanda.id);
-      await finalizarComandasPagas(comandaIds, selectedPaymentMethod);
+      // 1. Enviar comandas para pendência de pagamento no caixa
+      const updatePromises = openComandas.map(comanda => 
+        updateComanda(comanda.id, { 
+          status: 'pending_payment',
+          payment_method: selectedPaymentMethod 
+        })
+      );
+      
+      await Promise.all(updatePromises);
 
       // 2. Atualizar status da mesa para disponível
       await updateTableStatus(table.id, 'available');
 
       // 3. Log do processamento
-      console.log('Comandas finalizadas e pagas:', {
+      console.log('Comandas enviadas para o caixa:', {
         mesa: table.number,
         comandas: openComandas.length,
         total: totalGeral,
         paymentMethod: selectedPaymentMethod,
-        comandaIds
+        status: 'pending_payment'
       });
 
       // 4. Imprimir comanda
       handlePrintComanda();
 
       // 5. Notificar sucesso
-      alert(`Atendimento finalizado com sucesso!\n\nMesa ${table.number} liberada\nTotal: ${formatCurrency(totalGeral)}\nPagamento: ${selectedPaymentMethod}\nComandas fechadas definitivamente`);
+      alert(`Atendimento finalizado com sucesso!\n\nMesa ${table.number} liberada\nTotal: ${formatCurrency(totalGeral)}\nMétodo: ${selectedPaymentMethod}\n\n✅ Comandas enviadas para o CAIXA\n💰 Aguardando pagamento`);
 
       if (onFinalized) {
         onFinalized();

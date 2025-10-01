@@ -191,6 +191,12 @@ export const useComandas = () => {
     );
   };
 
+  const getPendingPaymentComandasByTableId = (tableId: string) => {
+    return comandas.filter(comanda => 
+      comanda.table_id === tableId && comanda.status === 'pending_payment'
+    );
+  };
+
   const createComandaForTable = async (
     tableId: string, 
     employeeId: string, 
@@ -341,6 +347,7 @@ export const useComandas = () => {
     // Relacionamento com mesas
     getComandasByTableId,
     getOpenComandasByTableId,
+    getPendingPaymentComandasByTableId,
     createComandaForTable,
     transferComandaToTable,
     mergeComandas,

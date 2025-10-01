@@ -33,9 +33,10 @@ const TableActionPanel: React.FC<TableActionPanelProps> = ({
   onFinalizarAtendimento
 }) => {
   const { updateTableStatus, deleteTable } = useBarTables();
-  const { getOpenComandasByTableId, getComandasByTableId } = useComandas();
+  const { getOpenComandasByTableId, getComandasByTableId, getPendingPaymentComandasByTableId } = useComandas();
   
   const openComandas = getOpenComandasByTableId(table.id);
+  const pendingComandas = getPendingPaymentComandasByTableId(table.id);
   const allComandas = getComandasByTableId(table.id);
   
   console.log('TableActionPanel - Hook functions:', { 
@@ -44,6 +45,7 @@ const TableActionPanel: React.FC<TableActionPanelProps> = ({
     tableId: table.id,
     tableStatus: table.status,
     openComandas: openComandas.length,
+    pendingComandas: pendingComandas.length,
     allComandas: allComandas.length
   });
 
@@ -159,8 +161,25 @@ const TableActionPanel: React.FC<TableActionPanelProps> = ({
           </div>
         )}
 
+        {/* Info de comandas pendentes de pagamento */}
+        {openComandas.length === 0 && pendingComandas.length > 0 && (
+          <div className="px-6 py-3 bg-yellow-50 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <DocumentTextIcon className="h-5 w-5 text-yellow-600" />
+                <span className="text-sm font-medium text-yellow-800">
+                  {pendingComandas.length} comanda{pendingComandas.length !== 1 ? 's' : ''} no caixa
+                </span>
+              </div>
+              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
+                AGUARDANDO PAGTO
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Info de comandas fechadas (histórico) */}
-        {openComandas.length === 0 && allComandas.length > 0 && (
+        {openComandas.length === 0 && pendingComandas.length === 0 && allComandas.length > 0 && (
           <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -170,7 +189,7 @@ const TableActionPanel: React.FC<TableActionPanelProps> = ({
                 </span>
               </div>
               <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
-                FECHADA{allComandas.length !== 1 ? 'S' : ''}
+                PAGA{allComandas.length !== 1 ? 'S' : ''}
               </span>
             </div>
           </div>
