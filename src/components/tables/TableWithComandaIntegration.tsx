@@ -11,10 +11,9 @@ import {
 import { BarTable, TableStatus } from '../../types/bar-attendance';
 import { useBarTables } from '../../hooks/useBarTables';
 import { useComandas } from '../../hooks/useComandas';
-import TableLayoutManager from './TableLayoutManager';
 import NovaComandaModal from '../../pages/BarAttendance/components/NovaComandaModal';
 import { formatCurrency } from '../../types/cash-management';
-import { calculateAutoPosition } from '../../utils/table-layout';
+import { supabase } from '../../lib/supabase';
 
 interface TableWithComandaData extends BarTable {
   currentComanda?: any;
@@ -24,14 +23,19 @@ interface TableWithComandaData extends BarTable {
 }
 
 const TableWithComandaIntegration: React.FC = () => {
-  const { tables, loading } = useBarTables();
+  const { tables, loading, refetch } = useBarTables();
   const { comandas } = useComandas();
   const [selectedTable, setSelectedTable] = useState<BarTable | null>(null);
   const [showNovaComandaModal, setShowNovaComandaModal] = useState(false);
   const [tablesWithComandas, setTablesWithComandas] = useState<TableWithComandaData[]>([]);
+  const [creatingTables, setCreatingTables] = useState(false);
 
   // Combinar dados das mesas com comandas
   useEffect(() => {
+    console.log('TableWithComandaIntegration - tables:', tables);
+    console.log('TableWithComandaIntegration - comandas:', comandas);
+    console.log('TableWithComandaIntegration - loading:', loading);
+    
     const enrichedTables: TableWithComandaData[] = tables.map(table => {
       const comanda = comandas.find(c => c.table_id === table.id && c.status === 'open');
       
@@ -48,8 +52,9 @@ const TableWithComandaIntegration: React.FC = () => {
       };
     });
     
+    console.log('TableWithComandaIntegration - enrichedTables:', enrichedTables);
     setTablesWithComandas(enrichedTables);
-  }, [tables, comandas]);
+  }, [tables, comandas, loading]);
 
   const handleTableSelect = (table: BarTable) => {
     const enrichedTable = tablesWithComandas.find(t => t.id === table.id);
@@ -67,6 +72,52 @@ const TableWithComandaIntegration: React.FC = () => {
   const handleCloseModal = () => {
     setShowNovaComandaModal(false);
     setSelectedTable(null);
+  };
+
+  const createSampleTables = async () => {
+    setCreatingTables(true);
+
+    try {
+      // Criar mesas de exemplo
+      const sampleTables = [
+        { number: '1', capacity: 2, status: 'available', position_x: 100, position_y: 100 },
+        { number: '2', capacity: 4, status: 'available', position_x: 200, position_y: 100 },
+        { number: '3', capacity: 2, status: 'available', position_x: 300, position_y: 100 },
+        { number: '4', capacity: 6, status: 'available', position_x: 400, position_y: 100 },
+        { number: '5', capacity: 4, status: 'available', position_x: 100, position_y: 200 },
+        { number: '6', capacity: 2, status: 'available', position_x: 200, position_y: 200 },
+        { number: '7', capacity: 8, status: 'available', position_x: 300, position_y: 200 },
+        { number: '8', capacity: 4, status: 'available', position_x: 400, position_y: 200 },
+        { number: '9', capacity: 2, status: 'available', position_x: 100, position_y: 300 },
+        { number: '10', capacity: 6, status: 'available', position_x: 200, position_y: 300 },
+        { number: 'VIP-1', capacity: 4, status: 'available', position_x: 500, position_y: 100, notes: 'Mesa VIP com vista' },
+        { number: 'VIP-2', capacity: 6, status: 'available', position_x: 500, position_y: 200, notes: 'Mesa VIP reservada' },
+        { number: 'A1', capacity: 2, status: 'available', position_x: 100, position_y: 400 },
+        { number: 'A2', capacity: 2, status: 'available', position_x: 200, position_y: 400 },
+        { number: 'A3', capacity: 2, status: 'available', position_x: 300, position_y: 400 },
+        { number: 'B1', capacity: 4, status: 'available', position_x: 400, position_y: 300 },
+        { number: 'B2', capacity: 4, status: 'available', position_x: 500, position_y: 300 },
+        { number: 'B3', capacity: 4, status: 'available', position_x: 600, position_y: 300 },
+        { number: 'C1', capacity: 8, status: 'available', position_x: 400, position_y: 400 },
+        { number: 'C2', capacity: 10, status: 'available', position_x: 500, position_y: 400 }
+      ];
+
+      const { error } = await supabase
+        .from('bar_tables')
+        .insert(sampleTables);
+
+      if (error) throw error;
+
+      // Atualizar a lista de mesas
+      await refetch();
+      
+      alert(`${sampleTables.length} mesas de exemplo criadas com sucesso!`);
+    } catch (error) {
+      console.error('Erro ao criar mesas:', error);
+      alert('Erro ao criar mesas de exemplo: ' + (error as Error).message);
+    } finally {
+      setCreatingTables(false);
+    }
   };
 
   const getTableStatusInfo = (table: TableWithComandaData) => {
@@ -269,7 +320,7 @@ const TableWithComandaIntegration: React.FC = () => {
           })}
 
           {/* Empty State */}
-          {tablesWithComandas.length === 0 && (
+          {tablesWithComandas.length === 0 && !loading && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
                 <UserGroupIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -279,6 +330,13 @@ const TableWithComandaIntegration: React.FC = () => {
                 <p className="text-gray-500 mb-4">
                   Configure as mesas para começar a gerenciar comandas
                 </p>
+                <button
+                  onClick={createSampleTables}
+                  disabled={creatingTables}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  {creatingTables ? 'Criando...' : 'Criar Mesas de Exemplo'}
+                </button>
               </div>
             </div>
           )}

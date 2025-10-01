@@ -11,14 +11,19 @@ export const useBarTables = () => {
   const fetchTables = async () => {
     try {
       setLoading(true);
+      console.log('useBarTables - Fetching tables...');
       const { data, error } = await supabase
         .from('bar_tables')
         .select('*')
         .order('number');
 
+      console.log('useBarTables - Query result:', { data, error });
+      
       if (error) throw error;
       setTables(data || []);
+      console.log('useBarTables - Tables set:', data || []);
     } catch (err) {
+      console.error('useBarTables - Error:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar mesas');
     } finally {
       setLoading(false);
