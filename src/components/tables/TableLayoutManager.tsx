@@ -207,6 +207,11 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
         </div>
       </div>
 
+      {/* Debug Info */}
+      <div className="bg-yellow-100 border-b p-2 text-sm">
+        <strong>Debug Layout:</strong> {tables.length} mesas, Modo Edição: {isEditMode ? 'ON' : 'OFF'}
+      </div>
+
       {/* Layout Area */}
       <div className="flex-1 relative overflow-hidden" ref={layoutRef}>
         <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200">
@@ -223,19 +228,23 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
           />
 
           {/* Tables */}
-          {tables.map((table) => (
+          {tables.map((table) => {
+            console.log('Renderizando mesa:', table.number, 'Posição:', table.position_x, table.position_y);
+            return (
             <motion.div
               key={table.id}
               drag={isEditMode && !readonly}
               dragMomentum={false}
               dragElastic={0}
-              onDragEnd={(_, info) => handleTableDrag(table.id, info)}
               onDragStart={() => setDraggedTables(prev => new Set(prev).add(table.id))}
-              onDragEnd={() => setDraggedTables(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(table.id);
-                return newSet;
-              })}
+              onDragEnd={(_, info) => {
+                handleTableDrag(table.id, info);
+                setDraggedTables(prev => {
+                  const newSet = new Set(prev);
+                  newSet.delete(table.id);
+                  return newSet;
+                });
+              }}
               initial={{ 
                 x: table.position_x || 100, 
                 y: table.position_y || 100 
@@ -273,7 +282,8 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
                 </div>
               </div>
             </motion.div>
-          ))}
+          );
+          })}
 
           {/* Empty State */}
           {tables.length === 0 && (
