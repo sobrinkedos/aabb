@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import {
   PlusIcon,
   UserGroupIcon,
-  ClockIcon,
   EyeIcon,
   PencilIcon,
   TableCellsIcon,
@@ -12,71 +11,35 @@ import {
 } from '@heroicons/react/24/outline';
 import { BarTable, TableStatus } from '../../types/bar-attendance';
 import { useBarTables } from '../../hooks/useBarTables';
-import { useComandas } from '../../hooks/useComandas';
 import NovaComandaModal from '../../pages/BarAttendance/components/NovaComandaModal';
 import TableModal from './TableModal';
 import TableContextMenu from './TableContextMenu';
-import { formatCurrency } from '../../types/cash-management';
-
-interface TableWithComandaData extends BarTable {
-  currentComanda?: any;
-  occupiedSince?: string;
-  currentTotal?: number;
-  peopleCount?: number;
-}
 
 type ViewMode = 'layout' | 'list' | 'stats';
 
-const BarAttendanceTableLayout: React.FC = () => {
+const BarAttendanceTableLayoutSimple: React.FC = () => {
   const { tables, loading, refetch } = useBarTables();
-  const { comandas } = useComandas();
   const [currentView, setCurrentView] = useState<ViewMode>('layout');
   const [selectedTable, setSelectedTable] = useState<BarTable | null>(null);
   const [showNovaComandaModal, setShowNovaComandaModal] = useState(false);
   const [showTableModal, setShowTableModal] = useState(false);
   const [editingTable, setEditingTable] = useState<BarTable | null>(null);
-  const [tablesWithComandas, setTablesWithComandas] = useState<TableWithComandaData[]>([]);
   const [contextMenu, setContextMenu] = useState<{
     table: BarTable;
     x: number;
     y: number;
   } | null>(null);
 
-  // Combinar dados das mesas com comandas
-  useEffect(() => {
-    console.log('BarAttendanceTableLayout - tables:', tables);
-    console.log('BarAttendanceTableLayout - comandas:', comandas);
-    console.log('BarAttendanceTableLayout - loading:', loading);
-    
-    const enrichedTables: TableWithComandaData[] = tables.map(table => {
-      const comanda = comandas.find(c => c.table_id === table.id && c.status === 'open');
-      
-      // Atualizar status da mesa baseado na comanda
-      const updatedStatus = comanda ? 'occupied' : table.status;
-      
-      return {
-        ...table,
-        status: updatedStatus as TableStatus,
-        currentComanda: comanda,
-        occupiedSince: comanda?.opened_at,
-        currentTotal: comanda?.total || 0,
-        peopleCount: comanda?.people_count || undefined
-      };
-    });
-    
-    console.log('BarAttendanceTableLayout - enrichedTables:', enrichedTables);
-    setTablesWithComandas(enrichedTables);
-  }, [tables, comandas, loading]);
+  console.log('BarAttendanceTableLayoutSimple - tables:', tables);
+  console.log('BarAttendanceTableLayoutSimple - loading:', loading);
 
   const handleTableClick = (table: BarTable) => {
-    const enrichedTable = tablesWithComandas.find(t => t.id === table.id);
-    
-    if (enrichedTable?.status === 'available') {
+    if (table.status === 'available') {
       // Mesa disponível - abrir modal para nova comanda
       setSelectedTable(table);
       setShowNovaComandaModal(true);
     } else {
-      // Mesa ocupada - mostrar detalhes (implementar depois)
+      // Mesa ocupada - mostrar detalhes
       setSelectedTable(table);
     }
   };
@@ -141,12 +104,12 @@ const BarAttendanceTableLayout: React.FC = () => {
 
   const getStats = () => {
     const stats = {
-      total: tablesWithComandas.length,
-      available: tablesWithComandas.filter(t => t.status === 'available').length,
-      occupied: tablesWithComandas.filter(t => t.status === 'occupied').length,
-      reserved: tablesWithComandas.filter(t => t.status === 'reserved').length,
-      cleaning: tablesWithComandas.filter(t => t.status === 'cleaning').length,
-      maintenance: tablesWithComandas.filter(t => t.status === 'maintenance').length
+      total: tables.length,
+      available: tables.filter(t => t.status === 'available').length,
+      occupied: tables.filter(t => t.status === 'occupied').length,
+      reserved: tables.filter(t => t.status === 'reserved').length,
+      cleaning: tables.filter(t => t.status === 'cleaning').length,
+      maintenance: tables.filter(t => t.status === 'maintenance').length
     };
     return stats;
   };
@@ -178,6 +141,7 @@ const BarAttendanceTableLayout: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <p className="ml-4">Carregando mesas...</p>
       </div>
     );
   }
@@ -257,15 +221,13 @@ const BarAttendanceTableLayout: React.FC = () => {
         </div>
       </div>
 
+      {/* Debug Info */}
+      <div className="bg-yellow-100 border-b p-2 text-sm">
+        <strong>Debug:</strong> {tables.length} mesas carregadas, Loading: {loading ? 'true' : 'false'}
+      </div>
+
       {/* Conteúdo da view atual */}
-      <motion.div
-        key={currentView}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{ duration: 0.3 }}
-        className="flex-1 overflow-hidden"
-      >
+      <div className="flex-1 overflow-hidden">
         {currentView === 'layout' && (
           <div className="flex-1 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200">
@@ -282,7 +244,7 @@ const BarAttendanceTableLayout: React.FC = () => {
               />
 
               {/* Mesas */}
-              {tablesWithComandas.map((table) => (
+              {tables.map((table) => (
                 <motion.div
                   key={table.id}
                   initial={{ 
@@ -312,13 +274,6 @@ const BarAttendanceTableLayout: React.FC = () => {
                       <div className="text-lg font-bold">{table.number}</div>
                       <div className="text-xs opacity-90">{table.capacity}p</div>
                       
-                      {/* Indicador de Comanda Ativa */}
-                      {table.currentComanda && (
-                        <div className="absolute -top-1 -right-1 bg-white text-red-600 text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold border-2 border-red-600">
-                          {table.peopleCount || '!'}
-                        </div>
-                      )}
-                      
                       {/* Ícone de Ação */}
                       <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
                         {table.status === 'available' ? (
@@ -338,25 +293,6 @@ const BarAttendanceTableLayout: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Informações da Comanda */}
-                  {table.currentComanda && (
-                    <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 w-32">
-                      <div className="bg-white rounded-lg shadow-lg border p-2 text-center">
-                        <div className="text-xs font-medium text-gray-900">
-                          {table.currentComanda.customer_name || 'Cliente'}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {table.peopleCount} pessoa{table.peopleCount !== 1 ? 's' : ''}
-                        </div>
-                        {table.currentTotal > 0 && (
-                          <div className="text-xs font-bold text-green-600">
-                            {formatCurrency(table.currentTotal)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
                   {/* Status Label */}
                   <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2">
                     <div className="bg-white px-2 py-1 rounded text-xs font-medium text-gray-700 shadow-sm border">
@@ -367,7 +303,7 @@ const BarAttendanceTableLayout: React.FC = () => {
               ))}
 
               {/* Empty State */}
-              {tablesWithComandas.length === 0 && !loading && (
+              {tables.length === 0 && !loading && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
                     <UserGroupIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -394,14 +330,10 @@ const BarAttendanceTableLayout: React.FC = () => {
         {currentView === 'list' && (
           <div className="flex-1 overflow-auto p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {tablesWithComandas.map((table) => (
-                <motion.div
+              {tables.map((table) => (
+                <div
                   key={table.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`bg-white rounded-lg p-4 shadow-sm border-2 transition-all duration-200 cursor-pointer hover:shadow-lg ${
-                    selectedTable?.id === table.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                  }`}
+                  className="bg-white rounded-lg p-4 shadow-sm border-2 border-gray-200 cursor-pointer hover:shadow-lg"
                   onClick={() => handleTableClick(table)}
                 >
                   <div className="flex items-center justify-between mb-3">
@@ -415,35 +347,17 @@ const BarAttendanceTableLayout: React.FC = () => {
                       }`} />
                       <h3 className="text-lg font-medium text-gray-900">Mesa {table.number}</h3>
                     </div>
-                    
-                    {table.currentComanda && (
-                      <div className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
-                        Ativa
-                      </div>
-                    )}
                   </div>
                   
                   <div className="space-y-2 text-sm text-gray-600">
                     <div>Capacidade: {table.capacity} pessoas</div>
                     <div>Status: {getTableStatusText(table.status || 'available')}</div>
                     
-                    {table.currentComanda && (
-                      <>
-                        <div>Cliente: {table.currentComanda.customer_name || 'Não informado'}</div>
-                        <div>Pessoas: {table.peopleCount}</div>
-                        {table.currentTotal > 0 && (
-                          <div className="font-medium text-green-600">
-                            Total: {formatCurrency(table.currentTotal)}
-                          </div>
-                        )}
-                      </>
-                    )}
-                    
                     {table.notes && (
                       <div className="text-gray-500 italic">{table.notes}</div>
                     )}
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
@@ -452,7 +366,6 @@ const BarAttendanceTableLayout: React.FC = () => {
         {currentView === 'stats' && (
           <div className="flex-1 overflow-auto p-6">
             <div className="max-w-4xl mx-auto space-y-6">
-              {/* Resumo Geral */}
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumo Geral</h3>
                 
@@ -479,88 +392,10 @@ const BarAttendanceTableLayout: React.FC = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Taxa de Ocupação */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Taxa de Ocupação</h3>
-                
-                <div className="flex items-center justify-center">
-                  <div className="relative w-32 h-32">
-                    <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 36 36">
-                      <path
-                        className="text-gray-300"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        fill="none"
-                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      />
-                      <path
-                        className="text-red-500"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        fill="none"
-                        strokeDasharray={`${stats.total > 0 ? (stats.occupied / stats.total) * 100 : 0}, 100`}
-                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-2xl font-bold text-gray-900">
-                        {stats.total > 0 ? Math.round((stats.occupied / stats.total) * 100) : 0}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                
-                <p className="text-center text-sm text-gray-600 mt-4">
-                  {stats.occupied} de {stats.total} mesas ocupadas
-                </p>
-              </div>
             </div>
           </div>
         )}
-      </motion.div>
-
-      {/* Informações da mesa selecionada */}
-      {selectedTable && !showNovaComandaModal && (
-        <motion.div
-          initial={{ opacity: 0, y: 100 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 100 }}
-          className="bg-white border-t p-4"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className={`w-4 h-4 rounded-full ${
-                  selectedTable.status === 'available' ? 'bg-green-500' :
-                  selectedTable.status === 'occupied' ? 'bg-red-500' :
-                  selectedTable.status === 'reserved' ? 'bg-yellow-500' :
-                  selectedTable.status === 'cleaning' ? 'bg-blue-500' :
-                  'bg-gray-500'
-                }`} />
-                <span className="font-medium">Mesa {selectedTable.number}</span>
-              </div>
-              
-              <div className="text-sm text-gray-600">
-                Capacidade: {selectedTable.capacity} pessoas
-              </div>
-              
-              {selectedTable.notes && (
-                <div className="text-sm text-gray-500">
-                  {selectedTable.notes}
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={() => setSelectedTable(null)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              ×
-            </button>
-          </div>
-        </motion.div>
-      )}
+      </div>
 
       {/* Modal de Nova Comanda */}
       <NovaComandaModal
@@ -601,4 +436,4 @@ const BarAttendanceTableLayout: React.FC = () => {
   );
 };
 
-export default BarAttendanceTableLayout;
+export default BarAttendanceTableLayoutSimple;
