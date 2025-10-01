@@ -1,8 +1,8 @@
 import React from 'react';
-import SimpleTableView from '../../../components/tables/SimpleTableView';
+import BarAttendanceTableLayout from '../../../components/tables/BarAttendanceTableLayout';
 
 const MesasView: React.FC = () => {
-  return <SimpleTableView />;
+  return <BarAttendanceTableLayout />;
 };
 
 export default MesasView;
