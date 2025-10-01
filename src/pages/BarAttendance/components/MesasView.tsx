@@ -1,8 +1,8 @@
 import React from 'react';
-import TableWithComandaIntegration from '../../../components/tables/TableWithComandaIntegration';
+import SimpleTableView from '../../../components/tables/SimpleTableView';
 
 const MesasView: React.FC = () => {
-  return <TableWithComandaIntegration />;
+  return <SimpleTableView />;
 };
 
 export default MesasView;
