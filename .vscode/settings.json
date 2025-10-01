@@ -40,7 +40,5 @@
   "kiroAgent.enableTabAutocomplete": true,
   "typescript.autoClosingTags": false,
   "html.autoClosingTags": false,
-  "editor.rulers": [
-    
-  ]
+  "editor.rulers": []
 }
