@@ -17,6 +17,7 @@ import TableModal from './TableModal';
 import TableContextMenu from './TableContextMenu';
 import TableActionPanel from './TableActionPanel';
 import TableComandasPanel from './TableComandasPanel';
+import FinalizarAtendimentoModal from './FinalizarAtendimentoModal';
 import { calculateAutoPosition, DEFAULT_LAYOUT_CONFIG } from '../../utils/table-layout';
 
 interface TableLayoutManagerProps {
@@ -44,6 +45,7 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
   } | null>(null);
   const [selectedTable, setSelectedTable] = useState<BarTable | null>(null);
   const [comandasTable, setComandasTable] = useState<BarTable | null>(null);
+  const [finalizarTable, setFinalizarTable] = useState<BarTable | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [draggedTables, setDraggedTables] = useState<Set<string>>(new Set());
   const layoutRef = useRef<HTMLDivElement>(null);
@@ -169,6 +171,12 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
     console.log('Gerenciando comandas para mesa:', table.number);
     setSelectedTable(null);
     setComandasTable(table);
+  };
+
+  const handleFinalizarAtendimento = (table: BarTable) => {
+    console.log('Finalizando atendimento para mesa:', table.number);
+    setSelectedTable(null);
+    setFinalizarTable(table);
   };
 
 
@@ -420,6 +428,7 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
           }}
           onStartOrder={handleStartOrder}
           onManageComandas={handleManageComandas}
+          onFinalizarAtendimento={handleFinalizarAtendimento}
         />
       )}
 
@@ -434,6 +443,18 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
             if (comandasTable.status === 'available') {
               updateTableStatus(comandasTable.id, 'occupied');
             }
+          }}
+        />
+      )}
+
+      {/* Finalizar Atendimento Modal */}
+      {finalizarTable && (
+        <FinalizarAtendimentoModal
+          table={finalizarTable}
+          onClose={() => setFinalizarTable(null)}
+          onFinalized={() => {
+            console.log('Atendimento finalizado para mesa:', finalizarTable.number);
+            // Refresh da página ou atualização de estado se necessário
           }}
         />
       )}

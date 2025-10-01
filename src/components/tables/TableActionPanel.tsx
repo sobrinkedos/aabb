@@ -21,6 +21,7 @@ interface TableActionPanelProps {
   onEdit: (table: BarTable) => void;
   onStartOrder?: (table: BarTable) => void;
   onManageComandas?: (table: BarTable) => void;
+  onFinalizarAtendimento?: (table: BarTable) => void;
 }
 
 const TableActionPanel: React.FC<TableActionPanelProps> = ({
@@ -28,7 +29,8 @@ const TableActionPanel: React.FC<TableActionPanelProps> = ({
   onClose,
   onEdit,
   onStartOrder,
-  onManageComandas
+  onManageComandas,
+  onFinalizarAtendimento
 }) => {
   const { updateTableStatus, deleteTable } = useBarTables();
   const { getOpenComandasByTableId, getComandasByTableId } = useComandas();
@@ -189,13 +191,24 @@ const TableActionPanel: React.FC<TableActionPanelProps> = ({
           )}
 
           {/* Finalizar Atendimento - só se ocupada */}
-          {table.status === 'occupied' && (
+          {table.status === 'occupied' && onFinalizarAtendimento && (
             <button
-              onClick={() => handleStatusChange('available')}
+              onClick={() => onFinalizarAtendimento(table)}
               className="w-full flex items-center justify-center space-x-2 bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 transition-colors"
             >
               <CheckCircleIcon className="h-5 w-5" />
               <span>Finalizar Atendimento</span>
+            </button>
+          )}
+
+          {/* Liberar Mesa (ação rápida) - só se ocupada */}
+          {table.status === 'occupied' && (
+            <button
+              onClick={() => handleStatusChange('available')}
+              className="w-full flex items-center justify-center space-x-2 bg-gray-600 text-white px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              <CheckCircleIcon className="h-5 w-5" />
+              <span>Liberar Mesa (Rápido)</span>
             </button>
           )}
 
