@@ -33,7 +33,7 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
   onTableSelect,
   selectedTableId
 }) => {
-  const { tables, loading, updateTablePosition, organizeTablesAutomatically: organizeTablesHook } = useBarTables();
+  const { tables, loading, updateTablePosition, updateTableStatus, organizeTablesAutomatically: organizeTablesHook } = useBarTables();
   const [showModal, setShowModal] = useState(false);
   const [editingTable, setEditingTable] = useState<BarTable | null>(null);
   const [contextMenu, setContextMenu] = useState<{
@@ -42,7 +42,7 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
     y: number;
   } | null>(null);
   const [selectedTable, setSelectedTable] = useState<BarTable | null>(null);
-  const [isEditMode, setIsEditMode] = useState(!readonly);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [draggedTables, setDraggedTables] = useState<Set<string>>(new Set());
   const layoutRef = useRef<HTMLDivElement>(null);
 
@@ -142,20 +142,24 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
     setContextMenu(null);
   };
 
-  const handleStartOrder = (table: BarTable) => {
-    // Fechar painel de ações
-    setSelectedTable(null);
-    
-    // Aqui você pode implementar a lógica para iniciar um pedido
-    // Por exemplo, navegar para a tela de comandas ou abrir modal de pedido
+  const handleStartOrder = async (table: BarTable) => {
     console.log('Iniciando atendimento para mesa:', table.number);
     
-    // Exemplo: alterar status para ocupada
-    // updateTableStatus(table.id, 'occupied');
-    
-    // Se houver callback para seleção, chamar
-    if (onTableSelect) {
-      onTableSelect(table);
+    try {
+      // Alterar status para ocupada
+      await updateTableStatus(table.id, 'occupied');
+      console.log('Status da mesa alterado para ocupada');
+      
+      // Fechar painel de ações
+      setSelectedTable(null);
+      
+      // Se houver callback para seleção, chamar
+      if (onTableSelect) {
+        onTableSelect(table);
+      }
+    } catch (error) {
+      console.error('Erro ao iniciar atendimento:', error);
+      alert('Erro ao iniciar atendimento: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };
 
