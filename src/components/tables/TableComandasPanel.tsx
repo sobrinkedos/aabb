@@ -148,10 +148,10 @@ const TableComandasPanel: React.FC<TableComandasPanelProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
@@ -182,7 +182,7 @@ const TableComandasPanel: React.FC<TableComandasPanelProps> = ({
         </div>
 
         {/* Nova Comanda */}
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
           <h4 className="text-md font-medium text-gray-900 mb-3">Nova Comanda</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
@@ -224,7 +224,7 @@ const TableComandasPanel: React.FC<TableComandasPanelProps> = ({
         </div>
 
         {/* Lista de Comandas */}
-        <div className="flex-1 overflow-y-auto max-h-96">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {allComandas.length === 0 ? (
             <div className="px-6 py-8 text-center">
               <DocumentTextIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
@@ -344,7 +344,7 @@ const TableComandasPanel: React.FC<TableComandasPanelProps> = ({
 
         {/* Footer com Resumo */}
         {allComandas.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div className="text-center">
                 <div className="font-semibold text-gray-900">{allComandas.length}</div>
