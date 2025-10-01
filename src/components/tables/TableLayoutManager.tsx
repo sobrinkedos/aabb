@@ -15,6 +15,7 @@ import { BarTable, TableStatus } from '../../types/bar-attendance';
 import { useBarTables } from '../../hooks/useBarTables';
 import TableModal from './TableModal';
 import TableContextMenu from './TableContextMenu';
+import TableActionPanel from './TableActionPanel';
 import { calculateAutoPosition, DEFAULT_LAYOUT_CONFIG } from '../../utils/table-layout';
 
 interface TableLayoutManagerProps {
@@ -40,6 +41,7 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
     x: number;
     y: number;
   } | null>(null);
+  const [selectedTable, setSelectedTable] = useState<BarTable | null>(null);
   const [isEditMode, setIsEditMode] = useState(!readonly);
   const [draggedTables, setDraggedTables] = useState<Set<string>>(new Set());
   const layoutRef = useRef<HTMLDivElement>(null);
@@ -93,7 +95,22 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
     [readonly, isEditMode, updateTablePosition]
   );
 
-  const handleTableClick = (table: BarTable) => {
+  const handleTableClick = (table: BarTable, event: React.MouseEvent) => {
+    // Evitar abrir o painel se estiver arrastando
+    if (draggedTables.has(table.id)) return;
+    
+    // Se estiver em modo edição, apenas selecionar
+    if (isEditMode && !readonly) {
+      if (onTableSelect) {
+        onTableSelect(table);
+      }
+      return;
+    }
+    
+    // Caso contrário, abrir painel de ações
+    setSelectedTable(table);
+    
+    // Também chamar callback se fornecido
     if (onTableSelect) {
       onTableSelect(table);
     }
@@ -123,6 +140,23 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
 
   const closeContextMenu = () => {
     setContextMenu(null);
+  };
+
+  const handleStartOrder = (table: BarTable) => {
+    // Fechar painel de ações
+    setSelectedTable(null);
+    
+    // Aqui você pode implementar a lógica para iniciar um pedido
+    // Por exemplo, navegar para a tela de comandas ou abrir modal de pedido
+    console.log('Iniciando atendimento para mesa:', table.number);
+    
+    // Exemplo: alterar status para ocupada
+    // updateTableStatus(table.id, 'occupied');
+    
+    // Se houver callback para seleção, chamar
+    if (onTableSelect) {
+      onTableSelect(table);
+    }
   };
 
 
@@ -262,15 +296,16 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
               className={`absolute cursor-pointer select-none ${
                 isEditMode && !readonly ? 'cursor-move' : 'cursor-pointer'
               }`}
-              onClick={() => handleTableClick(table)}
+              onClick={(e) => handleTableClick(table, e)}
               onContextMenu={(e) => handleTableRightClick(e, table)}
             >
               <div
                 className={`
                   w-20 h-20 rounded-lg border-2 shadow-lg transition-all duration-200
                   ${getTableStatusColor(table.status || 'available')}
-                  ${selectedTableId === table.id ? 'ring-4 ring-blue-300 ring-offset-2' : ''}
+                  ${selectedTableId === table.id || selectedTable?.id === table.id ? 'ring-4 ring-blue-300 ring-offset-2' : ''}
                   ${draggedTables.has(table.id) ? 'shadow-2xl' : ''}
+                  hover:shadow-xl
                 `}
               >
                 <div className="h-full flex flex-col items-center justify-center text-white">
@@ -359,6 +394,19 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
           y={contextMenu.y}
           onClose={closeContextMenu}
           onEdit={() => handleEditTable(contextMenu.table)}
+        />
+      )}
+
+      {/* Table Action Panel */}
+      {selectedTable && (
+        <TableActionPanel
+          table={selectedTable}
+          onClose={() => setSelectedTable(null)}
+          onEdit={(table) => {
+            setSelectedTable(null);
+            handleEditTable(table);
+          }}
+          onStartOrder={handleStartOrder}
         />
       )}
     </div>
