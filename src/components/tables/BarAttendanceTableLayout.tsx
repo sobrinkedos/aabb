@@ -12,11 +12,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { BarTable, TableStatus } from '../../types/bar-attendance';
 import { useBarTables } from '../../hooks/useBarTables';
-import { useComandas } from '../../hooks/useComandas';
 import NovaComandaModal from '../../pages/BarAttendance/components/NovaComandaModal';
 import TableModal from './TableModal';
 import TableContextMenu from './TableContextMenu';
-import { formatCurrency } from '../../types/cash-management';
 
 interface TableWithComandaData extends BarTable {
   currentComanda?: any;
@@ -29,49 +27,25 @@ type ViewMode = 'layout' | 'list' | 'stats';
 
 const BarAttendanceTableLayout: React.FC = () => {
   const { tables, loading, refetch } = useBarTables();
-  const { comandas } = useComandas();
   const [currentView, setCurrentView] = useState<ViewMode>('layout');
   const [selectedTable, setSelectedTable] = useState<BarTable | null>(null);
   const [showNovaComandaModal, setShowNovaComandaModal] = useState(false);
   const [showTableModal, setShowTableModal] = useState(false);
   const [editingTable, setEditingTable] = useState<BarTable | null>(null);
-  const [tablesWithComandas, setTablesWithComandas] = useState<TableWithComandaData[]>([]);
   const [contextMenu, setContextMenu] = useState<{
     table: BarTable;
     x: number;
     y: number;
   } | null>(null);
 
-  // Combinar dados das mesas com comandas
-  useEffect(() => {
-    console.log('BarAttendanceTableLayout - tables:', tables);
-    console.log('BarAttendanceTableLayout - comandas:', comandas);
-    console.log('BarAttendanceTableLayout - loading:', loading);
-    
-    const enrichedTables: TableWithComandaData[] = tables.map(table => {
-      const comanda = comandas.find(c => c.table_id === table.id && c.status === 'open');
-      
-      // Atualizar status da mesa baseado na comanda
-      const updatedStatus = comanda ? 'occupied' : table.status;
-      
-      return {
-        ...table,
-        status: updatedStatus as TableStatus,
-        currentComanda: comanda,
-        occupiedSince: comanda?.opened_at,
-        currentTotal: comanda?.total || 0,
-        peopleCount: comanda?.people_count || undefined
-      };
-    });
-    
-    console.log('BarAttendanceTableLayout - enrichedTables:', enrichedTables);
-    setTablesWithComandas(enrichedTables);
-  }, [tables, comandas, loading]);
+  // Por enquanto, usar as mesas diretamente sem comandas
+  const tablesWithComandas = tables;
+
+  console.log('BarAttendanceTableLayout - tables:', tables);
+  console.log('BarAttendanceTableLayout - loading:', loading);
 
   const handleTableClick = (table: BarTable) => {
-    const enrichedTable = tablesWithComandas.find(t => t.id === table.id);
-    
-    if (enrichedTable?.status === 'available') {
+    if (table.status === 'available') {
       // Mesa disponível - abrir modal para nova comanda
       setSelectedTable(table);
       setShowNovaComandaModal(true);
@@ -338,24 +312,7 @@ const BarAttendanceTableLayout: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Informações da Comanda */}
-                  {table.currentComanda && (
-                    <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 w-32">
-                      <div className="bg-white rounded-lg shadow-lg border p-2 text-center">
-                        <div className="text-xs font-medium text-gray-900">
-                          {table.currentComanda.customer_name || 'Cliente'}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {table.peopleCount} pessoa{table.peopleCount !== 1 ? 's' : ''}
-                        </div>
-                        {table.currentTotal > 0 && (
-                          <div className="text-xs font-bold text-green-600">
-                            {formatCurrency(table.currentTotal)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+
 
                   {/* Status Label */}
                   <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2">
@@ -416,28 +373,13 @@ const BarAttendanceTableLayout: React.FC = () => {
                       <h3 className="text-lg font-medium text-gray-900">Mesa {table.number}</h3>
                     </div>
                     
-                    {table.currentComanda && (
-                      <div className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
-                        Ativa
-                      </div>
-                    )}
+
                   </div>
                   
                   <div className="space-y-2 text-sm text-gray-600">
                     <div>Capacidade: {table.capacity} pessoas</div>
                     <div>Status: {getTableStatusText(table.status || 'available')}</div>
-                    
-                    {table.currentComanda && (
-                      <>
-                        <div>Cliente: {table.currentComanda.customer_name || 'Não informado'}</div>
-                        <div>Pessoas: {table.peopleCount}</div>
-                        {table.currentTotal > 0 && (
-                          <div className="font-medium text-green-600">
-                            Total: {formatCurrency(table.currentTotal)}
-                          </div>
-                        )}
-                      </>
-                    )}
+
                     
                     {table.notes && (
                       <div className="text-gray-500 italic">{table.notes}</div>
