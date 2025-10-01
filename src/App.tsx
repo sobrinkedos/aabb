@@ -112,11 +112,6 @@ function App() {
                   <BarAttendance />
                 </PermissionProtectedRoute>
               } />
-              <Route path="tables" element={
-                <PermissionProtectedRoute module="atendimento_bar">
-                  <TableManagementView />
-                </PermissionProtectedRoute>
-              } />
               
               {/* Módulo Clientes */}
               <Route path="bar-customers" element={
