@@ -15,7 +15,7 @@ const SimpleTableLayout: React.FC = () => {
       <h2 className="text-xl font-bold mb-4">Layout Simples - {tables.length} mesas</h2>
       
       {/* Container do Layout */}
-      <div className="relative w-full h-96 bg-white border-2 border-gray-300 rounded-lg overflow-hidden">
+      <div className="relative w-full h-96 bg-white border-2 border-gray-300 rounded-lg overflow-visible">
         {/* Grid de fundo */}
         <div 
           className="absolute inset-0 opacity-20"
@@ -29,11 +29,16 @@ const SimpleTableLayout: React.FC = () => {
         />
         
         {/* Mesas */}
-        {tables.map((table) => {
-          const x = table.position_x || 100;
-          const y = table.position_y || 100;
+        {tables.map((table, index) => {
+          // Ajustar posições para caber no container
+          const originalX = table.position_x || 100;
+          const originalY = table.position_y || 100;
           
-          console.log(`Mesa ${table.number}: x=${x}, y=${y}`);
+          // Escalar posições para caber no container (800x400)
+          const x = Math.min(originalX * 0.8, 700); // Máximo 700px
+          const y = Math.min(originalY * 0.8, 300); // Máximo 300px
+          
+          console.log(`Mesa ${table.number}: original(${originalX}, ${originalY}) -> scaled(${x}, ${y})`);
           
           return (
             <div
@@ -41,15 +46,23 @@ const SimpleTableLayout: React.FC = () => {
               className="absolute w-16 h-16 bg-blue-500 border-2 border-blue-600 rounded-lg flex items-center justify-center text-white font-bold cursor-pointer hover:bg-blue-600 transition-colors"
               style={{
                 left: `${x}px`,
-                top: `${y}px`,
-                transform: 'translate(-50%, -50%)'
+                top: `${y}px`
               }}
               onClick={() => console.log('Clicou na mesa:', table.number)}
             >
-              {table.number}
+              <div className="text-xs text-center">
+                <div>{table.number}</div>
+                <div className="text-[10px] opacity-75">{table.capacity}p</div>
+              </div>
             </div>
           );
         })}
+        
+        {/* Indicadores de referência */}
+        <div className="absolute top-2 left-2 w-4 h-4 bg-red-500 rounded-full" title="Origem (0,0)"></div>
+        <div className="absolute top-2 right-2 w-4 h-4 bg-green-500 rounded-full" title="Canto superior direito"></div>
+        <div className="absolute bottom-2 left-2 w-4 h-4 bg-yellow-500 rounded-full" title="Canto inferior esquerdo"></div>
+        <div className="absolute bottom-2 right-2 w-4 h-4 bg-purple-500 rounded-full" title="Canto inferior direito"></div>
         
         {/* Indicador se não há mesas */}
         {tables.length === 0 && (
@@ -57,6 +70,11 @@ const SimpleTableLayout: React.FC = () => {
             Nenhuma mesa encontrada
           </div>
         )}
+        
+        {/* Contador de mesas renderizadas */}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black text-white px-2 py-1 rounded text-sm">
+          {tables.length} mesas carregadas
+        </div>
       </div>
       
       {/* Lista de debug */}
