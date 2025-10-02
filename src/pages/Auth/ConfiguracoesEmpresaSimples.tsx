@@ -39,25 +39,35 @@ export const ConfiguracoesEmpresaSimples: React.FC = () => {
   // Carregar dados da empresa
   useEffect(() => {
     const carregarDados = async () => {
-      if (!user) return;
+      if (!user) {
+        console.log('🔍 ConfiguracoesEmpresa: Usuário não autenticado');
+        return;
+      }
 
       try {
         setIsLoading(true);
         setError('');
+        
+        console.log('🔍 ConfiguracoesEmpresa: Carregando dados para usuário:', user.id, user.email);
 
         // Primeiro, tentar obter a empresa do usuário
         let empresaId: string | null = null;
         
         // Tentar buscar na tabela usuarios_empresa
+        console.log('🔍 ConfiguracoesEmpresa: Buscando na tabela usuarios_empresa...');
         const { data: usuarioEmpresa, error: userError } = await supabase
           .from('usuarios_empresa')
           .select('empresa_id')
           .eq('user_id', user.id)
           .single();
 
+        console.log('🔍 ConfiguracoesEmpresa: Resultado usuarios_empresa:', { usuarioEmpresa, userError });
+
         if (usuarioEmpresa?.empresa_id) {
           empresaId = usuarioEmpresa.empresa_id;
+          console.log('✅ ConfiguracoesEmpresa: Empresa encontrada via usuarios_empresa:', empresaId);
         } else {
+          console.log('⚠️ ConfiguracoesEmpresa: Não encontrou na usuarios_empresa, tentando por email...');
           // Se não encontrou, tentar buscar empresas onde o email_admin é o email do usuário
           const { data: empresasPorEmail, error: emailError } = await supabase
             .from('empresas')
@@ -65,26 +75,33 @@ export const ConfiguracoesEmpresaSimples: React.FC = () => {
             .eq('email_admin', user.email)
             .limit(1);
 
+          console.log('🔍 ConfiguracoesEmpresa: Resultado empresas por email:', { empresasPorEmail, emailError });
+
           if (empresasPorEmail && empresasPorEmail.length > 0) {
             empresaId = empresasPorEmail[0].id;
+            console.log('✅ ConfiguracoesEmpresa: Empresa encontrada via email:', empresaId);
           }
         }
 
         if (!empresaId) {
+          console.error('❌ ConfiguracoesEmpresa: Usuário não está associado a nenhuma empresa');
           setError('Usuário não está associado a nenhuma empresa. Entre em contato com o suporte.');
           return;
         }
 
         // Carregar dados da empresa
+        console.log('🔍 ConfiguracoesEmpresa: Carregando dados da empresa:', empresaId);
         const { data: empresaData, error: empresaError } = await supabase
           .from('empresas')
           .select('nome, cnpj, email_admin, telefone, endereco')
           .eq('id', empresaId)
           .single();
 
+        console.log('🔍 ConfiguracoesEmpresa: Resultado dados empresa:', { empresaData, empresaError });
+
         if (empresaError) {
-          console.error('Erro ao carregar dados da empresa:', empresaError);
-          setError('Erro ao carregar dados da empresa');
+          console.error('❌ ConfiguracoesEmpresa: Erro ao carregar dados da empresa:', empresaError);
+          setError(`Erro ao carregar dados da empresa: ${empresaError.message}`);
           return;
         }
 
