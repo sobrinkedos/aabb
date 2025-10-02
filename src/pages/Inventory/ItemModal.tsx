@@ -276,53 +276,103 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
                       Margem de Lucro (%):
                     </label>
-                    <input 
-                      type="number"
-                      key={`margin-${item?.id || 'new'}-${pricingData.marginPercentage}`}
-                      value={pricingData.marginPercentage || 50}
-                      min="0"
-                      step="1"
-                      style={{
-                        width: '100%',
+                    {pricingData.pricingMethod === 'margin' ? (
+                      <input 
+                        type="number"
+                        key={`margin-${item?.id || 'new'}-${pricingData.marginPercentage}`}
+                        value={pricingData.marginPercentage || 50}
+                        min="0"
+                        step="1"
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '16px'
+                        }}
+                        onChange={(e) => {
+                          const margin = Number(e.target.value);
+                          const cost = watchedCost || 0;
+                          const price = cost * (1 + margin / 100);
+                          console.log(`💰 EDITANDO MARGEM - Margem: ${margin}%, Custo: R$ ${cost}, Preço: R$ ${price.toFixed(2)}`);
+                          
+                          const newData = {
+                            ...currentPricingRef.current,
+                            marginPercentage: margin,
+                            salePrice: price,
+                            pricingMethod: 'margin' as 'margin' | 'fixed_price'
+                          };
+                          
+                          setPricingData(newData);
+                          currentPricingRef.current = newData;
+                          console.log('📊 EDITANDO MARGEM - Dados atualizados:', newData);
+                        }}
+                      />
+                    ) : (
+                      <div style={{
                         padding: '10px',
+                        backgroundColor: '#f3f4f6',
                         border: '1px solid #d1d5db',
                         borderRadius: '6px',
-                        fontSize: '16px'
-                      }}
-                      onChange={(e) => {
-                        const margin = Number(e.target.value);
-                        const cost = watchedCost || 0;
-                        const price = cost * (1 + margin / 100);
-                        console.log(`💰 EDITANDO - Margem: ${margin}%, Custo: R$ ${cost}, Preço: R$ ${price.toFixed(2)}`);
-                        
-                        const newData = {
-                          ...currentPricingRef.current,
-                          marginPercentage: margin,
-                          salePrice: price,
-                          pricingMethod: 'margin' as 'margin' | 'fixed_price'
-                        };
-                        
-                        setPricingData(newData);
-                        currentPricingRef.current = newData;
-                        console.log('📊 EDITANDO - Dados de precificação atualizados:', newData);
-                      }}
-                    />
+                        fontWeight: 'bold',
+                        color: '#6b7280'
+                      }}>
+                        {(pricingData.marginPercentage || 0).toFixed(1)}%
+                      </div>
+                    )}
                   </div>
 
                   <div>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
                       Preço de Venda:
                     </label>
-                    <div style={{
-                      padding: '10px',
-                      backgroundColor: '#dcfce7',
-                      border: '1px solid #16a34a',
-                      borderRadius: '6px',
-                      fontWeight: 'bold',
-                      color: '#15803d'
-                    }}>
-                      R$ {(pricingData.salePrice || ((watchedCost || 0) * (1 + (pricingData.marginPercentage || 50) / 100))).toFixed(2)}
-                    </div>
+                    {pricingData.pricingMethod === 'fixed_price' ? (
+                      <input 
+                        type="number"
+                        key={`price-${item?.id || 'new'}-${pricingData.salePrice}`}
+                        value={pricingData.salePrice || 0}
+                        min="0"
+                        step="0.01"
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          border: '1px solid #16a34a',
+                          borderRadius: '6px',
+                          fontSize: '16px',
+                          backgroundColor: '#dcfce7',
+                          fontWeight: 'bold',
+                          color: '#15803d'
+                        }}
+                        onChange={(e) => {
+                          const price = Number(e.target.value);
+                          const cost = watchedCost || 0;
+                          const margin = cost > 0 ? ((price - cost) / cost) * 100 : 0;
+                          console.log(`💰 EDITANDO PREÇO FIXO - Preço: R$ ${price}, Custo: R$ ${cost}, Margem: ${margin.toFixed(1)}%`);
+                          
+                          const newData = {
+                            ...currentPricingRef.current,
+                            salePrice: price,
+                            marginPercentage: margin,
+                            pricingMethod: 'fixed_price' as 'margin' | 'fixed_price'
+                          };
+                          
+                          setPricingData(newData);
+                          currentPricingRef.current = newData;
+                          console.log('📊 EDITANDO PREÇO FIXO - Dados atualizados:', newData);
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        padding: '10px',
+                        backgroundColor: '#dcfce7',
+                        border: '1px solid #16a34a',
+                        borderRadius: '6px',
+                        fontWeight: 'bold',
+                        color: '#15803d'
+                      }}>
+                        R$ {(pricingData.salePrice || ((watchedCost || 0) * (1 + (pricingData.marginPercentage || 50) / 100))).toFixed(2)}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
