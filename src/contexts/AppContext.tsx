@@ -1470,6 +1470,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     };
   }, []);
 
+  // Carregar inventário quando usuário estiver autenticado
+  useEffect(() => {
+    if (user) {
+      console.log('👤 Usuário autenticado, carregando inventário...');
+      loadFullInventory();
+      loadMembers();
+    }
+  }, [user, loadFullInventory]);
+
   // Filtrar apenas pedidos que realmente existem
   const activeKitchenOrders = kitchenOrders.filter(order => order.items.length > 0);
 

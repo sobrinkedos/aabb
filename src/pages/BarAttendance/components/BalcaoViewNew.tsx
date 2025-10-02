@@ -404,21 +404,46 @@ const BalcaoViewNew: React.FC = () => {
             
             {/* Botão de Debug Temporário */}
             <div className="mt-4 p-2 bg-yellow-50 border border-yellow-200 rounded">
-              <button
-                onClick={async () => {
-                  console.log('🔍 DEBUG - Forçando sincronização...');
-                  console.log('📊 Menu items:', menuItems.length, menuItems);
-                  console.log('📦 Inventário:', inventory.length, inventory);
-                  console.log('🔍 Produtos marcados para venda:', inventory.filter(item => item.availableForSale));
-                  await syncInventoryToMenu();
-                }}
-                className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-              >
-                🔄 Debug: Sincronizar Produtos
-              </button>
-              <span className="ml-2 text-sm text-gray-600">
-                Menu: {menuItems.length} | Inventário: {inventory.length} | Filtrados: {filteredMenuItems.length}
-              </span>
+              <div className="flex flex-wrap gap-2 mb-2">
+                <button
+                  onClick={async () => {
+                    console.log('🔍 DEBUG - Estado completo...');
+                    console.log('👤 Usuário:', user);
+                    console.log('📊 Menu items:', menuItems.length, menuItems);
+                    console.log('🔄 Menu loading:', menuLoading);
+                    console.log('📦 Inventário:', inventory.length, inventory);
+                    console.log('🔍 Produtos marcados para venda:', inventory.filter(item => item.availableForSale));
+                    console.log('🏢 Tentando sincronizar...');
+                    await syncInventoryToMenu();
+                  }}
+                  className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-sm"
+                >
+                  🔄 Debug Completo
+                </button>
+                
+                <button
+                  onClick={() => {
+                    console.log('🔍 INVENTÁRIO DETALHADO:');
+                    inventory.forEach((item, index) => {
+                      console.log(`${index + 1}. ${item.name}:`, {
+                        id: item.id,
+                        availableForSale: item.availableForSale,
+                        salePrice: item.salePrice,
+                        cost: item.cost
+                      });
+                    });
+                  }}
+                  className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                >
+                  📦 Ver Inventário
+                </button>
+              </div>
+              
+              <div className="text-sm text-gray-600 space-y-1">
+                <div>Menu: {menuItems.length} | Inventário: {inventory.length} | Filtrados: {filteredMenuItems.length}</div>
+                <div>Loading: {menuLoading ? 'Sim' : 'Não'} | Usuário: {user ? user.email : 'Não logado'}</div>
+                <div>Produtos para venda: {inventory.filter(item => item.availableForSale).length}</div>
+              </div>
             </div>
           </div>
 
