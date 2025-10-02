@@ -88,14 +88,21 @@ const BalcaoViewNew: React.FC = () => {
     const syncProducts = async () => {
       try {
         console.log('🔄 Iniciando sincronização de produtos...');
+        console.log('📊 Menu items atuais:', menuItems.length);
+        console.log('📦 Inventário atual:', inventory.length);
+        
         await syncInventoryToMenu();
+        
+        console.log('✅ Sincronização concluída');
       } catch (error) {
         console.error('❌ Erro na sincronização:', error);
       }
     };
 
-    syncProducts();
-  }, []); // Executar apenas uma vez ao carregar
+    // Aguardar um pouco para garantir que os dados foram carregados
+    const timer = setTimeout(syncProducts, 1000);
+    return () => clearTimeout(timer);
+  }, [menuItems.length, inventory.length]); // Executar quando dados mudarem
 
   // Calcular totais do carrinho
   const cartTotal = useMemo(() => {
@@ -393,6 +400,25 @@ const BalcaoViewNew: React.FC = () => {
                   <option key={category} value={category}>{category}</option>
                 ))}
               </select>
+            </div>
+            
+            {/* Botão de Debug Temporário */}
+            <div className="mt-4 p-2 bg-yellow-50 border border-yellow-200 rounded">
+              <button
+                onClick={async () => {
+                  console.log('🔍 DEBUG - Forçando sincronização...');
+                  console.log('📊 Menu items:', menuItems.length, menuItems);
+                  console.log('📦 Inventário:', inventory.length, inventory);
+                  console.log('🔍 Produtos marcados para venda:', inventory.filter(item => item.availableForSale));
+                  await syncInventoryToMenu();
+                }}
+                className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+              >
+                🔄 Debug: Sincronizar Produtos
+              </button>
+              <span className="ml-2 text-sm text-gray-600">
+                Menu: {menuItems.length} | Inventário: {inventory.length} | Filtrados: {filteredMenuItems.length}
+              </span>
             </div>
           </div>
 
