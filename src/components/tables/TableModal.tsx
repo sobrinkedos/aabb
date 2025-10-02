@@ -7,6 +7,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { BarTable, TableStatus } from '../../types/bar-attendance';
 import { useBarTables } from '../../hooks/useBarTables';
+import { useAuth } from '../../contexts/AuthContextSimple';
 import { supabase } from '../../lib/supabase';
 import { findNextAvailablePosition } from '../../utils/table-layout';
 
@@ -21,6 +22,7 @@ const TableModal: React.FC<TableModalProps> = ({
   onClose,
   table
 }) => {
+  const { user } = useAuth();
   const { refetch, tables } = useBarTables();
   const [formData, setFormData] = useState({
     number: '',
@@ -93,6 +95,23 @@ const TableModal: React.FC<TableModalProps> = ({
         if (error) throw error;
       } else {
         // Criar nova mesa
+        // CORREÇÃO: Incluir empresa_id do usuário logado
+        if (!user) {
+          throw new Error('Usuário não autenticado');
+        }
+
+        // Buscar empresa do usuário atual
+        const { data: usuarioEmpresa, error: empresaError } = await supabase
+          .from('usuarios_empresa')
+          .select('empresa_id')
+          .eq('user_id', user.id)
+          .eq('ativo', true)
+          .single();
+
+        if (empresaError || !usuarioEmpresa) {
+          throw new Error('Erro: Não foi possível identificar sua empresa');
+        }
+
         const { error } = await supabase
           .from('bar_tables')
           .insert({
@@ -101,7 +120,8 @@ const TableModal: React.FC<TableModalProps> = ({
             status: formData.status,
             notes: formData.notes || null,
             position_x: formData.position_x,
-            position_y: formData.position_y
+            position_y: formData.position_y,
+            empresa_id: usuarioEmpresa.empresa_id // Incluir empresa_id
           });
 
         if (error) throw error;

@@ -53,6 +53,17 @@ const TestBarTablesConnection: React.FC = () => {
     setError(null);
 
     try {
+      // CORREÇÃO: Incluir empresa_id para isolamento multitenant
+      // Para debug, usar uma empresa padrão ou a primeira disponível
+      const { data: empresas, error: empresaError } = await supabase
+        .from('empresas')
+        .select('id')
+        .limit(1);
+
+      if (empresaError || !empresas || empresas.length === 0) {
+        throw new Error('Nenhuma empresa encontrada para teste');
+      }
+
       const { data, error } = await supabase
         .from('bar_tables')
         .insert({
@@ -61,7 +72,8 @@ const TestBarTablesConnection: React.FC = () => {
           status: 'available',
           position_x: 100,
           position_y: 100,
-          notes: 'Mesa de teste'
+          notes: 'Mesa de teste',
+          empresa_id: empresas[0].id // Incluir empresa_id
         })
         .select()
         .single();
