@@ -111,9 +111,19 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, categories,
         </div>
       )}
 
-      <div className="text-xs text-gray-500 mt-3 flex justify-between">
-        <span>Custo: R$ {item.cost.toFixed(2)}</span>
-        <span>Fornecedor: {item.supplier || 'N/A'}</span>
+      <div className="text-xs text-gray-500 mt-3 space-y-1">
+        <div className="flex justify-between">
+          <span>Custo: R$ {item.cost.toFixed(2)}</span>
+          <span>Fornecedor: {item.supplier || 'N/A'}</span>
+        </div>
+        {item.salePrice && (
+          <div className="flex justify-between">
+            <span className="text-green-600 font-medium">Preço de Venda: R$ {item.salePrice.toFixed(2)}</span>
+            {item.marginPercentage && (
+              <span className="text-blue-600">Margem: {item.marginPercentage.toFixed(1)}%</span>
+            )}
+          </div>
+        )}
       </div>
     </motion.div>
   );
