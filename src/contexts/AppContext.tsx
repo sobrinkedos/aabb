@@ -623,19 +623,29 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const addInventoryItem = async (itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
     console.log('📦 Adicionando item ao inventário:', itemData);
     
-    // Sempre usar a empresa de produção quando estiver no ambiente de produção
-    const currentUrl = window.location.hostname;
-    const isProduction = currentUrl.includes('vercel.app') || 
-                        currentUrl.includes('aabb-system.vercel.app') ||
-                        import.meta.env.VITE_ENVIRONMENT === 'production' || 
-                        import.meta.env.VERCEL_ENV === 'production' ||
-                        import.meta.env.VITE_SUPABASE_URL?.includes('jtfdzjmravketpkwjkvp');
-    
-    // Sempre usar empresa de produção em produção
-    const empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e'; // AABB Garanhuns
-    
-    console.log('🏢 Usando empresa_id:', empresaId, '(ambiente:', isProduction ? 'produção' : 'desenvolvimento', ')');
-    console.log('🌐 URL atual:', currentUrl);
+    // CORREÇÃO CRÍTICA: Usar empresa do usuário logado, não hardcoded
+    if (!user) {
+      console.error('❌ Usuário não autenticado');
+      alert('Você precisa estar logado para adicionar itens');
+      return;
+    }
+
+    // Buscar empresa do usuário atual
+    const { data: usuarioEmpresa, error: empresaError } = await supabase
+      .from('usuarios_empresa')
+      .select('empresa_id')
+      .eq('user_id', user.id)
+      .eq('ativo', true)
+      .single();
+
+    if (empresaError || !usuarioEmpresa) {
+      console.error('❌ Erro ao buscar empresa do usuário:', empresaError);
+      alert('Erro: Não foi possível identificar sua empresa. Entre em contato com o suporte.');
+      return;
+    }
+
+    const empresaId = usuarioEmpresa.empresa_id;
+    console.log('🏢 Usando empresa do usuário logado:', empresaId);
 
     // Validar dados obrigatórios
     if (!itemData.name || !itemData.unit) {
@@ -718,6 +728,29 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const updateInventoryItem = async (updatedItem: InventoryItem) => {
     console.log('🔄 Atualizando item do inventário:', updatedItem);
     
+    // CORREÇÃO: Buscar empresa do usuário logado
+    if (!user) {
+      console.error('❌ Usuário não autenticado');
+      alert('Você precisa estar logado para atualizar itens');
+      return;
+    }
+
+    // Buscar empresa do usuário atual
+    const { data: usuarioEmpresa, error: empresaError } = await supabase
+      .from('usuarios_empresa')
+      .select('empresa_id')
+      .eq('user_id', user.id)
+      .eq('ativo', true)
+      .single();
+
+    if (empresaError || !usuarioEmpresa) {
+      console.error('❌ Erro ao buscar empresa do usuário:', empresaError);
+      alert('Erro: Não foi possível identificar sua empresa. Entre em contato com o suporte.');
+      return;
+    }
+
+    const empresaId = usuarioEmpresa.empresa_id;
+    
     const itemToUpdate: any = {
         name: updatedItem.name,
         category_id: updatedItem.categoryId,
@@ -729,7 +762,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         available_for_sale: updatedItem.availableForSale || false,
         image_url: updatedItem.image_url || null,
         last_updated: new Date().toISOString(),
-        empresa_id: '9e445c5a-a382-444d-94f8-9d126ed6414e', // Sempre usar empresa de produção
+        empresa_id: empresaId, // Usar empresa do usuário logado
         // Campos de precificação
         sale_price: updatedItem.salePrice ? Number(updatedItem.salePrice) : null,
         margin_percentage: updatedItem.marginPercentage ? Number(updatedItem.marginPercentage) : null,
@@ -858,16 +891,27 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const loadFullInventory = useCallback(async () => {
     console.log('📦 Carregando inventário completo...');
     
-    // Determinar empresa_id baseado no ambiente
-    const isProduction = import.meta.env.VITE_ENVIRONMENT === 'production' || 
-                        import.meta.env.VERCEL_ENV === 'production' ||
-                        import.meta.env.VITE_SUPABASE_URL?.includes('jtfdzjmravketpkwjkvp');
-    
-    const empresaId = isProduction 
-      ? '9e445c5a-a382-444d-94f8-9d126ed6414e' // Produção
-      : 'c53c4376-155a-46a2-bcc1-407eb6ed190a'; // Desenvolvimento
-    
-    console.log('🏢 Carregando inventário para empresa_id:', empresaId, '(ambiente:', isProduction ? 'produção' : 'desenvolvimento', ')');
+    // CORREÇÃO: Usar empresa do usuário logado
+    if (!user) {
+      console.log('⚠️ Usuário não autenticado, não carregando inventário');
+      return;
+    }
+
+    // Buscar empresa do usuário atual
+    const { data: usuarioEmpresa, error: empresaError } = await supabase
+      .from('usuarios_empresa')
+      .select('empresa_id')
+      .eq('user_id', user.id)
+      .eq('ativo', true)
+      .single();
+
+    if (empresaError || !usuarioEmpresa) {
+      console.error('❌ Erro ao buscar empresa do usuário:', empresaError);
+      return;
+    }
+
+    const empresaId = usuarioEmpresa.empresa_id;
+    console.log('🏢 Carregando inventário para empresa do usuário:', empresaId);
 
     const { data, error } = await supabase
       .from('inventory_items')
@@ -882,7 +926,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     
     console.log('✅ Inventário carregado:', data?.length || 0, 'itens');
     if (data) setInventory(data.map(fromInventorySupabase));
-  }, []); // Dependências vazias pois a função não depende de nenhum estado
+  }, [user]); // Depende do usuário logado
 
   // Buscar pedidos da cozinha a partir dos comanda_items
   const [kitchenOrders, setKitchenOrders] = useState<Order[]>([]);
