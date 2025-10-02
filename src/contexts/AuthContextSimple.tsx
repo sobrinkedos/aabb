@@ -139,20 +139,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       if (data.user) {
-        // Buscar perfil do usuário
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
+        // Buscar perfil do usuário com tratamento de erro
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
 
-        if (profile) {
+          if (profileError) {
+            console.warn('Erro ao buscar perfil:', profileError);
+            // Criar usuário básico mesmo sem perfil
+            const appUser: User = {
+              id: data.user.id,
+              name: data.user.email?.split('@')[0] || 'Usuário',
+              email: data.user.email!,
+              role: 'employee',
+              avatar: `https://api.dicebear.com/8.x/initials/svg?seed=${data.user.email}`,
+            };
+            setUser(appUser);
+          } else if (profile) {
+            const appUser: User = {
+              id: profile.id,
+              name: profile.name || data.user.email || 'Usuário',
+              email: data.user.email!,
+              role: profile.role || 'employee',
+              avatar: profile.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${profile.name}`,
+            };
+            setUser(appUser);
+          }
+        } catch (profileError) {
+          console.error('Erro ao buscar perfil:', profileError);
+          // Criar usuário básico em caso de erro
           const appUser: User = {
-            id: profile.id,
-            name: profile.name || data.user.email || 'Usuário',
+            id: data.user.id,
+            name: data.user.email?.split('@')[0] || 'Usuário',
             email: data.user.email!,
-            role: profile.role || 'employee',
-            avatar: profile.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${profile.name}`,
+            role: 'employee',
+            avatar: `https://api.dicebear.com/8.x/initials/svg?seed=${data.user.email}`,
           };
           setUser(appUser);
         }
