@@ -87,13 +87,7 @@ const BalcaoViewNew: React.FC = () => {
   React.useEffect(() => {
     const syncProducts = async () => {
       try {
-        console.log('🔄 Iniciando sincronização de produtos...');
-        console.log('📊 Menu items atuais:', menuItems.length);
-        console.log('📦 Inventário atual:', inventory.length);
-        
         await syncInventoryToMenu();
-        
-        console.log('✅ Sincronização concluída');
       } catch (error) {
         console.error('❌ Erro na sincronização:', error);
       }
@@ -402,49 +396,7 @@ const BalcaoViewNew: React.FC = () => {
               </select>
             </div>
             
-            {/* Botão de Debug Temporário */}
-            <div className="mt-4 p-2 bg-yellow-50 border border-yellow-200 rounded">
-              <div className="flex flex-wrap gap-2 mb-2">
-                <button
-                  onClick={async () => {
-                    console.log('🔍 DEBUG - Estado completo...');
-                    console.log('👤 Usuário:', user);
-                    console.log('📊 Menu items:', menuItems.length, menuItems);
-                    console.log('🔄 Menu loading:', menuLoading);
-                    console.log('📦 Inventário:', inventory.length, inventory);
-                    console.log('🔍 Produtos marcados para venda:', inventory.filter(item => item.availableForSale));
-                    console.log('🏢 Tentando sincronizar...');
-                    await syncInventoryToMenu();
-                  }}
-                  className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-sm"
-                >
-                  🔄 Debug Completo
-                </button>
-                
-                <button
-                  onClick={() => {
-                    console.log('🔍 INVENTÁRIO DETALHADO:');
-                    inventory.forEach((item, index) => {
-                      console.log(`${index + 1}. ${item.name}:`, {
-                        id: item.id,
-                        availableForSale: item.availableForSale,
-                        salePrice: item.salePrice,
-                        cost: item.cost
-                      });
-                    });
-                  }}
-                  className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-                >
-                  📦 Ver Inventário
-                </button>
-              </div>
-              
-              <div className="text-sm text-gray-600 space-y-1">
-                <div>Menu: {menuItems.length} | Inventário: {inventory.length} | Filtrados: {filteredMenuItems.length}</div>
-                <div>Loading: {menuLoading ? 'Sim' : 'Não'} | Usuário: {user ? user.email : 'Não logado'}</div>
-                <div>Produtos para venda: {inventory.filter(item => item.availableForSale).length}</div>
-              </div>
-            </div>
+
           </div>
 
           {/* Grid de Itens */}
