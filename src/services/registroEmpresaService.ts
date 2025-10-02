@@ -28,14 +28,15 @@ export class RegistroEmpresaService {
         return { success: false, error: 'CNPJ já cadastrado no sistema' };
       }
 
-      // 3. Criar usuário no Supabase Auth
+      // 3. Criar usuário no Supabase Auth como ADMINISTRADOR
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: dados.email_admin,
         password: dados.senha,
         options: {
           data: {
             name: dados.nome_admin,
-            full_name: dados.nome_admin
+            full_name: dados.nome_admin,
+            role: 'admin' // CRÍTICO: Definir como admin, não employee
           }
         }
       });
