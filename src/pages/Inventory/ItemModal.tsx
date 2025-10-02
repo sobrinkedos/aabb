@@ -49,6 +49,33 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
   
   // Observar mudanças no custo para recalcular preços
   const watchedCost = watch('cost', item?.cost || 0);
+  
+  // Recalcular preços quando custo mudar
+  React.useEffect(() => {
+    if (watchedCost !== undefined) {
+      const newCost = Number(watchedCost) || 0;
+      
+      if (pricingData.pricingMethod === 'margin') {
+        const newPrice = newCost * (1 + (pricingData.marginPercentage || 50) / 100);
+        const newData = {
+          ...currentPricingRef.current,
+          salePrice: newPrice
+        };
+        setPricingData(newData);
+        currentPricingRef.current = newData;
+        console.log(`💰 CUSTO ALTERADO (useEffect) - Novo custo: R$ ${newCost}, Novo preço: R$ ${newPrice.toFixed(2)}`);
+      } else if (pricingData.pricingMethod === 'fixed_price' && pricingData.salePrice) {
+        const newMargin = newCost > 0 ? ((pricingData.salePrice || 0) - newCost) / newCost * 100 : 0;
+        const newData = {
+          ...currentPricingRef.current,
+          marginPercentage: newMargin
+        };
+        setPricingData(newData);
+        currentPricingRef.current = newData;
+        console.log(`💰 CUSTO ALTERADO (useEffect) - Novo custo: R$ ${newCost}, Nova margem: ${newMargin.toFixed(1)}%`);
+      }
+    }
+  }, [watchedCost, pricingData.pricingMethod]);
 
   const loadCategories = async () => {
     try {
@@ -259,56 +286,20 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                 }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
-                      Custo Base (R$):
+                      Custo Base:
                     </label>
-                    <input 
-                      {...register('cost', { 
-                        required: 'Custo é obrigatório',
-                        min: { value: 0, message: 'Custo deve ser maior que zero' }
-                      })}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '16px'
-                      }}
-                      placeholder="0.00"
-                      onChange={(e) => {
-                        // Atualizar o registro do form
-                        register('cost').onChange(e);
-                        
-                        // Recalcular preços se necessário
-                        const newCost = Number(e.target.value) || 0;
-                        if (pricingData.pricingMethod === 'margin') {
-                          const newPrice = newCost * (1 + (pricingData.marginPercentage || 50) / 100);
-                          const newData = {
-                            ...currentPricingRef.current,
-                            salePrice: newPrice
-                          };
-                          setPricingData(newData);
-                          currentPricingRef.current = newData;
-                          console.log(`💰 CUSTO ALTERADO - Novo custo: R$ ${newCost}, Novo preço: R$ ${newPrice.toFixed(2)}`);
-                        } else if (pricingData.pricingMethod === 'fixed_price') {
-                          const newMargin = newCost > 0 ? ((pricingData.salePrice || 0) - newCost) / newCost * 100 : 0;
-                          const newData = {
-                            ...currentPricingRef.current,
-                            marginPercentage: newMargin
-                          };
-                          setPricingData(newData);
-                          currentPricingRef.current = newData;
-                          console.log(`💰 CUSTO ALTERADO - Novo custo: R$ ${newCost}, Nova margem: ${newMargin.toFixed(1)}%`);
-                        }
-                      }}
-                    />
-                    {errors.cost && (
-                      <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>
-                        {errors.cost.message}
-                      </p>
-                    )}
+                    <div style={{
+                      padding: '10px',
+                      backgroundColor: '#f3f4f6',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontWeight: 'bold'
+                    }}>
+                      R$ {(watchedCost || 0).toFixed(2)}
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                      💡 Edite o custo no campo "Custo por Unidade" abaixo
+                    </p>
                   </div>
 
                   <div>
