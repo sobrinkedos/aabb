@@ -98,6 +98,8 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
       console.log('🏢 Carregando menu items para empresa_id:', empresaId, '(ambiente:', isProduction ? 'produção' : 'desenvolvimento', ')');
 
       // Buscar itens do menu baseado no filtro
+      console.log('🔍 Parâmetros de busca:', { includeDirectItems, empresaId });
+      
       let query = supabase
         .from('menu_items')
         .select(`
@@ -111,15 +113,20 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
             available_for_sale
           )
         `)
-        .eq('available', true)
         .eq('empresa_id', empresaId)
         .order('category', { ascending: true })
         .order('name', { ascending: true });
         
       // Se não incluir itens diretos, filtrar apenas preparados
       if (!includeDirectItems) {
+        console.log('🚫 Excluindo itens diretos');
         query = query.neq('item_type', 'direct');
+      } else {
+        console.log('✅ Incluindo itens diretos');
       }
+      
+      // Temporariamente remover filtro available para debug
+      console.log('🔍 Buscando TODOS os itens (sem filtro available)...');
       
       const { data, error } = await query;
 
