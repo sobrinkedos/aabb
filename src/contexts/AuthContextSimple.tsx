@@ -178,7 +178,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         password,
         options: {
           data: {
-            name: name
+            name: name,
+            role: 'admin' // CRÍTICO: Definir como admin para primeiro usuário
           }
         }
       });
