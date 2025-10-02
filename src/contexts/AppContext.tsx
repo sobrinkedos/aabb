@@ -1011,19 +1011,25 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         .eq('empresa_id', empresaId)
         .eq('item_type', 'direct');
 
+      console.log('🔍 Itens do menu existentes:', existingMenuItems, 'Erro:', menuError);
+
       if (menuError) {
         console.error('❌ Erro ao buscar itens do menu:', menuError);
-        return;
+        // Continuar mesmo com erro para tentar criar os itens
       }
 
       const existingInventoryIds = new Set(
         existingMenuItems?.map(item => item.direct_inventory_item_id).filter(Boolean) || []
       );
 
+      console.log('🔍 IDs de inventário já no menu:', Array.from(existingInventoryIds));
+
       // Filtrar produtos que ainda não têm item no menu
       const newInventoryItems = inventoryItems.filter(
         item => !existingInventoryIds.has(item.id)
       );
+
+      console.log('🆕 Produtos para criar no menu:', newInventoryItems.length, newInventoryItems.map(i => i.name));
 
       if (newInventoryItems.length === 0) {
         console.log('✅ Todos os produtos já estão sincronizados com o menu');
@@ -1042,8 +1048,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         item_type: 'direct',
         direct_inventory_item_id: item.id,
         empresa_id: empresaId,
-        image_url: item.image_url
+        image_url: item.image_url,
+        preparation_time: 0 // Produtos diretos não precisam de preparo
       }));
+
+      console.log('📝 Tentando criar itens:', menuItemsToCreate);
 
       const { data: createdItems, error: createError } = await supabase
         .from('menu_items')
@@ -1052,10 +1061,26 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       if (createError) {
         console.error('❌ Erro ao criar itens do menu:', createError);
+        console.error('📋 Dados que tentamos inserir:', menuItemsToCreate);
+        
+        // Tentar criar um por vez para identificar qual está falhando
+        for (const item of menuItemsToCreate) {
+          console.log('🔄 Tentando criar item individual:', item.name);
+          const { data: singleItem, error: singleError } = await supabase
+            .from('menu_items')
+            .insert([item])
+            .select();
+            
+          if (singleError) {
+            console.error(`❌ Erro ao criar ${item.name}:`, singleError);
+          } else {
+            console.log(`✅ Criado ${item.name}:`, singleItem);
+          }
+        }
         return;
       }
 
-      console.log('✅ Criados', createdItems?.length || 0, 'novos itens no menu');
+      console.log('✅ Criados', createdItems?.length || 0, 'novos itens no menu:', createdItems);
       
       // Recarregar menu items
       await loadMenuItems();
