@@ -123,6 +123,7 @@ interface AppContextType {
   updateMember: (member: Member) => Promise<void>;
   loadMembers: () => Promise<void>;
   loadFullInventory: () => Promise<void>;
+  syncInventoryToMenu: () => Promise<void>;
   
   notifications: string[];
   addNotification: (message: string) => void;
@@ -959,6 +960,111 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     if (data) setInventory(data.map(fromInventorySupabase));
   }, [user]); // Depende do usuário logado
 
+  // Função para sincronizar produtos do inventário com o menu
+  const syncInventoryToMenu = useCallback(async () => {
+    console.log('🔄 Sincronizando produtos do inventário com o menu...');
+    
+    if (!user) {
+      console.log('⚠️ Usuário não autenticado, não sincronizando');
+      return;
+    }
+
+    try {
+      // Buscar empresa do usuário atual
+      const { data: usuarioEmpresa, error: empresaError } = await supabase
+        .from('usuarios_empresa')
+        .select('empresa_id')
+        .eq('user_id', user.id)
+        .eq('ativo', true)
+        .single();
+
+      if (empresaError || !usuarioEmpresa) {
+        console.error('❌ Erro ao buscar empresa do usuário:', empresaError);
+        return;
+      }
+
+      const empresaId = usuarioEmpresa.empresa_id;
+
+      // Buscar produtos do inventário marcados para venda
+      const { data: inventoryItems, error: inventoryError } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('empresa_id', empresaId)
+        .eq('available_for_sale', true);
+
+      if (inventoryError) {
+        console.error('❌ Erro ao buscar produtos do inventário:', inventoryError);
+        return;
+      }
+
+      if (!inventoryItems || inventoryItems.length === 0) {
+        console.log('📦 Nenhum produto marcado para venda encontrado');
+        return;
+      }
+
+      console.log('📦 Produtos marcados para venda:', inventoryItems.length);
+
+      // Buscar itens do menu existentes do tipo 'direct'
+      const { data: existingMenuItems, error: menuError } = await supabase
+        .from('menu_items')
+        .select('direct_inventory_item_id')
+        .eq('empresa_id', empresaId)
+        .eq('item_type', 'direct');
+
+      if (menuError) {
+        console.error('❌ Erro ao buscar itens do menu:', menuError);
+        return;
+      }
+
+      const existingInventoryIds = new Set(
+        existingMenuItems?.map(item => item.direct_inventory_item_id).filter(Boolean) || []
+      );
+
+      // Filtrar produtos que ainda não têm item no menu
+      const newInventoryItems = inventoryItems.filter(
+        item => !existingInventoryIds.has(item.id)
+      );
+
+      if (newInventoryItems.length === 0) {
+        console.log('✅ Todos os produtos já estão sincronizados com o menu');
+        return;
+      }
+
+      console.log('🆕 Criando', newInventoryItems.length, 'novos itens no menu');
+
+      // Criar itens do menu para os produtos do inventário
+      const menuItemsToCreate = newInventoryItems.map(item => ({
+        name: item.name,
+        description: `Produto do estoque: ${item.name}`,
+        price: (item as any).sale_price || item.cost * 1.5, // Usar preço de venda ou custo + 50%
+        category: 'Produtos do Estoque',
+        available: true,
+        item_type: 'direct',
+        direct_inventory_item_id: item.id,
+        empresa_id: empresaId,
+        image_url: item.image_url
+      }));
+
+      const { data: createdItems, error: createError } = await supabase
+        .from('menu_items')
+        .insert(menuItemsToCreate)
+        .select();
+
+      if (createError) {
+        console.error('❌ Erro ao criar itens do menu:', createError);
+        return;
+      }
+
+      console.log('✅ Criados', createdItems?.length || 0, 'novos itens no menu');
+      
+      // Recarregar menu items
+      await loadMenuItems();
+      
+    } catch (error) {
+      console.error('❌ Erro na sincronização:', error);
+    }
+  }, [user]);
+
   // Buscar pedidos da cozinha a partir dos comanda_items
   const [kitchenOrders, setKitchenOrders] = useState<Order[]>([]);
   const [barOrders, setBarOrders] = useState<Order[]>([]);
@@ -1378,7 +1484,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       barOrders: activeBarOrders,
       refreshKitchenOrders: fetchKitchenOrders,
       refreshBarOrders: fetchBarOrders,
-      inventory, inventoryCategories, addInventoryItem, updateInventoryItem, removeInventoryItem, loadFullInventory,
+      inventory, inventoryCategories, addInventoryItem, updateInventoryItem, removeInventoryItem, loadFullInventory, syncInventoryToMenu,
       members, addMember, updateMember, loadMembers,
       notifications, addNotification, clearNotifications,
       // sales, addSale

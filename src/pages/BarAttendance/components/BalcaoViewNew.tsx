@@ -44,7 +44,7 @@ const BalcaoViewNew: React.FC = () => {
   const { menuItems, loading: menuLoading } = useMenuItems(true);
   const { createOrder, loading: orderLoading } = useBalcaoOrders();
   const { currentSession } = useCashManagement();
-  const { inventory } = useApp();
+  const { inventory, syncInventoryToMenu } = useApp();
 
   // Estados do carrinho e pedido
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -82,6 +82,20 @@ const BalcaoViewNew: React.FC = () => {
 
     return items;
   }, [menuItems, categoryFilter, searchTerm]);
+
+  // Sincronizar produtos do inventário com o menu quando carregar
+  React.useEffect(() => {
+    const syncProducts = async () => {
+      try {
+        console.log('🔄 Iniciando sincronização de produtos...');
+        await syncInventoryToMenu();
+      } catch (error) {
+        console.error('❌ Erro na sincronização:', error);
+      }
+    };
+
+    syncProducts();
+  }, []); // Executar apenas uma vez ao carregar
 
   // Calcular totais do carrinho
   const cartTotal = useMemo(() => {
