@@ -179,11 +179,11 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
             transition={{ duration: 0.2 }}
             className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
           >
-            <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-green-500 rounded-t-xl">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
               <div>
-                <h2 className="text-2xl font-bold text-white">✅ DEPLOY ATUALIZADO: {item ? 'Editar Item' : 'Novo Item no Estoque'}</h2>
-                <p className="text-sm text-white mt-1">
-                  🚀 VERSÃO FINAL COM PRECIFICAÇÃO FUNCIONANDO - {new Date().toLocaleTimeString()} - {item ? 'Atualize as informações do item' : 'Adicione um novo item ao inventário'}
+                <h2 className="text-2xl font-bold text-gray-800">{item ? 'Editar Item' : 'Novo Item no Estoque'}</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {item ? 'Atualize as informações do item' : 'Adicione um novo item ao inventário'}
                 </p>
               </div>
               <button 
@@ -259,17 +259,56 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, item }) => {
                 }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600' }}>
-                      Custo Base:
+                      Custo Base (R$):
                     </label>
-                    <div style={{
-                      padding: '10px',
-                      backgroundColor: '#f3f4f6',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontWeight: 'bold'
-                    }}>
-                      R$ {(watchedCost || 0).toFixed(2)}
-                    </div>
+                    <input 
+                      {...register('cost', { 
+                        required: 'Custo é obrigatório',
+                        min: { value: 0, message: 'Custo deve ser maior que zero' }
+                      })}
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '16px'
+                      }}
+                      placeholder="0.00"
+                      onChange={(e) => {
+                        // Atualizar o registro do form
+                        register('cost').onChange(e);
+                        
+                        // Recalcular preços se necessário
+                        const newCost = Number(e.target.value) || 0;
+                        if (pricingData.pricingMethod === 'margin') {
+                          const newPrice = newCost * (1 + (pricingData.marginPercentage || 50) / 100);
+                          const newData = {
+                            ...currentPricingRef.current,
+                            salePrice: newPrice
+                          };
+                          setPricingData(newData);
+                          currentPricingRef.current = newData;
+                          console.log(`💰 CUSTO ALTERADO - Novo custo: R$ ${newCost}, Novo preço: R$ ${newPrice.toFixed(2)}`);
+                        } else if (pricingData.pricingMethod === 'fixed_price') {
+                          const newMargin = newCost > 0 ? ((pricingData.salePrice || 0) - newCost) / newCost * 100 : 0;
+                          const newData = {
+                            ...currentPricingRef.current,
+                            marginPercentage: newMargin
+                          };
+                          setPricingData(newData);
+                          currentPricingRef.current = newData;
+                          console.log(`💰 CUSTO ALTERADO - Novo custo: R$ ${newCost}, Nova margem: ${newMargin.toFixed(1)}%`);
+                        }
+                      }}
+                    />
+                    {errors.cost && (
+                      <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>
+                        {errors.cost.message}
+                      </p>
+                    )}
                   </div>
 
                   <div>
