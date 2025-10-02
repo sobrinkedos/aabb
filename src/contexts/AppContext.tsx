@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect, useCa
 import { supabase } from '../lib/supabase';
 import { MenuItem, Order, InventoryItem, InventoryCategory, Member, Sale, OrderItem } from '../types';
 import type { Database } from '../types/supabase';
+import { useAuth } from './AuthContextSimple';
 
 type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
 type TablesInsert<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert'];
@@ -146,6 +147,7 @@ interface AppProviderProps {
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
+  const { user } = useAuth(); // Adicionar hook de autenticação
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
