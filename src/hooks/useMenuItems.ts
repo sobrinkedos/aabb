@@ -131,6 +131,36 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
       const { data, error } = await query;
 
       console.log('Available menu items:', data, 'Error:', error);
+      console.log('🔍 Query executada com filtros:', {
+        empresa_id: empresaId,
+        includeDirectItems,
+        totalFound: data?.length || 0
+      });
+      
+      // Log detalhado dos itens encontrados
+      if (data && data.length > 0) {
+        console.log('📋 Itens encontrados na consulta filtrada:');
+        data.forEach((item, index) => {
+          console.log(`${index + 1}. ${item.name}:`, {
+            id: item.id,
+            available: item.available,
+            item_type: item.item_type,
+            empresa_id: item.empresa_id,
+            direct_inventory_item_id: item.direct_inventory_item_id
+          });
+        });
+      } else {
+        console.log('❌ Nenhum item encontrado na consulta filtrada');
+        
+        // Vamos fazer uma consulta simples para debug
+        console.log('🔍 Fazendo consulta simples para debug...');
+        const { data: debugData, error: debugError } = await supabase
+          .from('menu_items')
+          .select('*')
+          .eq('empresa_id', empresaId);
+          
+        console.log('🔍 Consulta simples resultado:', debugData, 'Error:', debugError);
+      }
 
       if (error) throw error;
       
