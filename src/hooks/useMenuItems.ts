@@ -113,9 +113,12 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
             available_for_sale
           )
         `)
-        .eq('empresa_id', empresaId)
+        // Temporariamente removendo filtro empresa_id devido ao RLS
+        // .eq('empresa_id', empresaId)
         .order('category', { ascending: true })
         .order('name', { ascending: true });
+        
+      console.log('⚠️ TEMPORÁRIO: Removido filtro empresa_id devido ao RLS');
         
       // Se não incluir itens diretos, filtrar apenas preparados
       if (!includeDirectItems) {
