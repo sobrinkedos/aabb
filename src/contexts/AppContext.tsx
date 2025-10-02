@@ -159,23 +159,52 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // Fetch initial data - OTIMIZADO para carregar apenas dados essenciais
   useEffect(() => {
     const fetchData = async () => {
-      // Carregar apenas inventory para dashboard (estoque baixo)
-      const inventoryData = await supabase.rpc('get_low_stock_items', { limit_count: 10 });
+      // CORREÇÃO: Só carregar dados se usuário estiver autenticado
+      if (!user) {
+        console.log('AppContext: Usuário não autenticado, não carregando dados');
+        return;
+      }
 
-      // Carregar categorias
-      const categoriesData = await supabase
-        .from('inventory_categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
+      try {
+        // Buscar empresa do usuário atual
+        const { data: usuarioEmpresa, error: empresaError } = await supabase
+          .from('usuarios_empresa')
+          .select('empresa_id')
+          .eq('user_id', user.id)
+          .eq('ativo', true)
+          .single();
 
-      if (inventoryData.data) setInventory(inventoryData.data.map(fromInventorySupabase));
-      if (categoriesData.data) setInventoryCategories(categoriesData.data.map(fromInventoryCategorySupabase));
-      
-      // Menu items e members serão carregados sob demanda
+        if (empresaError || !usuarioEmpresa) {
+          console.error('AppContext: Erro ao buscar empresa do usuário:', empresaError);
+          return;
+        }
+
+        const empresaId = usuarioEmpresa.empresa_id;
+        console.log('AppContext: Carregando dados para empresa:', empresaId);
+
+        // Carregar apenas inventory para dashboard (estoque baixo)
+        const inventoryData = await supabase.rpc('get_low_stock_items', { limit_count: 10 });
+
+        // Carregar categorias FILTRADAS por empresa
+        const categoriesData = await supabase
+          .from('inventory_categories')
+          .select('*')
+          .eq('empresa_id', empresaId)
+          .eq('is_active', true)
+          .order('name');
+
+        console.log('AppContext: Categorias carregadas:', categoriesData.data?.length || 0);
+
+        if (inventoryData.data) setInventory(inventoryData.data.map(fromInventorySupabase));
+        if (categoriesData.data) setInventoryCategories(categoriesData.data.map(fromInventoryCategorySupabase));
+        
+        // Menu items e members serão carregados sob demanda
+      } catch (error) {
+        console.error('AppContext: Erro ao carregar dados:', error);
+      }
     };
     fetchData();
-  }, []);
+  }, [user]); // Depende do usuário logado
 
 
 
