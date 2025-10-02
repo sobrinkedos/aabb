@@ -63,28 +63,44 @@ export async function loadUserPermissionsRobust(): Promise<UserPermissions | nul
     // Se não está no mapeamento manual, tentar buscar do banco de forma segura
     if (!userRole) {
       try {
-        // NOVA ABORDAGEM: Buscar diretamente na tabela usuarios_empresa pelo cargo
+        // NOVA ABORDAGEM: Buscar diretamente na tabela usuarios_empresa pelo papel e cargo
         const { data: usuarioEmpresaData } = await supabase
           .from('usuarios_empresa')
-          .select('cargo, tipo_usuario')
+          .select('cargo, tipo_usuario, papel, is_primeiro_usuario')
           .eq('user_id', user.id)
           .eq('status', 'ativo')
           .maybeSingle();
         
         if (usuarioEmpresaData) {
-          const cargo = usuarioEmpresaData.cargo?.toLowerCase() || '';
-          
-          if (cargo.includes('caixa') || cargo.includes('cashier') || cargo.includes('atendente')) {
-            userRole = 'operador_caixa';
-            console.log(`🎯 Role detectado pelo cargo: "${usuarioEmpresaData.cargo}" → operador_caixa`);
-            addUserRoleMapping(user.email || '', userRole, 'cargo_detection');
-          } else if (cargo.includes('gerente') || cargo.includes('manager')) {
+          // PRIORIDADE 1: Verificar papel hierárquico
+          if (usuarioEmpresaData.papel === 'SUPER_ADMIN') {
+            userRole = 'administrador';
+            console.log(`👑 SUPER_ADMIN detectado: ${user.email} → administrador`);
+            addUserRoleMapping(user.email || '', userRole, 'papel_detection');
+          } else if (usuarioEmpresaData.papel === 'ADMIN') {
+            userRole = 'administrador';
+            console.log(`🎯 ADMIN detectado: ${user.email} → administrador`);
+            addUserRoleMapping(user.email || '', userRole, 'papel_detection');
+          } else if (usuarioEmpresaData.papel === 'MANAGER') {
             userRole = 'gerente';
-            console.log(`🎯 Role detectado pelo cargo: "${usuarioEmpresaData.cargo}" → gerente`);
-            addUserRoleMapping(user.email || '', userRole, 'cargo_detection');
+            console.log(`🎯 MANAGER detectado: ${user.email} → gerente`);
+            addUserRoleMapping(user.email || '', userRole, 'papel_detection');
           } else {
-            userRole = 'funcionario';
-            console.log(`🔍 Cargo "${usuarioEmpresaData.cargo}" → funcionario padrão`);
+            // PRIORIDADE 2: Verificar cargo se papel é USER
+            const cargo = usuarioEmpresaData.cargo?.toLowerCase() || '';
+            
+            if (cargo.includes('caixa') || cargo.includes('cashier') || cargo.includes('atendente')) {
+              userRole = 'operador_caixa';
+              console.log(`🎯 Role detectado pelo cargo: "${usuarioEmpresaData.cargo}" → operador_caixa`);
+              addUserRoleMapping(user.email || '', userRole, 'cargo_detection');
+            } else if (cargo.includes('gerente') || cargo.includes('manager')) {
+              userRole = 'gerente';
+              console.log(`🎯 Role detectado pelo cargo: "${usuarioEmpresaData.cargo}" → gerente`);
+              addUserRoleMapping(user.email || '', userRole, 'cargo_detection');
+            } else {
+              userRole = 'funcionario';
+              console.log(`🔍 Cargo "${usuarioEmpresaData.cargo}" → funcionario padrão`);
+            }
           }
         } else {
           // Fallback: DETECÇÃO INTELIGENTE por email
