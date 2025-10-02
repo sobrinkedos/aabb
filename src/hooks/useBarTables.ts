@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { BarTable, BarTableInsert, BarTableUpdate, TableStatus } from '../types/bar-attendance';
 import { organizeTablesInGrid, DEFAULT_LAYOUT_CONFIG } from '../utils/table-layout';
+import { useAuth } from '../contexts/AuthContextSimple';
 
 export const useBarTables = () => {
+  const { user } = useAuth();
   const [tables, setTables] = useState<BarTable[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -12,9 +14,35 @@ export const useBarTables = () => {
     try {
       setLoading(true);
       console.log('useBarTables - Fetching tables...');
+      
+      // CORREÇÃO: Filtrar por empresa do usuário logado
+      if (!user) {
+        console.log('useBarTables - Usuário não autenticado');
+        setTables([]);
+        return;
+      }
+
+      // Buscar empresa do usuário atual
+      const { data: usuarioEmpresa, error: empresaError } = await supabase
+        .from('usuarios_empresa')
+        .select('empresa_id')
+        .eq('user_id', user.id)
+        .eq('ativo', true)
+        .single();
+
+      if (empresaError || !usuarioEmpresa) {
+        console.error('useBarTables - Erro ao buscar empresa do usuário:', empresaError);
+        setError('Erro: Não foi possível identificar sua empresa');
+        return;
+      }
+
+      const empresaId = usuarioEmpresa.empresa_id;
+      console.log('useBarTables - Carregando mesas para empresa:', empresaId);
+
       const { data, error } = await supabase
         .from('bar_tables')
         .select('*')
+        .eq('empresa_id', empresaId)
         .order('number');
 
       console.log('useBarTables - Query result:', { data, error });
@@ -32,10 +60,28 @@ export const useBarTables = () => {
 
   const createTable = async (tableData: Omit<BarTableInsert, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      // CORREÇÃO: Incluir empresa_id do usuário logado
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      // Buscar empresa do usuário atual
+      const { data: usuarioEmpresa, error: empresaError } = await supabase
+        .from('usuarios_empresa')
+        .select('empresa_id')
+        .eq('user_id', user.id)
+        .eq('ativo', true)
+        .single();
+
+      if (empresaError || !usuarioEmpresa) {
+        throw new Error('Erro: Não foi possível identificar sua empresa');
+      }
+
       const { data, error } = await supabase
         .from('bar_tables')
         .insert({
           ...tableData,
+          empresa_id: usuarioEmpresa.empresa_id, // Incluir empresa_id
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -161,7 +207,9 @@ export const useBarTables = () => {
   };
 
   useEffect(() => {
-    fetchTables();
+    if (user) {
+      fetchTables();
+    }
 
     // Configurar real-time subscription
     const subscription = supabase
@@ -188,7 +236,7 @@ export const useBarTables = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [user]);
 
   return {
     tables,
