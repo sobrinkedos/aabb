@@ -139,8 +139,21 @@ export const DashboardOverview: React.FC = () => {
         amount_paid: selectedOrder.final_amount
       });
 
-      // Forçar atualização dos dados
-      await refreshBalcaoData();
+      // Forçar múltiplas atualizações para garantir sincronização
+      console.log('🔄 Forçando atualização dos dados após pagamento...');
+      await Promise.all([
+        refreshBalcaoData(),
+        refreshData()
+      ]);
+      
+      // Atualização adicional com delay
+      setTimeout(async () => {
+        console.log('🔄 Segunda atualização dos dados...');
+        await Promise.all([
+          refreshBalcaoData(),
+          refreshData()
+        ]);
+      }, 1000);
 
       // Preparar dados para o comprovante
       setLastPaymentData({

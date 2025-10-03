@@ -49,6 +49,7 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
     if (!user) return;
 
     try {
+      console.log('🔄 loadOrders: Iniciando carregamento de pedidos...');
       updateState({ loading: true, error: null });
 
       const { data: ordersData, error: ordersError } = await supabase
@@ -91,6 +92,9 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
         })
       );
 
+      console.log('✅ loadOrders: Pedidos carregados:', ordersWithItems.length);
+      console.log('📊 loadOrders: Status dos pedidos:', ordersWithItems.map(o => ({ id: o.id.slice(-4), status: o.status })));
+      
       updateState({
         orders: ordersWithItems,
         loading: false

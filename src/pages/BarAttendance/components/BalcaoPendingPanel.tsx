@@ -33,7 +33,7 @@ const BalcaoPendingPanel: React.FC = () => {
     refreshData 
   } = useBalcaoOrders();
   
-  const { currentSession } = useCashManagement();
+  const { currentSession, refreshData: refreshCashData } = useCashManagement();
   
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<BalcaoOrderWithDetails | null>(null);
@@ -53,8 +53,30 @@ const BalcaoPendingPanel: React.FC = () => {
         amount_paid: selectedOrder.final_amount
       });
 
-      // Forçar atualização dos dados
-      await refreshData();
+      // Forçar múltiplas atualizações para garantir sincronização
+      console.log('🔄 Forçando atualização dos dados após pagamento...');
+      await Promise.all([
+        refreshData(),
+        refreshCashData()
+      ]);
+      
+      // Atualização adicional com delay
+      setTimeout(async () => {
+        console.log('🔄 Segunda atualização dos dados...');
+        await Promise.all([
+          refreshData(),
+          refreshCashData()
+        ]);
+      }, 1000);
+      
+      // Terceira atualização como backup
+      setTimeout(async () => {
+        console.log('🔄 Terceira atualização dos dados...');
+        await Promise.all([
+          refreshData(),
+          refreshCashData()
+        ]);
+      }, 2000);
       
       setShowPaymentModal(false);
       setSelectedOrder(null);
