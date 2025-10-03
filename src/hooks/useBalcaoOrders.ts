@@ -108,8 +108,8 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
     try {
       updateState({ loading: true, error: null });
 
-      // Determinar empresa_id
-      const empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e'; // Empresa AABB Garanhuns
+      // Determinar empresa_id (usar o mesmo dos itens do menu)
+      const empresaId = 'df96edf7-f7d8-457a-a490-dd485855fc7d'; // Empresa dos itens do menu
       
       // Criar o pedido
       const { data: orderData, error: orderError } = await supabase
