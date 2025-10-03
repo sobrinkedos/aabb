@@ -49,6 +49,8 @@ const TableComandasPanel: React.FC<TableComandasPanelProps> = ({
   }
 
   const handleCreateComanda = async () => {
+    console.log('🔄 handleCreateComanda chamada para mesa:', table.id);
+    
     if (!user) {
       alert('Usuário não autenticado');
       return;
@@ -56,6 +58,8 @@ const TableComandasPanel: React.FC<TableComandasPanelProps> = ({
 
     try {
       setIsCreating(true);
+      console.log('📝 Dados da comanda:', { table_id: table.id, employee_id: user.id, customer_name: customerName, people_count: peopleCount });
+      
       const newComanda = await createComandaForTable(
         table.id,
         user.id,
@@ -63,7 +67,7 @@ const TableComandasPanel: React.FC<TableComandasPanelProps> = ({
         peopleCount
       );
       
-      console.log('Nova comanda criada:', newComanda);
+      console.log('✅ Nova comanda criada:', newComanda);
       
       // Limpar formulário
       setCustomerName('');

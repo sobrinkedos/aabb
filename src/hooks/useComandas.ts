@@ -54,19 +54,25 @@ export const useComandas = () => {
 
   const createComanda = async (comandaData: Omit<ComandaInsert, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      console.log('🔄 createComanda chamada com dados:', comandaData);
+      
       // Usar mesmo empresa_id dos outros componentes
       const empresaId = 'df96edf7-f7d8-457a-a490-dd485855fc7d';
       
+      const insertData = {
+        ...comandaData,
+        status: 'open',
+        opened_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        empresa_id: empresaId // Adicionar empresa_id para RLS
+      };
+      
+      console.log('📝 Dados que serão inseridos:', insertData);
+      
       const { data, error } = await supabase
         .from('comandas')
-        .insert({
-          ...comandaData,
-          status: 'open',
-          opened_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          empresa_id: empresaId // Adicionar empresa_id para RLS
-        })
+        .insert(insertData)
         .select()
         .single();
 

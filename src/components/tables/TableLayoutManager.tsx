@@ -157,6 +157,10 @@ const TableLayoutManager: React.FC<TableLayoutManagerProps> = ({
       // Fechar painel de ações
       setSelectedTable(null);
       
+      // ABRIR AUTOMATICAMENTE O PAINEL DE COMANDAS
+      console.log('Abrindo painel de comandas automaticamente...');
+      setComandasTable({ ...table, status: 'occupied' });
+      
       // Se houver callback para seleção, chamar
       if (onTableSelect) {
         onTableSelect(table);
