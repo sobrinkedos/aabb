@@ -111,6 +111,11 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
       // Determinar empresa_id (usar o mesmo dos itens do menu)
       const empresaId = 'df96edf7-f7d8-457a-a490-dd485855fc7d'; // Empresa dos itens do menu
       
+      // Calcular totais
+      const totalAmount = data.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
+      const discountAmount = data.discount_amount || 0;
+      const finalAmount = totalAmount - discountAmount;
+      
       // Criar o pedido
       const { data: orderData, error: orderError } = await supabase
         .from('balcao_orders')
@@ -118,7 +123,9 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
           employee_id: user.id,
           customer_name: data.customer_name,
           customer_phone: data.customer_phone,
-          discount_amount: data.discount_amount || 0,
+          total_amount: totalAmount,
+          discount_amount: discountAmount,
+          final_amount: finalAmount,
           notes: data.notes,
           customer_notes: data.customer_notes,
           status: 'pending_payment',
@@ -135,6 +142,7 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
         menu_item_id: item.menu_item_id,
         quantity: item.quantity,
         unit_price: item.unit_price,
+        total_price: item.unit_price * item.quantity,
         notes: item.notes,
         status: 'pending' as BalcaoOrderItemStatus
       }));
