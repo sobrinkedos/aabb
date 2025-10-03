@@ -52,7 +52,8 @@ export const DashboardOverview: React.FC = () => {
     closeCashSession,
     processComandaPayment,
     processCashWithdrawal,
-    processTreasuryTransfer
+    processTreasuryTransfer,
+    refreshData
   } = useCashManagement();
 
   const {
