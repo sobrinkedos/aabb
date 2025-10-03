@@ -231,13 +231,17 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
       
       console.log('📝 Nota que será salva:', notesText);
       
+      // Usar mesmo empresa_id dos itens do menu
+      const empresaId = 'df96edf7-f7d8-457a-a490-dd485855fc7d';
+      
       const transactionData = {
         cash_session_id: data.cash_session_id,
         transaction_type: 'sale',
         payment_method: data.payment_method,
         amount: data.amount_paid,
         processed_by: user!.id,
-        notes: notesText
+        notes: notesText,
+        empresa_id: empresaId // Adicionar empresa_id para RLS
         // Removido processed_at para usar created_at automático
       };
       
