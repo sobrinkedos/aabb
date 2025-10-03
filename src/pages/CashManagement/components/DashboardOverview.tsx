@@ -57,7 +57,8 @@ export const DashboardOverview: React.FC = () => {
 
   const {
     pendingOrders: pendingBalcaoOrders,
-    processPayment: processBalcaoPayment
+    processPayment: processBalcaoPayment,
+    refreshData: refreshBalcaoData
   } = useBalcaoOrders();
 
   const [showOpenModal, setShowOpenModal] = useState(false);
@@ -137,6 +138,9 @@ export const DashboardOverview: React.FC = () => {
         cash_session_id: currentSession.id,
         amount_paid: selectedOrder.final_amount
       });
+
+      // Forçar atualização dos dados
+      await refreshBalcaoData();
 
       // Preparar dados para o comprovante
       setLastPaymentData({

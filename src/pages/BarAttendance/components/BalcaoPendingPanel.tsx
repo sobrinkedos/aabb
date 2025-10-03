@@ -53,6 +53,9 @@ const BalcaoPendingPanel: React.FC = () => {
         amount_paid: selectedOrder.final_amount
       });
 
+      // Forçar atualização dos dados
+      await refreshData();
+      
       setShowPaymentModal(false);
       setSelectedOrder(null);
     } catch (error) {
