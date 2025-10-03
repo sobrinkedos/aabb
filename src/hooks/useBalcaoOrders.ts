@@ -108,6 +108,9 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
     try {
       updateState({ loading: true, error: null });
 
+      // Determinar empresa_id
+      const empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e'; // Empresa AABB Garanhuns
+      
       // Criar o pedido
       const { data: orderData, error: orderError } = await supabase
         .from('balcao_orders')
@@ -118,7 +121,8 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
           discount_amount: data.discount_amount || 0,
           notes: data.notes,
           customer_notes: data.customer_notes,
-          status: 'pending_payment'
+          status: 'pending_payment',
+          empresa_id: empresaId // Adicionar empresa_id para RLS
         })
         .select()
         .single();
