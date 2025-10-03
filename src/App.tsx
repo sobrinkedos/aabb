@@ -12,6 +12,8 @@ import RegisterForm from './components/Auth/RegisterForm';
 import Layout from './components/Layout/Layout';
 import Dashboard from './pages/Dashboard';
 import DashboardOptimized from './pages/DashboardOptimized';
+import DashboardAdvanced from './pages/DashboardAdvanced';
+import DashboardComplete from './pages/DashboardComplete';
 import ErrorBoundaryOptimized from './components/Error/ErrorBoundaryOptimized';
 import { PERFORMANCE_CONFIG } from './config/performance';
 import BarModule from './pages/Bar';
@@ -97,7 +99,24 @@ function App() {
               {/* Dashboard com proteção específica */}
               <Route index element={
                 <PermissionProtectedRoute module="dashboard">
-                  {PERFORMANCE_CONFIG.USE_OPTIMIZED_DASHBOARD ? <DashboardOptimized /> : <Dashboard />}
+                  <DashboardAdvanced />
+                </PermissionProtectedRoute>
+              } />
+              
+              {/* Dashboards alternativos */}
+              <Route path="dashboard/complete" element={
+                <PermissionProtectedRoute module="dashboard">
+                  <DashboardComplete />
+                </PermissionProtectedRoute>
+              } />
+              <Route path="dashboard/simple" element={
+                <PermissionProtectedRoute module="dashboard">
+                  <Dashboard />
+                </PermissionProtectedRoute>
+              } />
+              <Route path="dashboard/optimized" element={
+                <PermissionProtectedRoute module="dashboard">
+                  <DashboardOptimized />
                 </PermissionProtectedRoute>
               } />
               
