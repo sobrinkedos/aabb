@@ -871,7 +871,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const clearNotifications = () => setNotifications([]);
 
   // Funções de carregamento lazy
-  const loadMenuItems = async (forceReload = false) => {
+  const loadMenuItems = useCallback(async (forceReload = false) => {
     console.log('📋 Carregando menu items...', forceReload ? '(FORÇADO)' : '');
     
     // Determinar empresa_id baseado no ambiente
@@ -905,7 +905,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setMenuItems(data.map(fromMenuItemSupabase));
       console.log('💰 Preços atualizados dos menu items:', data.map(item => ({ name: item.name, price: item.price })));
     }
-  };
+  }, []); // Sem dependências pois usa valores estáticos
 
   const loadMembers = async () => {
     if (members.length > 0) return; // Já carregado

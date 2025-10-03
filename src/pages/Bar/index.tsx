@@ -11,7 +11,7 @@ const BarModule: React.FC = () => {
   // Carregar menu items quando o componente for montado
   React.useEffect(() => {
     loadMenuItems();
-  }, [loadMenuItems]);
+  }, []); // Executar apenas uma vez ao montar o componente
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
