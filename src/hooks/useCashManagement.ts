@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { getCurrentUserEmpresaId } from '../utils/auth-helper';
 import { useAuth } from '../contexts/AuthContextSimple';
 import { useBarAttendance } from './useBarAttendance';
 import { useApp } from '../contexts/AppContext';
@@ -124,7 +125,7 @@ export const useCashManagement = (): UseCashManagementReturn => {
 
       console.log('📊 Últimas 10 transações no banco:', allTransactionsEver?.length || 0);
       if (allTransactionsEver && allTransactionsEver.length > 0) {
-        console.table(allTransactionsEver.map(t => ({
+        console.table(allTransactionsEver.map((t: any) => ({
           id: t.id.slice(-8),
           tipo: t.transaction_type,
           metodo: t.payment_method,
@@ -412,7 +413,7 @@ export const useCashManagement = (): UseCashManagementReturn => {
         console.log('Usando empresa padrão...');
       }
 
-      const empresa_id = usuarioEmpresa?.empresa_id || '1'; // Fallback para empresa padrão
+      const empresa_id = (usuarioEmpresa as any)?.empresa_id || '1'; // Fallback para empresa padrão
 
       const sessionData = {
         employee_id: user.id,
@@ -514,6 +515,13 @@ export const useCashManagement = (): UseCashManagementReturn => {
 
       // Registrar transação no caixa
       console.log('💰 Criando transação de pagamento...');
+      // Obter empresa_id do usuário atual
+      const empresaId = await getCurrentUserEmpresaId();
+      
+      if (!empresaId) {
+        throw new Error('Não foi possível identificar a empresa do usuário');
+      }
+
       const transactionData = {
         cash_session_id: state.currentSession.id,
         comanda_id: data.comanda_id,
@@ -523,7 +531,8 @@ export const useCashManagement = (): UseCashManagementReturn => {
         processed_by: user!.id,
         reference_number: data.reference_number,
         customer_name: data.customer_name,
-        notes: data.notes
+        notes: data.notes,
+        empresa_id: empresaId
       };
 
       console.log('📋 Dados da transação:', transactionData);
@@ -583,13 +592,21 @@ export const useCashManagement = (): UseCashManagementReturn => {
     try {
       updateState({ loading: true, error: null });
 
+      // Obter empresa_id do usuário atual
+      const empresaId = await getCurrentUserEmpresaId();
+      
+      if (!empresaId) {
+        throw new Error('Não foi possível identificar a empresa do usuário');
+      }
+
       const transactionData = {
         cash_session_id: state.currentSession.id,
         transaction_type: 'refund' as TransactionType,
         payment_method: data.refund_method,
         amount: -Math.abs(data.amount), // Valor negativo para estorno
         processed_by: user!.id,
-        notes: `Estorno: ${data.reason}. Transação original: ${data.original_transaction_id}`
+        notes: `Estorno: ${data.reason}. Transação original: ${data.original_transaction_id}`,
+        empresa_id: empresaId
       };
 
       const { error } = await (supabase as any)
@@ -611,6 +628,13 @@ export const useCashManagement = (): UseCashManagementReturn => {
     try {
       updateState({ loading: true, error: null });
 
+      // Obter empresa_id do usuário atual
+      const empresaId = await getCurrentUserEmpresaId();
+      
+      if (!empresaId) {
+        throw new Error('Não foi possível identificar a empresa do usuário');
+      }
+
       const adjustmentAmount = data.adjustment_type === 'add' ? data.amount : -data.amount;
 
       const transactionData = {
@@ -619,7 +643,8 @@ export const useCashManagement = (): UseCashManagementReturn => {
         payment_method: data.payment_method || 'dinheiro',
         amount: adjustmentAmount,
         processed_by: user!.id,
-        notes: `Ajuste ${data.adjustment_type === 'add' ? 'positivo' : 'negativo'}: ${data.reason}`
+        notes: `Ajuste ${data.adjustment_type === 'add' ? 'positivo' : 'negativo'}: ${data.reason}`,
+        empresa_id: empresaId
       };
 
       const { error } = await (supabase as any)
@@ -643,13 +668,21 @@ export const useCashManagement = (): UseCashManagementReturn => {
     try {
       updateState({ loading: true, error: null });
 
+      // Obter empresa_id do usuário atual
+      const empresaId = await getCurrentUserEmpresaId();
+      
+      if (!empresaId) {
+        throw new Error('Não foi possível identificar a empresa do usuário');
+      }
+
       const transactionData = {
         cash_session_id: state.currentSession.id,
         transaction_type: 'adjustment' as TransactionType, // Usando 'adjustment' temporariamente até migrar o banco
         payment_method: 'dinheiro' as PaymentMethod,
         amount: -Math.abs(data.amount), // Valor negativo para saída
         processed_by: user!.id,
-        notes: `[SAÍDA] ${data.purpose}: ${data.reason}. Autorizado por: ${data.authorized_by}${data.recipient ? `. Destinatário: ${data.recipient}` : ''}`
+        notes: `[SAÍDA] ${data.purpose}: ${data.reason}. Autorizado por: ${data.authorized_by}${data.recipient ? `. Destinatário: ${data.recipient}` : ''}`,
+        empresa_id: empresaId
       };
 
       const { data: newTransaction, error } = await (supabase as any)
@@ -683,6 +716,13 @@ export const useCashManagement = (): UseCashManagementReturn => {
     try {
       updateState({ loading: true, error: null });
 
+      // Obter empresa_id do usuário atual
+      const empresaId = await getCurrentUserEmpresaId();
+      
+      if (!empresaId) {
+        throw new Error('Não foi possível identificar a empresa do usuário');
+      }
+
       // Criar transação de transferência
       const transactionData = {
         cash_session_id: state.currentSession.id,
@@ -690,7 +730,8 @@ export const useCashManagement = (): UseCashManagementReturn => {
         payment_method: 'dinheiro' as PaymentMethod,
         amount: -Math.abs(data.amount), // Valor negativo para transferência
         processed_by: user!.id,
-        notes: `[TRANSFERÊNCIA TESOURARIA] Autorizado por: ${data.authorized_by}${data.treasury_receipt_number ? `. Comprovante: ${data.treasury_receipt_number}` : ''}${data.notes ? `. Obs: ${data.notes}` : ''}`
+        notes: `[TRANSFERÊNCIA TESOURARIA] Autorizado por: ${data.authorized_by}${data.treasury_receipt_number ? `. Comprovante: ${data.treasury_receipt_number}` : ''}${data.notes ? `. Obs: ${data.notes}` : ''}`,
+        empresa_id: empresaId
       };
 
       const { data: newTransaction, error } = await (supabase as any)

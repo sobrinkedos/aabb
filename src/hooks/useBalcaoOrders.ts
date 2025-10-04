@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { getCurrentUserEmpresaId } from '../utils/auth-helper';
 import { useAuth } from '../contexts/AuthContextSimple';
 import { useApp } from '../contexts/AppContext';
 import {
@@ -243,8 +244,12 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
       
       console.log('📝 Nota que será salva:', notesText);
       
-      // Usar mesmo empresa_id dos itens do menu
-      const empresaId = 'df96edf7-f7d8-457a-a490-dd485855fc7d';
+      // Obter empresa_id do usuário atual
+      const empresaId = await getCurrentUserEmpresaId();
+      
+      if (!empresaId) {
+        throw new Error('Não foi possível identificar a empresa do usuário');
+      }
       
       const transactionData = {
         cash_session_id: data.cash_session_id,
