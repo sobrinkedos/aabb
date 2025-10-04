@@ -93,18 +93,18 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
       }
 
       // Buscar empresa do usuário
-      const { data: empresaData } = await supabase
+      const { data: empresaData, error: empresaError } = await supabase
         .from('usuarios_empresa')
         .select('empresa_id')
         .eq('user_id', userData.user.id)
         .eq('status', 'ativo')
         .single();
 
-      if (!empresaData) {
+      if (empresaError || !empresaData) {
         throw new Error('Usuário não vinculado a nenhuma empresa');
       }
 
-      const empresaId = empresaData.empresa_id;
+      const empresaId = (empresaData as any).empresa_id;
       console.log('🏢 Carregando menu items para empresa_id:', empresaId);
 
       // Buscar itens do menu baseado no filtro
@@ -154,7 +154,7 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
       // Log detalhado dos itens encontrados
       if (data && data.length > 0) {
         console.log('📋 Itens encontrados na consulta filtrada:');
-        data.forEach((item, index) => {
+        data.forEach((item: any, index: number) => {
           console.log(`${index + 1}. ${item.name}:`, {
             id: item.id,
             available: item.available,
@@ -179,54 +179,18 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
       if (error) throw error;
       
       if (!data || data.length === 0) {
-        console.log('No menu items found - creating sample data');
-        // Se não há dados, vamos criar alguns de exemplo
-        const sampleItems = [
-          {
-            name: 'Cerveja Pilsen',
-            description: 'Cerveja gelada 350ml',
-            price: 8.50,
-            category: 'Bebidas',
-            available: true
-          },
-          {
-            name: 'Refrigerante',
-            description: 'Coca-Cola 350ml',
-            price: 5.00,
-            category: 'Bebidas',
-            available: true
-          }
-        ];
+        console.log('❌ Nenhum menu item encontrado para empresa_id:', empresaId);
+        console.log('🔒 Isolamento multitenant ativo - não exibindo dados de outras empresas');
         
-        const { data: insertData, error: insertError } = await supabase
-          .from('menu_items')
-          .insert(sampleItems.map(item => ({ ...item, empresa_id: empresaId })))
-          .select();
-          
-        console.log('Sample data inserted:', insertData, 'Error:', insertError);
-        
-        if (!insertError && insertData) {
-          const mappedItems: MenuItem[] = insertData.map(item => ({
-            id: item.id,
-            name: item.name,
-            description: item.description || '',
-            price: item.price,
-            category: item.category || '',
-            image_url: item.image_url || undefined,
-            available: (item as any).available || false,
-            preparation_time: (item as any).preparation_time || 0,
-            item_type: (item as any).item_type || 'prepared',
-            direct_inventory_item_id: (item as any).direct_inventory_item_id || undefined,
-            created_at: item.created_at || undefined,
-            updated_at: (item as any).updated_at || undefined
-          }));
-          setMenuItems(mappedItems);
-          return;
-        }
+        // IMPORTANTE: NÃO criar dados de exemplo
+        // Isso garante isolamento total entre empresas
+        setMenuItems([]);
+        setError('Nenhum item encontrado no menu para esta empresa. Entre em contato com o administrador.');
+        return;
       }
       
       // Mapear para a estrutura esperada
-      const mappedItems: MenuItem[] = (data || []).map(item => {
+      const mappedItems: MenuItem[] = (data || []).map((item: any) => {
         const inventoryItem = (item as any).inventory_items;
         const isDirectItem = (item as any).item_type === 'direct';
         
