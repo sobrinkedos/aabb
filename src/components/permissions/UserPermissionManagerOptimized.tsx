@@ -15,6 +15,7 @@ import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { Search, User, Save, Trash2, RefreshCw, Settings, Eye, EyeOff, TrendingUp } from 'lucide-react';
 import { useSearchDebounce } from '../../hooks/useDebounce';
 import { usePermissionsCache } from '../../hooks/usePermissionsCache';
+import { getCurrentUserEmpresaId } from '../../utils/auth-helper';
 
 // ============================================================================
 // INTERFACES
@@ -222,11 +223,13 @@ const ModuleCard = memo(({
 // ============================================================================
 
 export const UserPermissionManagerOptimized: React.FC<UserPermissionManagerOptimizedProps> = ({
-  empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e', // AABB Garanhuns
+  empresaId: propEmpresaId, // Props opcional
   onPermissionsSaved,
   showOnlyActive = true,
   className = ''
 }) => {
+  // Estado para empresa_id dinâmico
+  const [empresaId, setEmpresaId] = useState<string | null>(propEmpresaId || null);
   // Hooks otimizados
   const { 
     getUsers, 
@@ -257,6 +260,8 @@ export const UserPermissionManagerOptimized: React.FC<UserPermissionManagerOptim
   // ============================================================================
 
   const carregarUsuarios = useCallback(async () => {
+    if (!empresaId) return; // Aguardar empresa_id
+    
     setLoading(true);
     try {
       console.log('🔍 Carregando usuários (otimizado)...');
@@ -277,6 +282,8 @@ export const UserPermissionManagerOptimized: React.FC<UserPermissionManagerOptim
   }, [empresaId, showOnlyActive, showInactive, getUsers]);
 
   const carregarPermissoesUsuario = useCallback(async (usuario: UsuarioEmpresa) => {
+    if (!empresaId) return; // Aguardar empresa_id
+    
     try {
       console.log(`🔍 Carregando permissões (otimizado): ${usuario.nome_completo}`);
 
@@ -413,6 +420,8 @@ export const UserPermissionManagerOptimized: React.FC<UserPermissionManagerOptim
   }, []);
 
   const refreshData = useCallback(() => {
+    if (!empresaId) return;
+    
     // Invalidar cache e recarregar
     invalidateUsersCache(empresaId);
     if (usuarioSelecionado) {
@@ -447,6 +456,37 @@ export const UserPermissionManagerOptimized: React.FC<UserPermissionManagerOptim
   // ============================================================================
   // RENDER
   // ============================================================================
+
+  // Efeito para obter empresa_id dinamicamente se não foi fornecido via props
+  useEffect(() => {
+    const obterEmpresaId = async () => {
+      if (propEmpresaId) {
+        setEmpresaId(propEmpresaId);
+        return;
+      }
+      
+      try {
+        const id = await getCurrentUserEmpresaId();
+        if (id) {
+          setEmpresaId(id);
+          console.log('🏢 Empresa ID obtido dinamicamente:', id);
+        } else {
+          console.error('❌ Não foi possível obter empresa_id do usuário');
+        }
+      } catch (error) {
+        console.error('❌ Erro ao obter empresa_id:', error);
+      }
+    };
+    
+    obterEmpresaId();
+  }, [propEmpresaId]);
+
+  // Carregar usuários quando empresa_id estiver disponível
+  useEffect(() => {
+    if (empresaId) {
+      carregarUsuarios();
+    }
+  }, [empresaId, carregarUsuarios]);
 
   return (
     <div className={`user-permission-manager-optimized ${className}`}>

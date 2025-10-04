@@ -114,6 +114,7 @@ export type Database = {
           customer_id: string | null
           customer_name: string | null
           employee_id: string
+          empresa_id: string
           id: string
           notes: string | null
           opened_at: string | null
@@ -130,6 +131,7 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string | null
           employee_id: string
+          empresa_id: string
           id?: string
           notes?: string | null
           opened_at?: string | null
@@ -146,6 +148,7 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string | null
           employee_id?: string
+          empresa_id?: string
           id?: string
           notes?: string | null
           opened_at?: string | null

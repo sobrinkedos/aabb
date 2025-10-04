@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { getCurrentUserEmpresaId } from '../../utils/auth-helper';
 import { useAuth } from '../../contexts/AuthContextSimple';
 
 interface DadosEmpresa {
@@ -140,33 +140,11 @@ export const ConfiguracoesEmpresaSimples: React.FC = () => {
       setError('');
       setSuccessMessage('');
 
-      // Obter empresa do usuário
-      let empresaId: string | null = null;
+      // Obter empresa do usuário dinamicamente
+      const empresaId = await getCurrentUserEmpresaId();
       
-      // Tentar buscar na tabela usuarios_empresa
-      const { data: usuarioEmpresa, error: userError } = await supabase
-        .from('usuarios_empresa')
-        .select('empresa_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (usuarioEmpresa?.empresa_id) {
-        empresaId = usuarioEmpresa.empresa_id;
-      } else {
-        // Se não encontrou, tentar buscar empresas onde o email_admin é o email do usuário
-        const { data: empresasPorEmail, error: emailError } = await supabase
-          .from('empresas')
-          .select('id')
-          .eq('email_admin', user.email)
-          .limit(1);
-
-        if (empresasPorEmail && empresasPorEmail.length > 0) {
-          empresaId = empresasPorEmail[0].id;
-        }
-      }
-
       if (!empresaId) {
-        setError('Erro ao identificar empresa do usuário');
+        setError('Erro ao identificar empresa do usuário. Verifique se você está logado corretamente.');
         return;
       }
 

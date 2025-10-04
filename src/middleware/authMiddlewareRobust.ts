@@ -2,7 +2,7 @@
  * Utilitário para carregar permissões com fallback em caso de erro RLS
  */
 
-import { supabase } from '../lib/supabase';
+import { getCurrentUserEmpresaId } from '../utils/auth-helper';
 import { UserPermissions, ModulePermissions } from './authMiddleware';
 import { getUserRole, mapEmployeeRoleToMiddlewareRole, addUserRoleMapping } from '../config/userRoleMapping';
 
@@ -128,8 +128,20 @@ export async function loadUserPermissionsRobust(): Promise<UserPermissions | nul
     console.log(`🎯 Role final determinado: ${userRole}`);
     const isSuperUser = userRole === 'administrador';
     
-    // Para superusuários, usar empresa_id real conhecida
-    const empresaId = isSuperUser ? '9e445c5a-a382-444d-94f8-9d126ed6414e' : crypto.randomUUID();
+    // Para superusuários, usar empresa_id real obtida dinamicamente
+    let empresaId: string;
+    if (isSuperUser) {
+      try {
+        const dynamicEmpresaId = await getCurrentUserEmpresaId();
+        empresaId = dynamicEmpresaId || crypto.randomUUID();
+        console.log('👑 Superusuário - empresa_id obtida dinamicamente:', empresaId);
+      } catch (error) {
+        console.warn('⚠️ Erro ao obter empresa_id para superusuário, usando UUID aleatório:', error);
+        empresaId = crypto.randomUUID();
+      }
+    } else {
+      empresaId = crypto.randomUUID();
+    }
     
     const isUsingFallback = true;
     const usuarioEmpresa: UsuarioEmpresa = {

@@ -217,6 +217,7 @@ export type Database = {
           customer_id: string | null
           customer_name: string | null
           employee_id: string
+          empresa_id: string
           id: string
           notes: string | null
           opened_at: string | null
@@ -233,6 +234,7 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string | null
           employee_id: string
+          empresa_id: string
           id?: string
           notes?: string | null
           opened_at?: string | null
@@ -249,6 +251,7 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string | null
           employee_id?: string
+          empresa_id?: string
           id?: string
           notes?: string | null
           opened_at?: string | null
@@ -283,8 +286,6 @@ export type Database = {
           },
         ]
       }
-      // Include all existing tables...
-      [K in keyof Omit<Database['public']['Tables'], 'cash_sessions' | 'cash_transactions' | 'payment_reconciliation' | 'comandas'>]: Database['public']['Tables'][K]
     }
     Views: {
       daily_cash_summary: {
