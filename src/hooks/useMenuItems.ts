@@ -86,16 +86,26 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
       
       console.log('All menu items:', allData, 'Error:', allError);
       
-      // Determinar empresa_id baseado no ambiente
-      const isProduction = import.meta.env.VITE_ENVIRONMENT === 'production' || 
-                          import.meta.env.VERCEL_ENV === 'production' ||
-                          import.meta.env.VITE_SUPABASE_URL?.includes('jtfdzjmravketpkwjkvp');
-      
-      const empresaId = isProduction 
-        ? '9e445c5a-a382-444d-94f8-9d126ed6414e' // Produção
-        : 'c53c4376-155a-46a2-bcc1-407eb6ed190a'; // Desenvolvimento
-      
-      console.log('🏢 Carregando menu items para empresa_id:', empresaId, '(ambiente:', isProduction ? 'produção' : 'desenvolvimento', ')');
+      // Determinar empresa_id baseado no usuário autenticado
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      // Buscar empresa do usuário
+      const { data: empresaData } = await supabase
+        .from('usuarios_empresa')
+        .select('empresa_id')
+        .eq('user_id', userData.user.id)
+        .eq('status', 'ativo')
+        .single();
+
+      if (!empresaData) {
+        throw new Error('Usuário não vinculado a nenhuma empresa');
+      }
+
+      const empresaId = empresaData.empresa_id;
+      console.log('🏢 Carregando menu items para empresa_id:', empresaId);
 
       // Buscar itens do menu baseado no filtro
       console.log('🔍 Parâmetros de busca:', { includeDirectItems, empresaId });
@@ -113,12 +123,11 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
             available_for_sale
           )
         `)
-        // Temporariamente removendo filtro empresa_id devido ao RLS
-        // .eq('empresa_id', empresaId)
+        .eq('empresa_id', empresaId)
         .order('category', { ascending: true })
         .order('name', { ascending: true });
         
-      console.log('⚠️ TEMPORÁRIO: Removido filtro empresa_id devido ao RLS');
+      console.log('🔐 Filtro empresa_id aplicado:', empresaId);
         
       // Se não incluir itens diretos, filtrar apenas preparados
       if (!includeDirectItems) {
@@ -128,15 +137,17 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
         console.log('✅ Incluindo itens diretos');
       }
       
-      // Temporariamente remover filtro available para debug
-      console.log('🔍 Buscando TODOS os itens (sem filtro available)...');
+      // Aplicar filtro available para itens ativos
+      query = query.eq('available', true);
+      console.log('🔍 Buscando apenas itens disponíveis da empresa...');
       
       const { data, error } = await query;
 
-      console.log('Available menu items:', data, 'Error:', error);
+      console.log('🔐 Menu items da empresa:', data?.length || 0, 'Error:', error);
       console.log('🔍 Query executada com filtros:', {
         empresa_id: empresaId,
         includeDirectItems,
+        available: true,
         totalFound: data?.length || 0
       });
       
@@ -189,7 +200,7 @@ export const useMenuItems = (includeDirectItems: boolean = false) => {
         
         const { data: insertData, error: insertError } = await supabase
           .from('menu_items')
-          .insert(sampleItems)
+          .insert(sampleItems.map(item => ({ ...item, empresa_id: empresaId })))
           .select();
           
         console.log('Sample data inserted:', insertData, 'Error:', insertError);

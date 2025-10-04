@@ -205,9 +205,31 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     if (menuItemsLoaded) return;
     
     try {
+      // Obter empresa do usuário autenticado
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        console.error('Usuário não autenticado');
+        return;
+      }
+
+      // Buscar empresa do usuário
+      const { data: empresaData } = await supabase
+        .from('usuarios_empresa')
+        .select('empresa_id')
+        .eq('user_id', userData.user.id)
+        .eq('status', 'ativo')
+        .single();
+
+      if (!empresaData) {
+        console.error('Usuário não vinculado a nenhuma empresa');
+        return;
+      }
+
       const { data, error } = await supabase
         .from('menu_items')
         .select(`*, inventory_items!left(name, image_url)`)
+        .eq('empresa_id', empresaData.empresa_id)
+        .eq('available', true)
         .order('name');
 
       if (error) {
@@ -215,6 +237,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       } else if (data) {
         setMenuItems(data.map(fromMenuItemSupabase));
         setMenuItemsLoaded(true);
+        console.log('✅ Menu items carregados:', data.length, 'itens da empresa:', empresaData.empresa_id);
       }
     } catch (error) {
       console.error('Erro no carregamento de menu items:', error);

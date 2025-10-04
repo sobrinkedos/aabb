@@ -883,16 +883,26 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const loadMenuItems = useCallback(async (forceReload = false) => {
     console.log('📋 Carregando menu items...', forceReload ? '(FORÇADO)' : '');
     
-    // Determinar empresa_id baseado no ambiente
-    const currentUrl = window.location.hostname;
-    const isProduction = currentUrl.includes('vercel.app') || 
-                        currentUrl.includes('aabb-system.vercel.app') ||
-                        import.meta.env.VITE_ENVIRONMENT === 'production' || 
-                        import.meta.env.VERCEL_ENV === 'production' ||
-                        import.meta.env.VITE_SUPABASE_URL?.includes('jtfdzjmravketpkwjkvp');
-    
-    const empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e'; // Sempre usar empresa de produção
-    
+    // CORREÇÃO: Usar empresa do usuário logado
+    if (!user) {
+      console.log('⚠️ Usuário não autenticado, não carregando menu');
+      return;
+    }
+
+    // Buscar empresa do usuário atual
+    const { data: usuarioEmpresa, error: empresaError } = await supabase
+      .from('usuarios_empresa')
+      .select('empresa_id')
+      .eq('user_id', user.id)
+      .eq('status', 'ativo')
+      .single();
+
+    if (empresaError || !usuarioEmpresa) {
+      console.error('❌ Erro ao buscar empresa do usuário:', empresaError);
+      return;
+    }
+
+    const empresaId = usuarioEmpresa.empresa_id;
     console.log('🏢 Carregando menu items para empresa_id:', empresaId);
     
     const { data, error } = await supabase.from('menu_items').select(`
@@ -914,7 +924,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setMenuItems(data.map(fromMenuItemSupabase));
       console.log('💰 Preços atualizados dos menu items:', data.map(item => ({ name: item.name, price: item.price })));
     }
-  }, []); // Sem dependências pois usa valores estáticos
+  }, [user]); // Dependência em user para recarregar quando muda
 
   const loadMembers = async () => {
     if (members.length > 0) return; // Já carregado
