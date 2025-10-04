@@ -165,77 +165,56 @@ export class RegistroEmpresaService {
   }
 
   /**
-   * Cria a empresa no banco de dados
+   * Cria a empresa no banco de dados usando função segura
    */
   private static async criarEmpresa(dados: RegistroEmpresaData, userId: string): Promise<RegistroResult> {
     try {
-      // Usar service role para criar empresa (bypass RLS)
-      const serviceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      
-      let empresaData;
-      let empresaError;
+      // Usar função do banco que faz tudo de forma atômica e segura
+      const { data, error } = await supabase
+        .rpc('registrar_empresa_completa', {
+          p_nome_empresa: dados.nome_empresa,
+          p_cnpj: dados.cnpj,
+          p_email_admin: dados.email_admin,
+          p_telefone_empresa: dados.telefone_empresa || null,
+          p_endereco: dados.endereco || null,
+          p_nome_admin: dados.nome_admin,
+          p_telefone_admin: dados.telefone_admin || null,
+          p_user_id: userId
+        });
 
-      if (serviceRoleKey && serviceRoleKey !== import.meta.env.VITE_SUPABASE_ANON_KEY) {
-        // Usar service role se disponível
-        const { createClient } = await import('@supabase/supabase-js');
-        const serviceClient = createClient(supabaseUrl, serviceRoleKey);
-        
-        const result = await serviceClient
-          .from('empresas')
-          .insert({
-            nome: dados.nome_empresa,
-            cnpj: dados.cnpj,
-            email_admin: dados.email_admin,
-            telefone: dados.telefone_empresa,
-            endereco: dados.endereco,
-            status: 'ativo'
-          })
-          .select()
-          .single();
-          
-        empresaData = result.data;
-        empresaError = result.error;
-      } else {
-        // Fallback para cliente normal
-        const result = await supabase
-          .from('empresas')
-          .insert({
-            nome: dados.nome_empresa,
-            cnpj: dados.cnpj,
-            email_admin: dados.email_admin,
-            telefone: dados.telefone_empresa,
-            endereco: dados.endereco,
-            status: 'ativo'
-          })
-          .select()
-          .single();
-          
-        empresaData = result.data;
-        empresaError = result.error;
+      if (error) {
+        console.error('Erro ao chamar função de registro:', error);
+        return { success: false, error: error.message };
       }
 
-      if (empresaError || !empresaData) {
-        console.error('Erro ao criar empresa:', empresaError);
-        return { success: false, error: empresaError?.message || 'Erro ao criar empresa' };
+      // Verificar resultado da função
+      if (!data || !data.success) {
+        const errorMsg = data?.error || 'Erro desconhecido ao registrar empresa';
+        console.error('Erro retornado pela função:', errorMsg);
+        return { success: false, error: errorMsg };
       }
 
-      const empresa = empresaData;
+      // Buscar dados completos da empresa e usuário criados
+      const { data: empresaData, error: empresaError } = await supabase
+        .from('empresas')
+        .select('*')
+        .eq('id', data.empresa_id)
+        .single();
 
-      // Criar primeiro usuário como SUPER_ADMIN
-      const usuarioResult = await PrimeiroUsuarioUtils.criarPrimeiroUsuario({
-        user_id: userId,
-        empresa_id: empresa.id,
-        nome_completo: dados.nome_admin,
-        email: dados.email_admin,
-        telefone: dados.telefone_admin,
-        cargo: 'Administrador Principal'
-      });
+      if (empresaError) {
+        console.error('Erro ao buscar empresa criada:', empresaError);
+        return { success: false, error: 'Empresa criada mas erro ao buscar dados' };
+      }
 
-      if (!usuarioResult.success) {
-        // Se falhou ao criar usuário, tentar reverter criação da empresa
-        await supabase.from('empresas').delete().eq('id', empresa.id);
-        return { success: false, error: usuarioResult.error };
+      const { data: usuarioData, error: usuarioError } = await supabase
+        .from('usuarios_empresa')
+        .select('*')
+        .eq('id', data.usuario_id)
+        .single();
+
+      if (usuarioError) {
+        console.error('Erro ao buscar usuário criado:', usuarioError);
+        return { success: false, error: 'Usuário criado mas erro ao buscar dados' };
       }
 
       // Marcar para mostrar onboarding após login
@@ -245,8 +224,8 @@ export class RegistroEmpresaService {
 
       return {
         success: true,
-        empresa: empresa as Empresa,
-        usuario: { id: usuarioResult.usuarioId } as UsuarioEmpresa
+        empresa: empresaData as Empresa,
+        usuario: usuarioData as UsuarioEmpresa
       };
     } catch (error) {
       console.error('Erro ao criar empresa:', error);
