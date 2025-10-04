@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { MenuItem, Order, InventoryItem, InventoryCategory, Member, Sale, OrderItem } from '../types';
+import { getCurrentUserEmpresaId } from '../utils/auth-helper';
 import type { Database } from '../types/supabase';
 
 type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
@@ -311,6 +312,13 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // Funções CRUD otimizadas
   const addMenuItem = useCallback(async (itemData: Omit<MenuItem, 'id'>) => {
+    // Obter empresa_id do usuário atual
+    const empresaId = await getCurrentUserEmpresaId();
+    
+    if (!empresaId) {
+      throw new Error('Não foi possível identificar a empresa do usuário');
+    }
+    
     const itemToInsert: any = {
       name: itemData.name,
       description: itemData.description || null,
@@ -320,7 +328,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       preparation_time: itemData.preparation_time || null,
       item_type: itemData.item_type || 'prepared',
       direct_inventory_item_id: itemData.direct_inventory_item_id || null,
-      image_url: itemData.image_url || null
+      image_url: itemData.image_url || null,
+      empresa_id: empresaId
     };
     
     const { data, error } = await supabase.from('menu_items').insert(itemToInsert).select().single();
