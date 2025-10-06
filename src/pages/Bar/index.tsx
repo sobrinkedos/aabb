@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Filter, Search } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { useBarStats } from '../../hooks/useBarStats';
 import OrderModal from './OrderModal';
 import OrderCard from './OrderCard';
 
 const BarModule: React.FC = () => {
   const { orders, barOrders, menuItems, loadMenuItems } = useApp();
+  const { totalRevenue, ordersToday, pendingOrders, loading: statsLoading } = useBarStats();
   
   // Carregar menu items quando o componente for montado
   React.useEffect(() => {
@@ -53,10 +55,6 @@ const BarModule: React.FC = () => {
     return matchesStatus && matchesTable && matchesSearch;
   });
 
-  const barRevenue = barOrders
-    .filter(order => order.status === 'delivered')
-    .reduce((sum, order) => sum + order.total, 0);
-
   return (
     <div className="space-y-6">
       <motion.div
@@ -82,17 +80,27 @@ const BarModule: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Receita Total</h3>
-          <p className="text-3xl font-bold text-green-600">R$ {barRevenue.toFixed(2)}</p>
+          {statsLoading ? (
+            <p className="text-2xl font-bold text-gray-400">Carregando...</p>
+          ) : (
+            <p className="text-3xl font-bold text-green-600">R$ {totalRevenue.toFixed(2)}</p>
+          )}
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Pedidos Hoje</h3>
-          <p className="text-3xl font-bold text-blue-600">{barOrders.length}</p>
+          {statsLoading ? (
+            <p className="text-2xl font-bold text-gray-400">Carregando...</p>
+          ) : (
+            <p className="text-3xl font-bold text-blue-600">{ordersToday}</p>
+          )}
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Pedidos Pendentes</h3>
-          <p className="text-3xl font-bold text-orange-600">
-            {barOrders.filter(o => o.status === 'pending').length}
-          </p>
+          {statsLoading ? (
+            <p className="text-2xl font-bold text-gray-400">Carregando...</p>
+          ) : (
+            <p className="text-3xl font-bold text-orange-600">{pendingOrders}</p>
+          )}
         </div>
       </div>
 
