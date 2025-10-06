@@ -17,6 +17,7 @@ import DashboardComplete from './pages/DashboardComplete';
 import ErrorBoundaryOptimized from './components/Error/ErrorBoundaryOptimized';
 import { PERFORMANCE_CONFIG } from './config/performance';
 import BarModule from './pages/Bar';
+import DeliveredOrders from './pages/Bar/DeliveredOrders';
 import BarCustomersModule from './pages/BarCustomers';
 import BarEmployeesModule from './pages/BarEmployees';
 import KitchenModule from './pages/Kitchen';
@@ -124,6 +125,11 @@ function App() {
               <Route path="bar" element={
                 <PermissionProtectedRoute module="monitor_bar">
                   <BarModule />
+                </PermissionProtectedRoute>
+              } />
+              <Route path="bar/pedidos-entregues" element={
+                <PermissionProtectedRoute module="monitor_bar">
+                  <DeliveredOrders />
                 </PermissionProtectedRoute>
               } />
               <Route path="bar/attendance" element={

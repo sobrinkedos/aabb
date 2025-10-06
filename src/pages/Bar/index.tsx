@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Filter, Search } from 'lucide-react';
+import { Plus, Filter, Search, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { useBarStats } from '../../hooks/useBarStats';
-import { useAllBarOrders } from '../../hooks/useAllBarOrders';
 import OrderModal from './OrderModal';
 import OrderCard from './OrderCard';
 
 const BarModule: React.FC = () => {
-  const { menuItems, loadMenuItems } = useApp();
-  const { totalRevenue, ordersToday, pendingOrders, loading: statsLoading } = useBarStats();
-  const { orders: allBarOrders, loading: ordersLoading } = useAllBarOrders();
+  const navigate = useNavigate();
+  const { barOrders, menuItems, loadMenuItems } = useApp();
+  const { totalRevenue, ordersToday, pendingOrders, deliveredOrders, loading: statsLoading } = useBarStats();
   
   // Carregar menu items quando o componente for montado
   React.useEffect(() => {
@@ -26,8 +26,8 @@ const BarModule: React.FC = () => {
 
   // Agrupar pedidos por mesa para identificar múltiplos pedidos
   const getOrdersByTable = () => {
-    const tableOrders = new Map<string, typeof allBarOrders>();
-    allBarOrders.forEach(order => {
+    const tableOrders = new Map<string, typeof barOrders>();
+    barOrders.forEach(order => {
       const tableKey = order.tableNumber || 'Balcão';
       if (!tableOrders.has(tableKey)) {
         tableOrders.set(tableKey, []);
@@ -48,7 +48,7 @@ const BarModule: React.FC = () => {
     return order.id.slice(-4).toUpperCase();
   };
 
-  const filteredOrders = allBarOrders.filter(order => {
+  const filteredOrders = barOrders.filter(order => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     const matchesTable = tableFilter === 'all' || (order.tableNumber || 'Balcão') === tableFilter;
     const matchesSearch = order.tableNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -79,7 +79,7 @@ const BarModule: React.FC = () => {
         </motion.button>
       </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Receita Total</h3>
           {statsLoading ? (
@@ -104,6 +104,25 @@ const BarModule: React.FC = () => {
             <p className="text-3xl font-bold text-orange-600">{pendingOrders}</p>
           )}
         </div>
+        <motion.div
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => navigate('/bar/pedidos-entregues')}
+          className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-all border-2 border-green-200"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold text-gray-800">Pedidos Entregues</h3>
+            <CheckCircle className="text-green-600" size={24} />
+          </div>
+          {statsLoading ? (
+            <p className="text-2xl font-bold text-gray-400">Carregando...</p>
+          ) : (
+            <div>
+              <p className="text-3xl font-bold text-green-600">{deliveredOrders}</p>
+              <p className="text-sm text-green-700 mt-2">Clique para ver histórico</p>
+            </div>
+          )}
+        </motion.div>
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -147,7 +166,6 @@ const BarModule: React.FC = () => {
               <option value="pending">Pendente</option>
               <option value="preparing">Preparando</option>
               <option value="ready">Pronto</option>
-              <option value="delivered">Entregue</option>
             </select>
 
           </div>
@@ -178,30 +196,22 @@ const BarModule: React.FC = () => {
           </div>
         )}
 
-        {ordersLoading ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">Carregando pedidos...</p>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredOrders.map((order) => (
-                <OrderCard 
-                  key={order.id} 
-                  order={order} 
-                  menuItems={menuItems}
-                  hasMultipleOrders={hasMultipleOrdersForTable(order.tableNumber || 'Balcão')}
-                  orderNumber={getOrderNumber(order)}
-                />
-              ))}
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredOrders.map((order) => (
+            <OrderCard 
+              key={order.id} 
+              order={order} 
+              menuItems={menuItems}
+              hasMultipleOrders={hasMultipleOrdersForTable(order.tableNumber || 'Balcão')}
+              orderNumber={getOrderNumber(order)}
+            />
+          ))}
+        </div>
 
-            {filteredOrders.length === 0 && !ordersLoading && (
-              <div className="text-center py-8">
-                <p className="text-gray-500">Nenhum pedido encontrado</p>
-              </div>
-            )}
-          </>
+        {filteredOrders.length === 0 && (
+          <div className="text-center py-8">
+            <p className="text-gray-500">Nenhum pedido encontrado</p>
+          </div>
         )}
       </div>
 
