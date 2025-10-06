@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
 import { getCurrentUserEmpresaId } from '../../utils/auth-helper';
 import { useAuth } from '../../contexts/AuthContextSimple';
 
