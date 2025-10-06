@@ -3,12 +3,14 @@ import { motion } from 'framer-motion';
 import { Plus, Filter, Search } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useBarStats } from '../../hooks/useBarStats';
+import { useAllBarOrders } from '../../hooks/useAllBarOrders';
 import OrderModal from './OrderModal';
 import OrderCard from './OrderCard';
 
 const BarModule: React.FC = () => {
-  const { orders, barOrders, menuItems, loadMenuItems } = useApp();
+  const { menuItems, loadMenuItems } = useApp();
   const { totalRevenue, ordersToday, pendingOrders, loading: statsLoading } = useBarStats();
+  const { orders: allBarOrders, loading: ordersLoading } = useAllBarOrders();
   
   // Carregar menu items quando o componente for montado
   React.useEffect(() => {
@@ -24,8 +26,8 @@ const BarModule: React.FC = () => {
 
   // Agrupar pedidos por mesa para identificar múltiplos pedidos
   const getOrdersByTable = () => {
-    const tableOrders = new Map<string, typeof barOrders>();
-    barOrders.forEach(order => {
+    const tableOrders = new Map<string, typeof allBarOrders>();
+    allBarOrders.forEach(order => {
       const tableKey = order.tableNumber || 'Balcão';
       if (!tableOrders.has(tableKey)) {
         tableOrders.set(tableKey, []);
@@ -46,7 +48,7 @@ const BarModule: React.FC = () => {
     return order.id.slice(-4).toUpperCase();
   };
 
-  const filteredOrders = barOrders.filter(order => {
+  const filteredOrders = allBarOrders.filter(order => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     const matchesTable = tableFilter === 'all' || (order.tableNumber || 'Balcão') === tableFilter;
     const matchesSearch = order.tableNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -176,22 +178,30 @@ const BarModule: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredOrders.map((order) => (
-            <OrderCard 
-              key={order.id} 
-              order={order} 
-              menuItems={menuItems}
-              hasMultipleOrders={hasMultipleOrdersForTable(order.tableNumber || 'Balcão')}
-              orderNumber={getOrderNumber(order)}
-            />
-          ))}
-        </div>
-
-        {filteredOrders.length === 0 && (
+        {ordersLoading ? (
           <div className="text-center py-8">
-            <p className="text-gray-500">Nenhum pedido encontrado</p>
+            <p className="text-gray-500">Carregando pedidos...</p>
           </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredOrders.map((order) => (
+                <OrderCard 
+                  key={order.id} 
+                  order={order} 
+                  menuItems={menuItems}
+                  hasMultipleOrders={hasMultipleOrdersForTable(order.tableNumber || 'Balcão')}
+                  orderNumber={getOrderNumber(order)}
+                />
+              ))}
+            </div>
+
+            {filteredOrders.length === 0 && !ordersLoading && (
+              <div className="text-center py-8">
+                <p className="text-gray-500">Nenhum pedido encontrado</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
