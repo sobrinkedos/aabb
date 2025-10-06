@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Clock, Users, DollarSign, Plus, Trash2, CreditCard } from 'lucide-react';
+import { X, Clock, Users, DollarSign, Plus, Trash2, CreditCard, ShoppingCart } from 'lucide-react';
 import { BarTable, Comanda, ComandaItem, TableStatus } from '../../../types';
+import { ComandaWithItems } from '../../../types/bar-attendance';
 
 interface TableWithComanda extends BarTable {
   currentComanda?: Comanda;
@@ -426,17 +427,80 @@ const CloseComandaModal: React.FC<CloseComandaModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Enviar para Caixa</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Fechamento de Conta</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
           
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-semibold text-gray-900 mb-2">
-              {comanda.table?.number ? `Mesa ${comanda.table.number}` : 'Balcão'} - {comanda.customer_name || 'Cliente'}
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h3 className="font-semibold text-gray-900 mb-1">
+              Comanda {comanda.id.slice(-6).toUpperCase()}
             </h3>
+            <p className="text-sm text-gray-600">
+              {comanda.table?.number ? `Mesa ${comanda.table.number}` : 'Balcão'} - {comanda.customer_name || 'Cliente'}
+            </p>
+          </div>
+
+          {/* Lista de Itens Consumidos */}
+          <div className="mb-6">
+            <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+              <ShoppingCart size={18} className="mr-2" />
+              Itens Consumidos
+            </h3>
+            
+            {comanda.items && comanda.items.length > 0 ? (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {comanda.items.map((item) => (
+                  <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{item.menu_item?.name || 'Item'}</p>
+                      <p className="text-sm text-gray-600">
+                        {item.quantity}x {formatCurrency(item.price)}
+                      </p>
+                      {item.notes && (
+                        <p className="text-xs text-gray-500 mt-1">Obs: {item.notes}</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">
+                        {formatCurrency(item.price * item.quantity)}
+                      </p>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        item.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                        item.status === 'ready' ? 'bg-blue-100 text-blue-800' :
+                        item.status === 'preparing' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {item.status === 'delivered' ? 'Entregue' :
+                         item.status === 'ready' ? 'Pronto' :
+                         item.status === 'preparing' ? 'Preparando' :
+                         'Pendente'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <ShoppingCart size={48} className="mx-auto mb-2 opacity-30" />
+                <p>Nenhum item encontrado na comanda</p>
+                <p className="text-sm">Verifique se a comanda possui itens adicionados</p>
+              </div>
+            )}
+          </div>
+
+          {/* Total */}
+          <div className="mb-6 p-4 bg-green-50 rounded-lg border-2 border-green-200">
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">Total da conta:</span>
-              <span className="text-2xl font-bold text-green-600">
+              <span className="text-lg font-semibold text-gray-900">Total da Conta:</span>
+              <span className="text-3xl font-bold text-green-600">
                 {formatCurrency(comanda.total)}
               </span>
             </div>
