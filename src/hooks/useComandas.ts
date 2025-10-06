@@ -56,8 +56,24 @@ export const useComandas = () => {
     try {
       console.log('🔄 createComanda chamada com dados:', comandaData);
       
-      // Usar mesmo empresa_id dos outros componentes
-      const empresaId = 'df96edf7-f7d8-457a-a490-dd485855fc7d';
+      // Obter empresa_id do usuário logado
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+      
+      // Buscar empresa_id do usuário
+      const { data: usuarioEmpresa, error: empresaError } = await supabase
+        .from('usuarios_empresa')
+        .select('empresa_id')
+        .eq('user_id', user.id)
+        .eq('status', 'ativo')
+        .single();
+      
+      if (empresaError || !usuarioEmpresa) {
+        throw new Error('Empresa do usuário não encontrada');
+      }
       
       const insertData = {
         ...comandaData,
@@ -65,7 +81,7 @@ export const useComandas = () => {
         opened_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        empresa_id: empresaId // Adicionar empresa_id para RLS
+        empresa_id: usuarioEmpresa.empresa_id // Usar empresa_id do usuário logado
       };
       
       console.log('📝 Dados que serão inseridos:', insertData);
