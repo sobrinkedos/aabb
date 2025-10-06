@@ -2,6 +2,7 @@
  * Utilitário para carregar permissões com fallback em caso de erro RLS
  */
 
+import { supabase } from '../lib/supabase';
 import { getCurrentUserEmpresaId } from '../utils/auth-helper';
 import { UserPermissions, ModulePermissions } from './authMiddleware';
 import { getUserRole, mapEmployeeRoleToMiddlewareRole, addUserRoleMapping } from '../config/userRoleMapping';

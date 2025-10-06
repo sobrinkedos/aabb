@@ -71,15 +71,16 @@ const ENVIRONMENT_CONFIGS: Record<string, Partial<EnvironmentConfig>> = {
 export class EnvironmentManagerImpl implements EnvironmentManager {
   private currentConfig: EnvironmentConfig | null = null;
   private lastValidation: Date | null = null;
+  private initialized: boolean = false;
 
   constructor() {
-    this.initializeEnvironment();
+    this.initializeEnvironmentSync();
   }
 
   /**
-   * Inicializa o ambiente baseado na configuração atual
+   * Inicializa o ambiente baseado na configuração atual (síncrono)
    */
-  private async initializeEnvironment(): Promise<void> {
+  private initializeEnvironmentSync(): void {
     try {
       console.log('🔧 Inicializando gerenciador de ambiente...');
       
@@ -87,17 +88,16 @@ export class EnvironmentManagerImpl implements EnvironmentManager {
       const environment = this.detectEnvironment();
       console.log(`🎯 Ambiente detectado: ${environment}`);
       
-      // Carrega configuração do ambiente
-      await this.loadEnvironmentConfig(environment);
+      // Carrega configuração do ambiente (síncrono)
+      this.loadEnvironmentConfigSync(environment);
       
-      // Valida conectividade
-      if (this.currentConfig) {
-        const isValid = await this.validateConnection(this.currentConfig);
-        console.log(`✅ Conectividade validada: ${isValid ? 'OK' : 'FALHA'}`);
-      }
+      this.initialized = true;
       
     } catch (error) {
       console.error('❌ Erro ao inicializar ambiente:', error);
+      // Fallback para desenvolvimento
+      this.loadEnvironmentConfigSync('development');
+      this.initialized = true;
     }
   }
 
@@ -151,9 +151,9 @@ export class EnvironmentManagerImpl implements EnvironmentManager {
   }
 
   /**
-   * Carrega configuração do ambiente especificado
+   * Carrega configuração do ambiente especificado (síncrono)
    */
-  private async loadEnvironmentConfig(environment: "development" | "production"): Promise<void> {
+  private loadEnvironmentConfigSync(environment: "development" | "production"): void {
     const config = ENVIRONMENT_CONFIGS[environment];
     
     if (!config) {
@@ -175,12 +175,25 @@ export class EnvironmentManagerImpl implements EnvironmentManager {
   }
 
   /**
+   * Carrega configuração do ambiente especificado (async - para compatibilidade)
+   */
+  private async loadEnvironmentConfig(environment: "development" | "production"): Promise<void> {
+    this.loadEnvironmentConfigSync(environment);
+  }
+
+  /**
    * Obtém a configuração do ambiente atual
    */
   getCurrentEnvironment(): EnvironmentConfig {
-    if (!this.currentConfig) {
-      throw new Error('Ambiente não inicializado. Chame initializeEnvironment() primeiro.');
+    if (!this.initialized || !this.currentConfig) {
+      // Tenta inicializar novamente se não estiver inicializado
+      this.initializeEnvironmentSync();
     }
+    
+    if (!this.currentConfig) {
+      throw new Error('Ambiente não inicializado corretamente.');
+    }
+    
     return this.currentConfig;
   }
 

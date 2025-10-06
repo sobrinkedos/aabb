@@ -39,7 +39,7 @@ const createSupabaseClient = (config: EnvironmentConfig, isAdmin = false): Supab
 };
 
 // Função para inicializar os clientes Supabase
-const initializeSupabaseClients = async (): Promise<void> => {
+const initializeSupabaseClients = (): void => {
   try {
     const config = environmentManager.getCurrentEnvironment();
     
@@ -62,61 +62,41 @@ const initializeSupabaseClients = async (): Promise<void> => {
   }
 };
 
+// Inicializa imediatamente
+initializeSupabaseClients();
+
 // Getter para o cliente Supabase principal
-export const getSupabase = async (): Promise<SupabaseClient<Database>> => {
+export const getSupabase = (): SupabaseClient<Database> => {
   if (!supabaseInstance) {
-    await initializeSupabaseClients();
+    initializeSupabaseClients();
   }
   return supabaseInstance!;
 };
 
 // Getter para o cliente admin
-export const getSupabaseAdmin = async (): Promise<SupabaseClient<Database>> => {
+export const getSupabaseAdmin = (): SupabaseClient<Database> => {
   if (!supabaseAdminInstance) {
-    await initializeSupabaseClients();
+    initializeSupabaseClients();
   }
   return supabaseAdminInstance!;
 };
 
-// Cliente Supabase principal (compatibilidade com código existente)
-// Inicializa automaticamente na primeira chamada
-export const supabase = new Proxy({} as SupabaseClient<Database>, {
-  get(target, prop) {
-    if (!supabaseInstance) {
-      // Inicialização síncrona para compatibilidade
-      initializeSupabaseClients().catch(console.error);
-      // Retorna cliente temporário até a inicialização completar
-      const tempClient = createClient<Database>('https://temp.supabase.co', 'temp-key');
-      return tempClient[prop as keyof SupabaseClient<Database>];
-    }
-    return supabaseInstance[prop as keyof SupabaseClient<Database>];
-  }
-});
+// Cliente Supabase principal (exportação direta)
+export const supabase = getSupabase();
 
-// Cliente admin (compatibilidade com código existente)
-export const supabaseAdmin = new Proxy({} as SupabaseClient<Database>, {
-  get(target, prop) {
-    if (!supabaseAdminInstance) {
-      // Inicialização síncrona para compatibilidade
-      initializeSupabaseClients().catch(console.error);
-      // Retorna cliente temporário até a inicialização completar
-      const tempClient = createClient<Database>('https://temp.supabase.co', 'temp-key');
-      return tempClient[prop as keyof SupabaseClient<Database>];
-    }
-    return supabaseAdminInstance[prop as keyof SupabaseClient<Database>];
-  }
-});
+// Cliente admin (exportação direta)
+export const supabaseAdmin = getSupabaseAdmin();
 
 // Função para forçar reinicialização (útil para troca de ambiente)
-export const reinitializeSupabase = async (): Promise<void> => {
+export const reinitializeSupabase = (): void => {
   supabaseInstance = null;
   supabaseAdminInstance = null;
   currentConfig = null;
-  await initializeSupabaseClients();
+  initializeSupabaseClients();
 };
 
 // Função para verificar se está configurado
-export const isSupabaseConfigured = async (): Promise<boolean> => {
+export const isSupabaseConfigured = (): boolean => {
   try {
     const config = environmentManager.getCurrentEnvironment();
     
@@ -138,7 +118,7 @@ export const isSupabaseConfigured = async (): Promise<boolean> => {
 };
 
 // Função para verificar se admin está configurado
-export const isAdminConfigured = async (): Promise<boolean> => {
+export const isAdminConfigured = (): boolean => {
   try {
     const config = environmentManager.getCurrentEnvironment();
     
@@ -162,6 +142,4 @@ export const isAdminConfigured = async (): Promise<boolean> => {
   } catch {
     return false;
   }
-};
-
-// Inicialização automática será feita sob demanda
+}
