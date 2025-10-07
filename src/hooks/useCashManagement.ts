@@ -4,6 +4,7 @@ import { getCurrentUserEmpresaId } from '../utils/auth-helper';
 import { useAuth } from '../contexts/AuthContextSimple';
 import { useBarAttendance } from './useBarAttendance';
 import { useApp } from '../contexts/AppContext';
+import { getDateRangeForQuery, getTodayString } from '../utils/date-helpers';
 import {
   CashSession,
   CashSessionWithEmployee,
@@ -137,6 +138,9 @@ export const useCashManagement = (): UseCashManagementReturn => {
       // Buscar transações do dia (primeiro tentar created_at, depois processed_at)
       console.log('🔍 Buscando transações para o dia:', today);
       
+      const dateRange = getDateRangeForQuery(today);
+      console.log('📅 Range de datas para busca:', dateRange);
+      
       let transactionsData: any[] = [];
       let transactionsError: any = null;
       
@@ -149,8 +153,8 @@ export const useCashManagement = (): UseCashManagementReturn => {
           profiles!cash_transactions_processed_by_fkey(id, name),
           cash_sessions(id, session_date, employee_id)
         `)
-        .gte('created_at', `${today}T00:00:00.000Z`)
-        .lt('created_at', `${today}T23:59:59.999Z`)
+        .gte('created_at', dateRange.start)
+        .lte('created_at', dateRange.end)
         .order('created_at', { ascending: false });
 
       if (!createdAtError && createdAtData) {
@@ -168,8 +172,8 @@ export const useCashManagement = (): UseCashManagementReturn => {
             profiles!cash_transactions_processed_by_fkey(id, name),
             cash_sessions(id, session_date, employee_id)
           `)
-          .gte('processed_at', `${today}T00:00:00.000Z`)
-          .lt('processed_at', `${today}T23:59:59.999Z`)
+          .gte('processed_at', dateRange.start)
+          .lte('processed_at', dateRange.end)
           .order('processed_at', { ascending: false });
 
         if (!processedAtError && processedAtData) {
@@ -313,6 +317,9 @@ export const useCashManagement = (): UseCashManagementReturn => {
       // Buscar todas as transações do dia
       console.log('🔍 Buscando transações para movimento do dia:', date);
       
+      const dateRange = getDateRangeForQuery(date);
+      console.log('📅 Range de datas:', dateRange);
+      
       const { data: transactionsData, error: transactionsError } = await (supabase as any)
         .from('cash_transactions')
         .select(`
@@ -321,8 +328,8 @@ export const useCashManagement = (): UseCashManagementReturn => {
           profiles!cash_transactions_processed_by_fkey(id, name),
           cash_sessions(id, session_date, employee_id)
         `)
-        .gte('created_at', `${date}T00:00:00.000Z`)
-        .lt('created_at', `${date}T23:59:59.999Z`)
+        .gte('created_at', dateRange.start)
+        .lte('created_at', dateRange.end)
         .order('created_at', { ascending: true });
 
       console.log('📊 Transações encontradas para movimento:', transactionsData?.length || 0);
@@ -772,6 +779,9 @@ export const useCashManagement = (): UseCashManagementReturn => {
       let allTransactionsData: any[] = [];
       
       // Tentar buscar por created_at primeiro
+      const summaryDateRange = getDateRangeForQuery(dateStr);
+      console.log('📅 Range de datas para resumo:', summaryDateRange);
+      
       const { data: createdData, error: createdError } = await (supabase as any)
         .from('cash_transactions')
         .select(`
@@ -780,8 +790,8 @@ export const useCashManagement = (): UseCashManagementReturn => {
           profiles!cash_transactions_processed_by_fkey(id, name),
           cash_sessions(id, session_date, employee_id)
         `)
-        .gte('created_at', `${dateStr}T00:00:00.000Z`)
-        .lt('created_at', `${dateStr}T23:59:59.999Z`);
+        .gte('created_at', summaryDateRange.start)
+        .lte('created_at', summaryDateRange.end);
 
       if (!createdError && createdData) {
         allTransactionsData = createdData;
@@ -798,8 +808,8 @@ export const useCashManagement = (): UseCashManagementReturn => {
             profiles!cash_transactions_processed_by_fkey(id, name),
             cash_sessions(id, session_date, employee_id)
           `)
-          .gte('processed_at', `${dateStr}T00:00:00.000Z`)
-          .lt('processed_at', `${dateStr}T23:59:59.999Z`);
+          .gte('processed_at', summaryDateRange.start)
+          .lte('processed_at', summaryDateRange.end);
 
         if (!processedError && processedData) {
           allTransactionsData = processedData;
@@ -921,11 +931,12 @@ export const useCashManagement = (): UseCashManagementReturn => {
       });
 
       // Calcular saídas de dinheiro e transferências
+      const withdrawalsDateRange = getDateRangeForQuery(dateStr);
       const { data: withdrawalsData } = await (supabase as any)
         .from('cash_transactions')
         .select('amount, notes, transaction_type')
-        .gte('created_at', `${dateStr}T00:00:00.000Z`)
-        .lt('created_at', `${dateStr}T23:59:59.999Z`)
+        .gte('created_at', withdrawalsDateRange.start)
+        .lte('created_at', withdrawalsDateRange.end)
         .in('transaction_type', ['adjustment', 'refund']);
 
       const totalWithdrawals = (withdrawalsData || [])
