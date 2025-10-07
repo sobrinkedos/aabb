@@ -7,7 +7,7 @@ import { getTodayString } from '../../../utils/date-helpers';
 
 export const DailyCashMovement: React.FC = () => {
   const { getDailyCashMovement, loading: hookLoading } = useCashManagement();
-  
+
   const [selectedDate, setSelectedDate] = useState(getTodayString());
   const [data, setData] = useState<{
     sessions: CashSessionWithEmployee[];
@@ -26,7 +26,7 @@ export const DailyCashMovement: React.FC = () => {
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Controles de visibilidade das seções
   const [showSessions, setShowSessions] = useState(true);
   const [showTransactions, setShowTransactions] = useState(true);
@@ -84,9 +84,9 @@ export const DailyCashMovement: React.FC = () => {
       closed: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Fechado' },
       reconciled: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Reconciliado' }
     };
-    
+
     const style = statusMap[status as keyof typeof statusMap] || statusMap.closed;
-    
+
     return (
       <span className={`px-2 py-1 text-xs font-medium rounded-full ${style.bg} ${style.text}`}>
         {style.label}
@@ -97,11 +97,11 @@ export const DailyCashMovement: React.FC = () => {
   const getTransactionTypeColor = (type: string) => {
     const colorMap = {
       sale: 'text-green-600',
-      refund: 'text-red-600', 
+      refund: 'text-red-600',
       adjustment: 'text-blue-600',
       tip: 'text-purple-600'
     };
-    
+
     return colorMap[type as keyof typeof colorMap] || 'text-gray-600';
   };
 
@@ -129,7 +129,7 @@ export const DailyCashMovement: React.FC = () => {
             <p className="text-sm text-gray-600">Consulte o movimento detalhado por data</p>
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-4">
           <input
             type="date"
@@ -139,7 +139,7 @@ export const DailyCashMovement: React.FC = () => {
             disabled={loading}
             aria-label="Selecione a data"
           />
-          
+
           <button
             onClick={() => loadData(selectedDate)}
             disabled={loading}
@@ -174,13 +174,13 @@ export const DailyCashMovement: React.FC = () => {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-lg font-medium text-gray-900">Resumo do Dia</h3>
-              <ToggleButton 
-                isVisible={showSummary} 
-                onClick={() => setShowSummary(!showSummary)} 
-                title="resumo" 
+              <ToggleButton
+                isVisible={showSummary}
+                onClick={() => setShowSummary(!showSummary)}
+                title="resumo"
               />
             </div>
-            
+
             {showSummary && (
               <div className="p-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -191,7 +191,7 @@ export const DailyCashMovement: React.FC = () => {
                     <p className="mt-2 text-sm font-medium text-gray-600">Vendas Totais</p>
                     <p className="text-2xl font-bold text-gray-900">{formatCurrency(data.summary.sales_total)}</p>
                   </div>
-                  
+
                   <div className="text-center">
                     <div className="bg-blue-100 p-3 rounded-lg inline-flex">
                       <Users className="h-6 w-6 text-blue-600" />
@@ -199,7 +199,7 @@ export const DailyCashMovement: React.FC = () => {
                     <p className="mt-2 text-sm font-medium text-gray-600">Sessões</p>
                     <p className="text-2xl font-bold text-gray-900">{data.sessions.length}</p>
                   </div>
-                  
+
                   <div className="text-center">
                     <div className="bg-purple-100 p-3 rounded-lg inline-flex">
                       <TrendingUp className="h-6 w-6 text-purple-600" />
@@ -207,7 +207,7 @@ export const DailyCashMovement: React.FC = () => {
                     <p className="mt-2 text-sm font-medium text-gray-600">Transações</p>
                     <p className="text-2xl font-bold text-gray-900">{data.summary.transaction_count}</p>
                   </div>
-                  
+
                   <div className="text-center">
                     <div className="bg-yellow-100 p-3 rounded-lg inline-flex">
                       <AlertCircle className="h-6 w-6 text-yellow-600" />
@@ -216,7 +216,7 @@ export const DailyCashMovement: React.FC = () => {
                     <p className="text-2xl font-bold text-gray-900">{formatCurrency(Math.abs(data.summary.discrepancy_total))}</p>
                   </div>
                 </div>
-                
+
                 {/* Resumo por método de pagamento */}
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <h4 className="text-md font-medium text-gray-900 mb-4">Por Método de Pagamento</h4>
@@ -247,13 +247,13 @@ export const DailyCashMovement: React.FC = () => {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-lg font-medium text-gray-900">Sessões do Dia ({data.sessions.length})</h3>
-              <ToggleButton 
-                isVisible={showSessions} 
-                onClick={() => setShowSessions(!showSessions)} 
-                title="sessões" 
+              <ToggleButton
+                isVisible={showSessions}
+                onClick={() => setShowSessions(!showSessions)}
+                title="sessões"
               />
             </div>
-            
+
             {showSessions && (
               <div className="p-6">
                 {data.sessions.length === 0 ? (
@@ -274,14 +274,14 @@ export const DailyCashMovement: React.FC = () => {
                           </div>
                           {getStatusBadge(session.status)}
                         </div>
-                        
+
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div>
                             <p className="text-sm font-medium text-gray-600">Abertura</p>
                             <p className="text-lg font-bold text-green-600">{formatCurrency(session.opening_amount)}</p>
                             <p className="text-xs text-gray-500">{formatTime(session.opened_at)}</p>
                           </div>
-                          
+
                           {session.closed_at && (
                             <div>
                               <p className="text-sm font-medium text-gray-600">Fechamento</p>
@@ -289,12 +289,12 @@ export const DailyCashMovement: React.FC = () => {
                               <p className="text-xs text-gray-500">{formatTime(session.closed_at)}</p>
                             </div>
                           )}
-                          
+
                           <div>
                             <p className="text-sm font-medium text-gray-600">Esperado</p>
                             <p className="text-lg font-bold text-blue-600">{formatCurrency(session.expected_amount)}</p>
                           </div>
-                          
+
                           {session.cash_discrepancy !== null && session.cash_discrepancy !== undefined && (
                             <div>
                               <p className="text-sm font-medium text-gray-600">Discrepância</p>
@@ -304,7 +304,7 @@ export const DailyCashMovement: React.FC = () => {
                             </div>
                           )}
                         </div>
-                        
+
                         {(session.opening_notes || session.closing_notes) && (
                           <div className="mt-3 pt-3 border-t border-gray-200">
                             {session.opening_notes && (
@@ -327,13 +327,13 @@ export const DailyCashMovement: React.FC = () => {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-lg font-medium text-gray-900">Transações do Dia ({data.transactions.length})</h3>
-              <ToggleButton 
-                isVisible={showTransactions} 
-                onClick={() => setShowTransactions(!showTransactions)} 
-                title="transações" 
+              <ToggleButton
+                isVisible={showTransactions}
+                onClick={() => setShowTransactions(!showTransactions)}
+                title="transações"
               />
             </div>
-            
+
             {showTransactions && (
               <div className="p-6">
                 {data.transactions.length === 0 ? (

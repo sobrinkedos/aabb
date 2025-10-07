@@ -505,7 +505,7 @@ export const useCashManagement = (): UseCashManagementReturn => {
   // ===== FUNÇÕES DE TRANSAÇÃO =====
 
   const processComandaPayment = useCallback(async (data: ProcessComandaPaymentData): Promise<void> => {
-    console.log('🏦 Processando pagamento de comanda...');
+    console.log('🏦🏦🏦 NOVA VERSÃO - Processando pagamento de comanda...');
     console.log('📊 Sessão atual:', state.currentSession);
     console.log('💳 Dados do pagamento:', data);
 
