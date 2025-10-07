@@ -83,6 +83,26 @@ export type PaymentMethod = 'dinheiro' | 'cartao_debito' | 'cartao_credito' | 'p
 
 export type AuditActionType = 'open_session' | 'close_session' | 'process_payment' | 'adjustment' | 'supervisor_override';
 
+// ===== NOVOS TIPOS PARA MOVIMENTAÇÃO DE CAIXA =====
+
+// Tipos de movimentação de caixa
+export type CashMovementType = 'supply' | 'withdrawal' | 'transfer';
+
+// Propósitos de movimentação
+export type CashMovementPurpose = 
+  | 'change_fund'      // Fundo de troco
+  | 'security'         // Segurança (sangria)
+  | 'expense'          // Despesa
+  | 'transfer'         // Transferência
+  | 'correction'       // Correção
+  | 'other';           // Outros
+
+// Status de autorização
+export type AuthorizationStatus = 'pending' | 'approved' | 'rejected' | 'not_required';
+
+// Níveis de risco para auditoria
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+
 // ===== FUNÇÕES UTILITÁRIAS =====
 
 export const formatCurrency = (value: number): string => {
@@ -127,6 +147,60 @@ export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   cash_withdrawal: 'Saída de Dinheiro',
   treasury_transfer: 'Transferência para Tesouraria'
 };
+
+// ===== CONSTANTES PARA MOVIMENTAÇÃO DE CAIXA =====
+
+export const CASH_MOVEMENT_TYPE_LABELS: Record<CashMovementType, string> = {
+  supply: 'Suprimento',
+  withdrawal: 'Sangria',
+  transfer: 'Transferência'
+};
+
+export const CASH_MOVEMENT_TYPE_ICONS: Record<CashMovementType, string> = {
+  supply: '➕',
+  withdrawal: '➖',
+  transfer: '🔄'
+};
+
+export const CASH_MOVEMENT_PURPOSE_LABELS: Record<CashMovementPurpose, string> = {
+  change_fund: 'Fundo de Troco',
+  security: 'Segurança',
+  expense: 'Despesa',
+  transfer: 'Transferência',
+  correction: 'Correção',
+  other: 'Outros'
+};
+
+export const AUTHORIZATION_STATUS_LABELS: Record<AuthorizationStatus, string> = {
+  pending: 'Pendente',
+  approved: 'Aprovado',
+  rejected: 'Rejeitado',
+  not_required: 'Não Requerido'
+};
+
+export const RISK_LEVEL_LABELS: Record<RiskLevel, string> = {
+  low: 'Baixo',
+  medium: 'Médio',
+  high: 'Alto',
+  critical: 'Crítico'
+};
+
+export const RISK_LEVEL_COLORS: Record<RiskLevel, string> = {
+  low: 'green',
+  medium: 'yellow',
+  high: 'orange',
+  critical: 'red'
+};
+
+// Limites padrão do sistema
+export const DEFAULT_CASH_LIMITS = {
+  MAX_CASH_IN_REGISTER: 1000, // R$ 1000 - limite para alertar sangria
+  AUTO_SANGRIA_THRESHOLD: 1500, // R$ 1500 - alerta crítico
+  SUPERVISOR_APPROVAL_THRESHOLD: 500, // R$ 500 - requer aprovação supervisor
+  MAX_WITHDRAWAL_WITHOUT_APPROVAL: 300, // R$ 300 - máximo sem aprovação
+  MAX_SUPPLY_WITHOUT_APPROVAL: 500, // R$ 500 - máximo sem aprovação
+  MIN_CASH_BALANCE: 50, // R$ 50 - saldo mínimo recomendado
+} as const;
 
 // ===== INTERFACES PARA DADOS COMPOSTOS =====
 
@@ -243,6 +317,136 @@ export interface ProcessTreasuryTransferData {
   authorized_by: string;
   treasury_receipt_number?: string;
   notes?: string;
+}
+
+// ===== INTERFACES PARA MOVIMENTAÇÃO AVANÇADA DE CAIXA =====
+
+// Interface principal de movimentação de caixa
+export interface CashMovement {
+  id: string;
+  cash_session_id: string;
+  movement_type: CashMovementType;
+  amount: number;
+  reason: string;
+  authorized_by: string;
+  authorization_status: AuthorizationStatus;
+  recipient?: string;
+  purpose: CashMovementPurpose;
+  reference_number?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+// Dados para suprimento de caixa
+export interface CashSupplyData {
+  amount: number;
+  reason: string;
+  source: string; // De onde vem o dinheiro (tesouraria, banco, etc)
+  authorized_by?: string;
+  purpose: CashMovementPurpose;
+  reference_number?: string;
+  notes?: string;
+}
+
+// Dados para sangria de caixa
+export interface CashWithdrawalData {
+  amount: number;
+  reason: string;
+  destination: string; // Para onde vai o dinheiro (tesouraria, banco, etc)
+  authorized_by?: string;
+  purpose: CashMovementPurpose;
+  recipient?: string;
+  reference_number?: string;
+  notes?: string;
+}
+
+// Movimentação com detalhes completos
+export interface CashMovementWithDetails extends CashMovement {
+  session?: {
+    id: string;
+    session_date: string;
+    employee_name: string;
+  };
+  authorized_by_employee?: {
+    id: string;
+    name: string;
+    role: string;
+  };
+  created_by_employee?: {
+    id: string;
+    name: string;
+  };
+}
+
+// Limites de movimentação por usuário
+export interface CashMovementLimits {
+  user_id: string;
+  role: string;
+  max_supply_amount: number;
+  max_withdrawal_amount: number;
+  requires_supervisor_approval_above: number;
+  can_authorize_movements: boolean;
+}
+
+// Alerta de movimentação
+export interface CashMovementAlert {
+  id: string;
+  alert_type: 'high_cash_amount' | 'frequent_withdrawals' | 'unusual_pattern' | 'limit_exceeded';
+  severity: RiskLevel;
+  message: string;
+  cash_session_id?: string;
+  movement_id?: string;
+  threshold_value?: number;
+  current_value?: number;
+  created_at: string;
+  acknowledged: boolean;
+  acknowledged_by?: string;
+  acknowledged_at?: string;
+}
+
+// Comprovante de movimentação
+export interface CashMovementReceipt {
+  movement_id: string;
+  receipt_number: string;
+  movement_type: CashMovementType;
+  amount: number;
+  date: string;
+  time: string;
+  employee_name: string;
+  authorized_by_name?: string;
+  reason: string;
+  purpose: CashMovementPurpose;
+  session_info: {
+    session_date: string;
+    opening_amount: number;
+    current_balance: number;
+  };
+  signature_required: boolean;
+}
+
+// Resumo de movimentações
+export interface CashMovementSummary {
+  period: {
+    start: string;
+    end: string;
+  };
+  total_supplies: number;
+  total_withdrawals: number;
+  net_movement: number;
+  movement_count: number;
+  by_purpose: {
+    purpose: CashMovementPurpose;
+    total_amount: number;
+    count: number;
+  }[];
+  by_employee: {
+    employee_id: string;
+    employee_name: string;
+    total_movements: number;
+    total_amount: number;
+  }[];
+  alerts_generated: number;
+  pending_authorizations: number;
 }
 
 // ===== INTERFACES PARA RELATÓRIOS =====

@@ -29,8 +29,23 @@ import {
   CashManagementState,
   PaymentMethod,
   TransactionType,
-  CashSessionStatus
+  CashSessionStatus,
+  CashSupplyData,
+  CashWithdrawalData,
+  CashMovement,
+  CashMovementWithDetails,
+  CashMovementAlert,
+  CashMovementReceipt,
+  CashMovementSummary,
+  DEFAULT_CASH_LIMITS
 } from '../types/cash-management';
+import {
+  validateCashSupply,
+  validateCashWithdrawal,
+  validateWithdrawalBalance,
+  checkSangriaRequired,
+  validateMovementAuthorization
+} from '../schemas/cash-movement.schemas';
 import { ComandaWithItems } from '../types/bar-attendance';
 
 export const useCashManagement = (): UseCashManagementReturn => {
@@ -817,6 +832,427 @@ export const useCashManagement = (): UseCashManagementReturn => {
     }
   }, [state.currentSession, user, updateState, handleError, loadInitialData]);
 
+  // ===== FUNÇÕES AVANÇADAS DE MOVIMENTAÇÃO DE CAIXA =====
+
+  /**
+   * Processa suprimento de caixa com validação completa
+   */
+  const processCashSupply = useCallback(async (data: CashSupplyData): Promise<string> => {
+    if (!state.currentSession) {
+      throw new Error('Nenhuma sessão de caixa aberta');
+    }
+
+    try {
+      updateState({ loading: true, error: null });
+
+      // Validar dados de entrada
+      const validation = validateCashSupply(data);
+      if (!validation.success) {
+        throw new Error(`Dados inválidos: ${validation.error.errors.map(e => e.message).join(', ')}`);
+      }
+
+      // Obter empresa_id do usuário atual
+      const empresaId = await getCurrentUserEmpresaId();
+      if (!empresaId) {
+        throw new Error('Não foi possível identificar a empresa do usuário');
+      }
+
+      // Verificar se precisa de autorização
+      const userLimits = {
+        max_supply_amount: DEFAULT_CASH_LIMITS.MAX_SUPPLY_WITHOUT_APPROVAL,
+        max_withdrawal_amount: DEFAULT_CASH_LIMITS.MAX_WITHDRAWAL_WITHOUT_APPROVAL
+      };
+
+      const authCheck = validateMovementAuthorization(data.amount, 'supply', userLimits);
+      if (authCheck.requiresApproval && !data.authorized_by) {
+        throw new Error(authCheck.reason || 'Autorização de supervisor necessária');
+      }
+
+      // Criar registro de movimentação na tabela cash_movements
+      const movementData = {
+        cash_session_id: state.currentSession.id,
+        movement_type: 'supply',
+        amount: data.amount,
+        reason: data.reason,
+        authorized_by: data.authorized_by || user!.id,
+        authorization_status: data.authorized_by ? 'approved' : 'not_required',
+        purpose: data.purpose,
+        reference_number: data.reference_number,
+        empresa_id: empresaId
+      };
+
+      const { data: newMovement, error: movementError } = await (supabase as any)
+        .from('cash_movements')
+        .insert(movementData)
+        .select('*')
+        .single();
+
+      if (movementError) throw movementError;
+
+      // Criar transação correspondente
+      const transactionData = {
+        cash_session_id: state.currentSession.id,
+        transaction_type: 'adjustment' as TransactionType,
+        payment_method: 'dinheiro' as PaymentMethod,
+        amount: data.amount, // Valor positivo para suprimento
+        processed_by: user!.id,
+        notes: `[SUPRIMENTO] ${data.source} - ${data.reason}${data.notes ? ` | ${data.notes}` : ''}`,
+        reference_number: data.reference_number,
+        empresa_id: empresaId
+      };
+
+      const { data: newTransaction, error: transactionError } = await (supabase as any)
+        .from('cash_transactions')
+        .insert(transactionData)
+        .select('*')
+        .single();
+
+      if (transactionError) throw transactionError;
+
+      // Atualizar valor esperado da sessão
+      const newExpectedAmount = state.currentSession.expected_amount + data.amount;
+      const { error: sessionError } = await (supabase as any)
+        .from('cash_sessions')
+        .update({ expected_amount: newExpectedAmount })
+        .eq('id', state.currentSession.id);
+
+      if (sessionError) throw sessionError;
+
+      // Registrar auditoria
+      await (supabase as any)
+        .from('cash_audit_enhanced')
+        .insert({
+          cash_session_id: state.currentSession.id,
+          action_type: 'cash_supply',
+          performed_by: user!.id,
+          new_values: { movement_id: newMovement.id, amount: data.amount, source: data.source },
+          reason: data.reason,
+          risk_level: data.amount > DEFAULT_CASH_LIMITS.SUPERVISOR_APPROVAL_THRESHOLD ? 'medium' : 'low',
+          empresa_id: empresaId
+        });
+
+      await loadInitialData();
+      return newMovement.id;
+    } catch (error) {
+      handleError(error, 'processamento de suprimento');
+      throw error;
+    }
+  }, [state.currentSession, user, updateState, handleError, loadInitialData]);
+
+  /**
+   * Processa sangria de caixa com validação completa
+   */
+  const processCashWithdrawalAdvanced = useCallback(async (data: CashWithdrawalData): Promise<string> => {
+    if (!state.currentSession) {
+      throw new Error('Nenhuma sessão de caixa aberta');
+    }
+
+    try {
+      updateState({ loading: true, error: null });
+
+      // Validar dados de entrada
+      const validation = validateCashWithdrawal(data);
+      if (!validation.success) {
+        throw new Error(`Dados inválidos: ${validation.error.errors.map(e => e.message).join(', ')}`);
+      }
+
+      // Calcular saldo atual do caixa
+      const currentBalance = state.currentSession.expected_amount;
+
+      // Validar se o saldo permite a sangria
+      const balanceCheck = validateWithdrawalBalance(currentBalance, data.amount);
+      if (!balanceCheck.isValid) {
+        throw new Error(balanceCheck.reason || 'Saldo insuficiente');
+      }
+
+      // Verificar se precisa de autorização
+      const userLimits = {
+        max_supply_amount: DEFAULT_CASH_LIMITS.MAX_SUPPLY_WITHOUT_APPROVAL,
+        max_withdrawal_amount: DEFAULT_CASH_LIMITS.MAX_WITHDRAWAL_WITHOUT_APPROVAL
+      };
+
+      const authCheck = validateMovementAuthorization(data.amount, 'withdrawal', userLimits);
+      if (authCheck.requiresApproval && !data.authorized_by) {
+        throw new Error(authCheck.reason || 'Autorização de supervisor necessária');
+      }
+
+      // Obter empresa_id do usuário atual
+      const empresaId = await getCurrentUserEmpresaId();
+      if (!empresaId) {
+        throw new Error('Não foi possível identificar a empresa do usuário');
+      }
+
+      // Criar registro de movimentação
+      const movementData = {
+        cash_session_id: state.currentSession.id,
+        movement_type: 'withdrawal',
+        amount: data.amount,
+        reason: data.reason,
+        authorized_by: data.authorized_by || user!.id,
+        authorization_status: data.authorized_by ? 'approved' : 'not_required',
+        recipient: data.recipient,
+        purpose: data.purpose,
+        reference_number: data.reference_number,
+        empresa_id: empresaId
+      };
+
+      const { data: newMovement, error: movementError } = await (supabase as any)
+        .from('cash_movements')
+        .insert(movementData)
+        .select('*')
+        .single();
+
+      if (movementError) throw movementError;
+
+      // Criar transação correspondente
+      const transactionData = {
+        cash_session_id: state.currentSession.id,
+        transaction_type: 'adjustment' as TransactionType,
+        payment_method: 'dinheiro' as PaymentMethod,
+        amount: -Math.abs(data.amount), // Valor negativo para sangria
+        processed_by: user!.id,
+        notes: `[SANGRIA] ${data.destination} - ${data.reason}${data.recipient ? ` | Destinatário: ${data.recipient}` : ''}${data.notes ? ` | ${data.notes}` : ''}`,
+        reference_number: data.reference_number,
+        empresa_id: empresaId
+      };
+
+      const { data: newTransaction, error: transactionError } = await (supabase as any)
+        .from('cash_transactions')
+        .insert(transactionData)
+        .select('*')
+        .single();
+
+      if (transactionError) throw transactionError;
+
+      // Atualizar valor esperado da sessão
+      const newExpectedAmount = state.currentSession.expected_amount - data.amount;
+      const { error: sessionError } = await (supabase as any)
+        .from('cash_sessions')
+        .update({ expected_amount: newExpectedAmount })
+        .eq('id', state.currentSession.id);
+
+      if (sessionError) throw sessionError;
+
+      // Registrar auditoria
+      await (supabase as any)
+        .from('cash_audit_enhanced')
+        .insert({
+          cash_session_id: state.currentSession.id,
+          action_type: 'cash_withdrawal',
+          performed_by: user!.id,
+          new_values: { movement_id: newMovement.id, amount: data.amount, destination: data.destination },
+          reason: data.reason,
+          risk_level: data.amount > DEFAULT_CASH_LIMITS.SUPERVISOR_APPROVAL_THRESHOLD ? 'high' : 'medium',
+          empresa_id: empresaId
+        });
+
+      await loadInitialData();
+      return newMovement.id;
+    } catch (error) {
+      handleError(error, 'processamento de sangria');
+      throw error;
+    }
+  }, [state.currentSession, user, updateState, handleError, loadInitialData]);
+
+  /**
+   * Obtém movimentações de caixa de uma sessão
+   */
+  const getCashMovements = useCallback(async (sessionId?: string): Promise<CashMovementWithDetails[]> => {
+    try {
+      const targetSessionId = sessionId || state.currentSession?.id;
+      if (!targetSessionId) {
+        return [];
+      }
+
+      const { data, error } = await (supabase as any)
+        .from('cash_movements')
+        .select(`
+          *,
+          cash_sessions(id, session_date, employee_id),
+          authorized_by_profile:profiles!cash_movements_authorized_by_fkey(id, name, role)
+        `)
+        .eq('cash_session_id', targetSessionId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return data?.map((movement: any) => ({
+        ...movement,
+        session: movement.cash_sessions,
+        authorized_by_employee: movement.authorized_by_profile
+      })) || [];
+    } catch (error) {
+      console.error('Erro ao buscar movimentações:', error);
+      return [];
+    }
+  }, [state.currentSession]);
+
+  /**
+   * Verifica se o caixa precisa de sangria e gera alertas
+   */
+  const checkCashAlerts = useCallback(async (): Promise<CashMovementAlert[]> => {
+    if (!state.currentSession) {
+      return [];
+    }
+
+    const alerts: CashMovementAlert[] = [];
+    const currentBalance = state.currentSession.expected_amount;
+
+    // Verificar necessidade de sangria
+    const sangriaCheck = checkSangriaRequired(currentBalance);
+    if (sangriaCheck.required) {
+      alerts.push({
+        id: `alert-${Date.now()}`,
+        alert_type: 'high_cash_amount',
+        severity: sangriaCheck.severity === 'critical' ? 'critical' : 'high',
+        message: sangriaCheck.message || 'Sangria recomendada',
+        cash_session_id: state.currentSession.id,
+        threshold_value: sangriaCheck.severity === 'critical' 
+          ? DEFAULT_CASH_LIMITS.AUTO_SANGRIA_THRESHOLD 
+          : DEFAULT_CASH_LIMITS.MAX_CASH_IN_REGISTER,
+        current_value: currentBalance,
+        created_at: new Date().toISOString(),
+        acknowledged: false
+      });
+    }
+
+    // Verificar saldo muito baixo
+    if (currentBalance < DEFAULT_CASH_LIMITS.MIN_CASH_BALANCE) {
+      alerts.push({
+        id: `alert-low-${Date.now()}`,
+        alert_type: 'high_cash_amount',
+        severity: 'medium',
+        message: `Saldo baixo no caixa (R$ ${currentBalance.toFixed(2)}). Considere um suprimento.`,
+        cash_session_id: state.currentSession.id,
+        threshold_value: DEFAULT_CASH_LIMITS.MIN_CASH_BALANCE,
+        current_value: currentBalance,
+        created_at: new Date().toISOString(),
+        acknowledged: false
+      });
+    }
+
+    return alerts;
+  }, [state.currentSession]);
+
+  /**
+   * Gera comprovante de movimentação
+   */
+  const generateMovementReceipt = useCallback(async (movementId: string): Promise<CashMovementReceipt | null> => {
+    try {
+      const { data: movement, error } = await (supabase as any)
+        .from('cash_movements')
+        .select(`
+          *,
+          cash_sessions(session_date, opening_amount, expected_amount),
+          authorized_by_profile:profiles!cash_movements_authorized_by_fkey(name),
+          created_by_profile:profiles(name)
+        `)
+        .eq('id', movementId)
+        .single();
+
+      if (error) throw error;
+      if (!movement) return null;
+
+      const receiptNumber = `MOV-${movement.created_at.split('T')[0].replace(/-/g, '')}-${movementId.slice(-6).toUpperCase()}`;
+
+      return {
+        movement_id: movement.id,
+        receipt_number: receiptNumber,
+        movement_type: movement.movement_type,
+        amount: movement.amount,
+        date: new Date(movement.created_at).toLocaleDateString('pt-BR'),
+        time: new Date(movement.created_at).toLocaleTimeString('pt-BR'),
+        employee_name: movement.created_by_profile?.name || 'Desconhecido',
+        authorized_by_name: movement.authorized_by_profile?.name,
+        reason: movement.reason,
+        purpose: movement.purpose,
+        session_info: {
+          session_date: movement.cash_sessions.session_date,
+          opening_amount: movement.cash_sessions.opening_amount,
+          current_balance: movement.cash_sessions.expected_amount
+        },
+        signature_required: movement.amount > DEFAULT_CASH_LIMITS.SUPERVISOR_APPROVAL_THRESHOLD
+      };
+    } catch (error) {
+      console.error('Erro ao gerar comprovante:', error);
+      return null;
+    }
+  }, []);
+
+  /**
+   * Obtém resumo de movimentações por período
+   */
+  const getCashMovementSummary = useCallback(async (startDate: string, endDate: string): Promise<CashMovementSummary> => {
+    try {
+      const { data: movements, error } = await (supabase as any)
+        .from('cash_movements')
+        .select(`
+          *,
+          cash_sessions(employee_id),
+          profiles(name)
+        `)
+        .gte('created_at', startDate)
+        .lte('created_at', endDate);
+
+      if (error) throw error;
+
+      const supplies = movements?.filter((m: any) => m.movement_type === 'supply') || [];
+      const withdrawals = movements?.filter((m: any) => m.movement_type === 'withdrawal') || [];
+
+      const totalSupplies = supplies.reduce((sum: number, m: any) => sum + m.amount, 0);
+      const totalWithdrawals = withdrawals.reduce((sum: number, m: any) => sum + m.amount, 0);
+
+      // Agrupar por propósito
+      const byPurpose = movements?.reduce((acc: any, m: any) => {
+        const existing = acc.find((p: any) => p.purpose === m.purpose);
+        if (existing) {
+          existing.total_amount += m.amount;
+          existing.count += 1;
+        } else {
+          acc.push({
+            purpose: m.purpose,
+            total_amount: m.amount,
+            count: 1
+          });
+        }
+        return acc;
+      }, []) || [];
+
+      // Agrupar por funcionário
+      const byEmployee = movements?.reduce((acc: any, m: any) => {
+        const employeeId = m.cash_sessions?.employee_id;
+        const existing = acc.find((e: any) => e.employee_id === employeeId);
+        if (existing) {
+          existing.total_movements += 1;
+          existing.total_amount += Math.abs(m.amount);
+        } else {
+          acc.push({
+            employee_id: employeeId,
+            employee_name: m.profiles?.name || 'Desconhecido',
+            total_movements: 1,
+            total_amount: Math.abs(m.amount)
+          });
+        }
+        return acc;
+      }, []) || [];
+
+      return {
+        period: { start: startDate, end: endDate },
+        total_supplies: totalSupplies,
+        total_withdrawals: totalWithdrawals,
+        net_movement: totalSupplies - totalWithdrawals,
+        movement_count: movements?.length || 0,
+        by_purpose: byPurpose,
+        by_employee: byEmployee,
+        alerts_generated: 0, // TODO: Implementar contagem de alertas
+        pending_authorizations: movements?.filter((m: any) => m.authorization_status === 'pending').length || 0
+      };
+    } catch (error) {
+      console.error('Erro ao gerar resumo de movimentações:', error);
+      throw error;
+    }
+  }, []);
+
   // ===== FUNÇÕES DE RELATÓRIO =====
 
   const generateDailySummary = useCallback(async (date?: Date): Promise<DailySummary> => {
@@ -1292,6 +1728,14 @@ export const useCashManagement = (): UseCashManagementReturn => {
     processAdjustment,
     processCashWithdrawal,
     processTreasuryTransfer,
+    // Novas funções avançadas de movimentação
+    processCashSupply,
+    processCashWithdrawalAdvanced,
+    getCashMovements,
+    checkCashAlerts,
+    generateMovementReceipt,
+    getCashMovementSummary,
+    // Funções de relatório
     getDailySummary,
     getMonthlyCashReport,
     getEmployeePerformance,
