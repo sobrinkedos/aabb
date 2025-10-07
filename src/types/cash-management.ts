@@ -200,6 +200,9 @@ export const DEFAULT_CASH_LIMITS = {
   MAX_WITHDRAWAL_WITHOUT_APPROVAL: 300, // R$ 300 - máximo sem aprovação
   MAX_SUPPLY_WITHOUT_APPROVAL: 500, // R$ 500 - máximo sem aprovação
   MIN_CASH_BALANCE: 50, // R$ 50 - saldo mínimo recomendado
+  MAX_DISCREPANCY_AUTO_ACCEPT: 5, // R$ 5 - aceitar automaticamente
+  MAX_DISCREPANCY_WITHOUT_APPROVAL: 50, // R$ 50 - requer aprovação acima deste valor
+  MAX_DISCREPANCY_PERCENTAGE: 2, // 2% - percentual máximo aceitável
 } as const;
 
 // ===== INTERFACES PARA DADOS COMPOSTOS =====
@@ -264,6 +267,87 @@ export interface CloseCashSessionData {
   closing_amount: number;
   closing_notes?: string;
   reconciliation: PaymentReconciliationData[];
+}
+
+// Dados aprimorados para fechamento de caixa
+export interface CashClosingData extends CloseCashSessionData {
+  treasury_transfer?: TreasuryTransferData;
+  discrepancy_handling?: DiscrepancyHandlingData;
+}
+
+// Dados de transferência para tesouraria
+export interface TreasuryTransferData {
+  amount: number;
+  transferred_at?: string;
+  authorized_by: string;
+  recipient_name?: string;
+  destination: string;
+  receipt_number?: string;
+  notes?: string;
+}
+
+// Dados de tratamento de discrepância
+export interface DiscrepancyHandlingData {
+  discrepancy_amount: number;
+  reason: string;
+  action_taken: 'accepted' | 'investigation' | 'adjustment' | 'pending';
+  approved_by?: string;
+  resolution_notes?: string;
+}
+
+// Breakdown detalhado por método de pagamento
+export interface PaymentMethodBreakdown {
+  payment_method: PaymentMethod;
+  expected_amount: number;
+  actual_amount: number;
+  transaction_count: number;
+  discrepancy: number;
+  discrepancy_percentage: number;
+  transactions: CashTransaction[];
+}
+
+// Comprovante de fechamento de caixa
+export interface CashClosingReceipt {
+  id: string;
+  session_id: string;
+  receipt_number: string;
+  closing_date: string;
+  closing_time: string;
+  employee_name: string;
+  employee_id: string;
+  opening_amount: number;
+  closing_amount: number;
+  expected_amount: number;
+  total_sales: number;
+  cash_discrepancy: number;
+  payment_breakdown: PaymentMethodBreakdown[];
+  treasury_transfer?: {
+    amount: number;
+    destination: string;
+    receipt_number?: string;
+    recipient_name?: string;
+  };
+  discrepancy_handling?: {
+    reason: string;
+    action_taken: string;
+    approved_by_name?: string;
+  };
+  supervisor_approval?: {
+    name: string;
+    approved_at: string;
+  };
+  generated_at: string;
+}
+
+// Validação de fechamento
+export interface CashClosingValidation {
+  valid: boolean;
+  discrepancy: number;
+  requires_approval: boolean;
+  expected_amount: number;
+  closing_amount: number;
+  warnings: string[];
+  errors: string[];
 }
 
 // Dados para reconciliação de pagamentos

@@ -37,7 +37,14 @@ import {
   CashMovementAlert,
   CashMovementReceipt,
   CashMovementSummary,
-  DEFAULT_CASH_LIMITS
+  DEFAULT_CASH_LIMITS,
+  CashClosingData,
+  TreasuryTransferData,
+  DiscrepancyHandlingData,
+  PaymentMethodBreakdown,
+  CashClosingReceipt,
+  CashClosingValidation,
+  formatCurrency
 } from '../types/cash-management';
 import {
   validateCashSupply,
@@ -1253,6 +1260,448 @@ export const useCashManagement = (): UseCashManagementReturn => {
     }
   }, []);
 
+  // ===== FUNÇÕES APRIMORADAS DE FECHAMENTO DE CAIXA =====
+
+  /**
+   * Calcula breakdown detalhado por método de pagamento
+   */
+  const calculatePaymentBreakdown = useCallback(async (sessionId: string): Promise<PaymentMethodBreakdown[]> => {
+    try {
+      const { data: transactions, error } = await (supabase as any)
+        .from('cash_transactions')
+        .select('*')
+        .eq('cash_session_id', sessionId)
+        .in('transaction_type', ['sale', 'refund', 'adjustment']);
+
+      if (error) throw error;
+
+      // Agrupar por método de pagamento
+      const breakdown: Record<PaymentMethod, PaymentMethodBreakdown> = {
+        dinheiro: { payment_method: 'dinheiro', expected_amount: 0, actual_amount: 0, transaction_count: 0, discrepancy: 0, discrepancy_percentage: 0, transactions: [] },
+        cartao_debito: { payment_method: 'cartao_debito', expected_amount: 0, actual_amount: 0, transaction_count: 0, discrepancy: 0, discrepancy_percentage: 0, transactions: [] },
+        cartao_credito: { payment_method: 'cartao_credito', expected_amount: 0, actual_amount: 0, transaction_count: 0, discrepancy: 0, discrepancy_percentage: 0, transactions: [] },
+        pix: { payment_method: 'pix', expected_amount: 0, actual_amount: 0, transaction_count: 0, discrepancy: 0, discrepancy_percentage: 0, transactions: [] },
+        transferencia: { payment_method: 'transferencia', expected_amount: 0, actual_amount: 0, transaction_count: 0, discrepancy: 0, discrepancy_percentage: 0, transactions: [] }
+      };
+
+      transactions?.forEach((transaction: CashTransaction) => {
+        const method = transaction.payment_method;
+        if (breakdown[method]) {
+          breakdown[method].expected_amount += transaction.amount;
+          breakdown[method].transaction_count += 1;
+          breakdown[method].transactions.push(transaction);
+        }
+      });
+
+      return Object.values(breakdown);
+    } catch (error) {
+      console.error('Erro ao calcular breakdown de pagamentos:', error);
+      return [];
+    }
+  }, []);
+
+  /**
+   * Valida fechamento de caixa
+   */
+  const validateCashClosing = useCallback(async (
+    sessionId: string,
+    closingAmount: number
+  ): Promise<CashClosingValidation> => {
+    try {
+      const session = state.todaysSessions.find(s => s.id === sessionId) || state.currentSession;
+      
+      if (!session) {
+        return {
+          valid: false,
+          discrepancy: 0,
+          requires_approval: false,
+          expected_amount: 0,
+          closing_amount: closingAmount,
+          warnings: [],
+          errors: ['Sessão não encontrada']
+        };
+      }
+
+      if (session.status !== 'open') {
+        return {
+          valid: false,
+          discrepancy: 0,
+          requires_approval: false,
+          expected_amount: session.expected_amount,
+          closing_amount: closingAmount,
+          warnings: [],
+          errors: ['Sessão já está fechada']
+        };
+      }
+
+      const discrepancy = closingAmount - session.expected_amount;
+      const discrepancyPercentage = session.expected_amount > 0 
+        ? Math.abs((discrepancy / session.expected_amount) * 100)
+        : 0;
+
+      const requiresApproval = Math.abs(discrepancy) > DEFAULT_CASH_LIMITS.MAX_DISCREPANCY_WITHOUT_APPROVAL;
+      
+      const warnings: string[] = [];
+      const errors: string[] = [];
+
+      // Validações
+      if (Math.abs(discrepancy) > DEFAULT_CASH_LIMITS.MAX_DISCREPANCY_AUTO_ACCEPT) {
+        warnings.push(`Discrepância de ${formatCurrency(Math.abs(discrepancy))} detectada`);
+      }
+
+      if (discrepancyPercentage > DEFAULT_CASH_LIMITS.MAX_DISCREPANCY_PERCENTAGE) {
+        warnings.push(`Discrepância de ${discrepancyPercentage.toFixed(2)}% excede o limite de ${DEFAULT_CASH_LIMITS.MAX_DISCREPANCY_PERCENTAGE}%`);
+      }
+
+      if (requiresApproval) {
+        warnings.push('Aprovação de supervisor necessária');
+      }
+
+      return {
+        valid: errors.length === 0,
+        discrepancy,
+        requires_approval: requiresApproval,
+        expected_amount: session.expected_amount,
+        closing_amount: closingAmount,
+        warnings,
+        errors
+      };
+    } catch (error) {
+      console.error('Erro ao validar fechamento:', error);
+      return {
+        valid: false,
+        discrepancy: 0,
+        requires_approval: false,
+        expected_amount: 0,
+        closing_amount: closingAmount,
+        warnings: [],
+        errors: ['Erro ao validar fechamento']
+      };
+    }
+  }, [state.currentSession, state.todaysSessions]);
+
+  /**
+   * Registra transferência para tesouraria
+   */
+  const registerTreasuryTransfer = useCallback(async (
+    sessionId: string,
+    transferData: TreasuryTransferData
+  ): Promise<string> => {
+    try {
+      const empresaId = await getCurrentUserEmpresaId();
+      if (!empresaId) {
+        throw new Error('Não foi possível identificar a empresa do usuário');
+      }
+
+      const { data, error } = await (supabase as any)
+        .from('treasury_transfers')
+        .insert({
+          cash_session_id: sessionId,
+          amount: transferData.amount,
+          transferred_at: transferData.transferred_at || new Date().toISOString(),
+          authorized_by: transferData.authorized_by,
+          recipient_name: transferData.recipient_name,
+          destination: transferData.destination,
+          receipt_number: transferData.receipt_number,
+          notes: transferData.notes,
+          empresa_id: empresaId
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+
+      // Registrar auditoria
+      await (supabase as any)
+        .from('cash_audit_enhanced')
+        .insert({
+          cash_session_id: sessionId,
+          action_type: 'treasury_transfer',
+          performed_by: user!.id,
+          new_values: transferData,
+          reason: `Transferência para ${transferData.destination}`,
+          risk_level: transferData.amount > 1000 ? 'medium' : 'low',
+          empresa_id: empresaId
+        });
+
+      return data.id;
+    } catch (error) {
+      console.error('Erro ao registrar transferência:', error);
+      throw error;
+    }
+  }, [user]);
+
+  /**
+   * Registra tratamento de discrepância
+   */
+  const registerDiscrepancyHandling = useCallback(async (
+    sessionId: string,
+    discrepancyData: DiscrepancyHandlingData
+  ): Promise<string> => {
+    try {
+      const empresaId = await getCurrentUserEmpresaId();
+      if (!empresaId) {
+        throw new Error('Não foi possível identificar a empresa do usuário');
+      }
+
+      const { data, error } = await (supabase as any)
+        .from('discrepancy_handling')
+        .insert({
+          cash_session_id: sessionId,
+          discrepancy_amount: discrepancyData.discrepancy_amount,
+          reason: discrepancyData.reason,
+          action_taken: discrepancyData.action_taken,
+          approved_by: discrepancyData.approved_by,
+          resolution_notes: discrepancyData.resolution_notes,
+          resolved_at: discrepancyData.action_taken !== 'pending' ? new Date().toISOString() : null,
+          empresa_id: empresaId
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+
+      // Registrar auditoria
+      await (supabase as any)
+        .from('cash_audit_enhanced')
+        .insert({
+          cash_session_id: sessionId,
+          action_type: 'discrepancy_handling',
+          performed_by: user!.id,
+          new_values: discrepancyData,
+          reason: discrepancyData.reason,
+          risk_level: Math.abs(discrepancyData.discrepancy_amount) > 50 ? 'high' : 'medium',
+          empresa_id: empresaId
+        });
+
+      return data.id;
+    } catch (error) {
+      console.error('Erro ao registrar discrepância:', error);
+      throw error;
+    }
+  }, [user]);
+
+  /**
+   * Gera comprovante de fechamento
+   */
+  const generateClosingReceipt = useCallback(async (sessionId: string): Promise<CashClosingReceipt> => {
+    try {
+      const empresaId = await getCurrentUserEmpresaId();
+      if (!empresaId) {
+        throw new Error('Não foi possível identificar a empresa do usuário');
+      }
+
+      // Buscar dados da sessão
+      const { data: session, error: sessionError } = await (supabase as any)
+        .from('cash_sessions')
+        .select(`
+          *,
+          employee:profiles!cash_sessions_employee_id_fkey(id, name),
+          supervisor:profiles!cash_sessions_supervisor_approval_id_fkey(id, name)
+        `)
+        .eq('id', sessionId)
+        .single();
+
+      if (sessionError) throw sessionError;
+
+      // Buscar breakdown de pagamentos
+      const paymentBreakdown = await calculatePaymentBreakdown(sessionId);
+
+      // Buscar reconciliação
+      const { data: reconciliation } = await (supabase as any)
+        .from('payment_reconciliation')
+        .select('*')
+        .eq('cash_session_id', sessionId);
+
+      // Atualizar breakdown com valores reais
+      const updatedBreakdown = paymentBreakdown.map(breakdown => {
+        const recon = reconciliation?.find((r: any) => r.payment_method === breakdown.payment_method);
+        return {
+          ...breakdown,
+          actual_amount: recon?.actual_amount || 0,
+          discrepancy: (recon?.actual_amount || 0) - breakdown.expected_amount,
+          discrepancy_percentage: breakdown.expected_amount > 0
+            ? (((recon?.actual_amount || 0) - breakdown.expected_amount) / breakdown.expected_amount) * 100
+            : 0
+        };
+      });
+
+      // Buscar transferência para tesouraria
+      const { data: treasuryTransfer } = await (supabase as any)
+        .from('treasury_transfers')
+        .select('*')
+        .eq('cash_session_id', sessionId)
+        .maybeSingle();
+
+      // Buscar tratamento de discrepância
+      const { data: discrepancyHandling } = await (supabase as any)
+        .from('discrepancy_handling')
+        .select(`
+          *,
+          approved_by_profile:profiles!discrepancy_handling_approved_by_fkey(name)
+        `)
+        .eq('cash_session_id', sessionId)
+        .maybeSingle();
+
+      // Gerar número do comprovante
+      const { data: receiptNumberData } = await (supabase as any)
+        .rpc('generate_closing_receipt_number');
+
+      const receiptNumber = receiptNumberData || `FECH-${Date.now()}`;
+
+      const receipt: CashClosingReceipt = {
+        id: sessionId,
+        session_id: sessionId,
+        receipt_number: receiptNumber,
+        closing_date: new Date(session.closed_at).toLocaleDateString('pt-BR'),
+        closing_time: new Date(session.closed_at).toLocaleTimeString('pt-BR'),
+        employee_name: session.employee?.name || 'Desconhecido',
+        employee_id: session.employee_id,
+        opening_amount: session.opening_amount,
+        closing_amount: session.closing_amount,
+        expected_amount: session.expected_amount,
+        total_sales: updatedBreakdown.reduce((sum, b) => sum + b.expected_amount, 0),
+        cash_discrepancy: session.cash_discrepancy || 0,
+        payment_breakdown: updatedBreakdown,
+        treasury_transfer: treasuryTransfer ? {
+          amount: treasuryTransfer.amount,
+          destination: treasuryTransfer.destination,
+          receipt_number: treasuryTransfer.receipt_number,
+          recipient_name: treasuryTransfer.recipient_name
+        } : undefined,
+        discrepancy_handling: discrepancyHandling ? {
+          reason: discrepancyHandling.reason,
+          action_taken: discrepancyHandling.action_taken,
+          approved_by_name: discrepancyHandling.approved_by_profile?.name
+        } : undefined,
+        supervisor_approval: session.supervisor ? {
+          name: session.supervisor.name,
+          approved_at: session.closed_at
+        } : undefined,
+        generated_at: new Date().toISOString()
+      };
+
+      // Salvar comprovante no banco
+      await (supabase as any)
+        .from('cash_closing_receipts')
+        .insert({
+          cash_session_id: sessionId,
+          receipt_number: receiptNumber,
+          receipt_data: receipt,
+          generated_by: user!.id,
+          empresa_id: empresaId
+        });
+
+      return receipt;
+    } catch (error) {
+      console.error('Erro ao gerar comprovante:', error);
+      throw error;
+    }
+  }, [user, calculatePaymentBreakdown]);
+
+  /**
+   * Fecha caixa com funcionalidades aprimoradas
+   */
+  const closeCashSessionEnhanced = useCallback(async (data: CashClosingData): Promise<CashClosingReceipt> => {
+    if (!state.currentSession) {
+      throw new Error('Nenhuma sessão aberta');
+    }
+
+    try {
+      updateState({ loading: true, error: null });
+
+      // 1. Validar fechamento
+      const validation = await validateCashClosing(state.currentSession.id, data.closing_amount);
+      
+      if (!validation.valid) {
+        throw new Error(`Validação falhou: ${validation.errors.join(', ')}`);
+      }
+
+      // 2. Verificar se requer aprovação
+      if (validation.requires_approval && !data.discrepancy_handling?.approved_by) {
+        throw new Error('Discrepância requer aprovação de supervisor');
+      }
+
+      const empresaId = await getCurrentUserEmpresaId();
+      if (!empresaId) {
+        throw new Error('Não foi possível identificar a empresa do usuário');
+      }
+
+      // 3. Atualizar sessão
+      const { error: sessionError } = await (supabase as any)
+        .from('cash_sessions')
+        .update({
+          status: 'closed' as CashSessionStatus,
+          closed_at: new Date().toISOString(),
+          closing_amount: data.closing_amount,
+          cash_discrepancy: validation.discrepancy,
+          closing_notes: data.closing_notes,
+          supervisor_approval_id: data.discrepancy_handling?.approved_by
+        })
+        .eq('id', state.currentSession.id);
+
+      if (sessionError) throw sessionError;
+
+      // 4. Registrar reconciliação
+      const reconciliationInserts = data.reconciliation.map(recon => ({
+        cash_session_id: state.currentSession!.id,
+        payment_method: recon.payment_method,
+        expected_amount: recon.expected_amount,
+        actual_amount: recon.actual_amount,
+        transaction_count: recon.transaction_count,
+        reconciled_by: user!.id,
+        notes: recon.notes,
+        empresa_id: empresaId
+      }));
+
+      const { error: reconError } = await (supabase as any)
+        .from('payment_reconciliation')
+        .insert(reconciliationInserts);
+
+      if (reconError) throw reconError;
+
+      // 5. Registrar transferência para tesouraria (se houver)
+      if (data.treasury_transfer) {
+        await registerTreasuryTransfer(state.currentSession.id, data.treasury_transfer);
+      }
+
+      // 6. Registrar tratamento de discrepância (se houver)
+      if (data.discrepancy_handling && Math.abs(validation.discrepancy) > 0.01) {
+        await registerDiscrepancyHandling(state.currentSession.id, {
+          ...data.discrepancy_handling,
+          discrepancy_amount: validation.discrepancy
+        });
+      }
+
+      // 7. Gerar comprovante
+      const receipt = await generateClosingReceipt(state.currentSession.id);
+
+      // 8. Registrar auditoria
+      await (supabase as any)
+        .from('cash_audit_enhanced')
+        .insert({
+          cash_session_id: state.currentSession.id,
+          action_type: 'close_session',
+          performed_by: user!.id,
+          new_values: {
+            closing_amount: data.closing_amount,
+            discrepancy: validation.discrepancy,
+            treasury_transfer: data.treasury_transfer,
+            discrepancy_handling: data.discrepancy_handling
+          },
+          reason: data.closing_notes || 'Fechamento de caixa',
+          risk_level: validation.requires_approval ? 'high' : 'low',
+          empresa_id: empresaId
+        });
+
+      await loadInitialData();
+      return receipt;
+    } catch (error) {
+      handleError(error, 'fechamento aprimorado de caixa');
+      throw error;
+    }
+  }, [state.currentSession, user, updateState, handleError, loadInitialData, validateCashClosing, registerTreasuryTransfer, registerDiscrepancyHandling, generateClosingReceipt]);
+
   // ===== FUNÇÕES DE RELATÓRIO =====
 
   const generateDailySummary = useCallback(async (date?: Date): Promise<DailySummary> => {
@@ -1735,6 +2184,13 @@ export const useCashManagement = (): UseCashManagementReturn => {
     checkCashAlerts,
     generateMovementReceipt,
     getCashMovementSummary,
+    // Novas funções aprimoradas de fechamento
+    calculatePaymentBreakdown,
+    validateCashClosing,
+    registerTreasuryTransfer,
+    registerDiscrepancyHandling,
+    generateClosingReceipt,
+    closeCashSessionEnhanced,
     // Funções de relatório
     getDailySummary,
     getMonthlyCashReport,
