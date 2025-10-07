@@ -390,12 +390,14 @@ const ComandasView: React.FC = () => {
 
                   if (error) throw error;
 
-                  // Mapear para ComandaWithItems
+                  // Mapear para ComandaWithItems com campos corretos para o modal
                   const comandaComItens: ComandaWithItems = {
                     ...comandaData,
                     items: comandaData.comanda_items?.map((item: any) => ({
                       ...item,
-                      menu_item: item.menu_items
+                      menu_item: item.menu_items,
+                      product_name: item.menu_items?.name || 'Item',
+                      total_price: item.price * item.quantity
                     })) || [],
                     table: comandaData.bar_tables
                   };
