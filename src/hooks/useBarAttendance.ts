@@ -413,12 +413,11 @@ export const useBarAttendance = (): UseBarAttendanceReturn => {
 
       if (comandaError) throw comandaError;
 
-      // Fechar comanda
+      // Enviar comanda para o caixa (pending_payment) em vez de fechar diretamente
       const { error: updateError } = await supabase
         .from('comandas')
         .update({
-          status: 'closed',
-          closed_at: new Date().toISOString(),
+          status: 'pending_payment',
           payment_method: metodoPagamento,
           notes: observacoes,
           updated_at: new Date().toISOString()
@@ -427,21 +426,16 @@ export const useBarAttendance = (): UseBarAttendanceReturn => {
 
       if (updateError) throw updateError;
 
-      // Se há mesa associada, liberar mesa
-      if (comanda.table_id) {
-        await liberarMesa(comanda.table_id);
-      }
-
-      // Atualizar métricas do funcionário
-      await atualizarMetricasVenda(comanda.total || 0);
+      // NÃO liberar a mesa ainda - só será liberada após pagamento no caixa
+      // A mesa permanece ocupada até o pagamento ser processado
 
       await carregarDadosIniciais();
 
     } catch (error) {
-      tratarErro(error, 'fechamento de comanda');
+      tratarErro(error, 'envio de comanda para caixa');
       throw error;
     }
-  }, [atualizarEstado, tratarErro, carregarDadosIniciais, liberarMesa, atualizarMetricasVenda]);
+  }, [atualizarEstado, tratarErro, carregarDadosIniciais]);
 
   const adicionarItemComanda = useCallback(async (
     comandaId: string, 
