@@ -547,9 +547,6 @@ export const useCashManagement = (): UseCashManagementReturn => {
           status: 'closed',
           payment_method: data.payment_method,
           notes: data.notes,
-          processed_at: new Date().toISOString(),
-          processed_by: user!.id,
-          closed_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', data.comanda_id);
