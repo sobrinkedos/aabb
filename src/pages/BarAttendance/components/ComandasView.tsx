@@ -3,16 +3,14 @@ import { Eye, ArrowLeft, Plus, Minus, ShoppingCart, CreditCard } from 'lucide-re
 import NovaComandaModal from './NovaComandaModal';
 import ComandaAlerts from './ComandaAlerts';
 import ComandaFilters from './ComandaFilters';
-import { CloseAccountModal } from '../../../components/sales/CloseAccountModal';
-import { useCloseAccountModal } from '../../../hooks/useCloseAccountModal';
+import { ProcessComandaPaymentModal } from '../../../components/cash/ProcessComandaPaymentModal';
 import { useComandas } from '../../../hooks/useComandas';
 import { useBarTables } from '../../../hooks/useBarTables';
 import { useMenuItems } from '../../../hooks/useMenuItems';
 import { useBarAttendance } from '../../../hooks/useBarAttendance';
 import { useApp } from '../../../contexts/AppContext';
-import { Comanda, ComandaStatus } from '../../../types/bar-attendance';
+import { Comanda, ComandaStatus, ComandaWithItems } from '../../../types/bar-attendance';
 import { MenuItem } from '../../../types';
-import { Command } from '../../../types/sales-management';
 import { supabase } from '../../../lib/supabase';
 
 const ComandasView: React.FC = () => {
@@ -38,16 +36,10 @@ const ComandasView: React.FC = () => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   
-  // Hook para fechamento de conta melhorado
-  const {
-    isOpen: showCloseModal,
-    selectedComanda: closeModalComanda,
-    loading: isClosingComanda,
-    error: closeError,
-    openModal: openCloseModal,
-    closeModal: closeCloseModal,
-    handleConfirm: handleCloseConfirm,
-    clearError: clearCloseError
+  // Estados para fechamento de conta
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [closeModalComanda, setCloseModalComanda] = useState<ComandaWithItems | null>(null);
+  const [isClosingComanda, setIsClosingComanda] = useState(false);
   } = useCloseAccountModal({
     onSuccess: async (result) => {
       console.log('✅ Modal processado com sucesso:', result);
@@ -432,18 +424,40 @@ const ComandasView: React.FC = () => {
           {/* Ações */}
           <div className="flex flex-col space-y-2">
             <button
-              onClick={() => {
-                console.log('🔥 Botão Fechar Conta clicado!');
-                console.log('📋 Comanda selecionada:', selectedComanda);
-                console.log('📋 Itens da comanda:', selectedComanda?.items);
-                if (selectedComanda) {
-                  const commandForModal = convertComandaToCommand(selectedComanda);
-                  console.log('🔄 Comanda convertida:', commandForModal);
-                  console.log('🔄 Itens convertidos:', commandForModal.itens);
-                  console.log('🚀 Abrindo modal...');
-                  openCloseModal(commandForModal);
-                } else {
-                  console.error('❌ Nenhuma comanda selecionada');
+              onClick={async () => {
+                if (!selectedComanda) return;
+                
+                try {
+                  // Buscar comanda com itens completos
+                  const { data: comandaData, error } = await supabase
+                    .from('comandas')
+                    .select(`
+                      *,
+                      bar_tables(number, capacity),
+                      comanda_items(
+                        *,
+                        menu_items(name, price, category)
+                      )
+                    `)
+                    .eq('id', selectedComanda.id)
+                    .single();
+
+                  if (error) throw error;
+
+                  // Mapear para ComandaWithItems
+                  const comandaComItens: ComandaWithItems = {
+                    ...comandaData,
+                    items: comandaData.comanda_items?.map((item: any) => ({
+                      ...item,
+                      menu_item: item.menu_items
+                    })) || [],
+                    table: comandaData.bar_tables
+                  };
+
+                  setCloseModalComanda(comandaComItens);
+                  setShowCloseModal(true);
+                } catch (error) {
+                  console.error('Erro ao carregar comanda:', error);
                 }
               }}
               className="bg-red-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center space-x-2"
@@ -707,30 +721,31 @@ const ComandasView: React.FC = () => {
             isClosingComanda 
           });
           return closeModalComanda && (
-            <CloseAccountModal
+            <ProcessComandaPaymentModal
               isOpen={showCloseModal}
               comanda={closeModalComanda}
-              onClose={closeCloseModal}
-              onConfirm={handleCloseConfirm}
+              onClose={() => {
+                setShowCloseModal(false);
+                setCloseModalComanda(null);
+              }}
+              onConfirm={async (paymentMethod, observations) => {
+                try {
+                  setIsClosingComanda(true);
+                  await fecharComanda(closeModalComanda.id, paymentMethod, observations);
+                  setShowCloseModal(false);
+                  setCloseModalComanda(null);
+                  refetch();
+                } catch (error) {
+                  console.error('Erro ao fechar comanda:', error);
+                  alert('Erro ao fechar comanda. Tente novamente.');
+                } finally {
+                  setIsClosingComanda(false);
+                }
+              }}
               loading={isClosingComanda}
             />
           );
         })()}
-
-        {/* Exibir erro do modal se houver */}
-        {closeError && (
-          <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg z-50">
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-medium">Erro: {closeError}</span>
-              <button
-                onClick={clearCloseError}
-                className="text-red-600 hover:text-red-800"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
