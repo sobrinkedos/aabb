@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { getStartOfToday, getTodayString } from '../utils/date-helpers';
 
 export interface BarStats {
   totalRevenue: number;
@@ -24,11 +25,13 @@ export const useBarStats = () => {
     try {
       setStats(prev => ({ ...prev, loading: true, error: null }));
 
-      // Buscar estatísticas de pedidos do balcão
+      // Buscar estatísticas de pedidos do balcão (desde início do dia)
+      const startOfToday = getStartOfToday().toISOString();
+      
       const { data: balcaoStats, error: balcaoError } = await supabase
         .from('balcao_orders')
         .select('status, final_amount, created_at')
-        .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+        .gte('created_at', startOfToday);
 
       if (balcaoError) throw balcaoError;
 
@@ -36,12 +39,12 @@ export const useBarStats = () => {
       const { data: comandaStats, error: comandaError } = await supabase
         .from('comandas')
         .select('status, total, created_at')
-        .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+        .gte('created_at', startOfToday);
 
       if (comandaError) throw comandaError;
 
       // Calcular estatísticas
-      const today = new Date().toDateString();
+      const today = getTodayString();
       
       let totalRevenue = 0;
       let ordersToday = 0;
@@ -50,7 +53,7 @@ export const useBarStats = () => {
 
       // Processar pedidos do balcão
       balcaoStats?.forEach(order => {
-        const orderDate = new Date(order.created_at).toDateString();
+        const orderDate = new Date(order.created_at).toISOString().split('T')[0];
         
         if (orderDate === today) {
           ordersToday++;
@@ -66,7 +69,7 @@ export const useBarStats = () => {
 
       // Processar comandas
       comandaStats?.forEach(comanda => {
-        const comandaDate = new Date(comanda.created_at).toDateString();
+        const comandaDate = new Date(comanda.created_at).toISOString().split('T')[0];
         
         if (comandaDate === today) {
           ordersToday++;

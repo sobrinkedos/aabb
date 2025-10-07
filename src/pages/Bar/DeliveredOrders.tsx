@@ -5,13 +5,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAllBarOrders } from '../../hooks/useAllBarOrders';
 import OrderCard from './OrderCard';
 import { useApp } from '../../contexts/AppContext';
+import { getTodayString } from '../../utils/date-helpers';
 
 const DeliveredOrders: React.FC = () => {
   const navigate = useNavigate();
   const { menuItems } = useApp();
   const { orders: allOrders, loading } = useAllBarOrders();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getTodayString());
 
   // Filtrar apenas pedidos entregues
   const deliveredOrders = allOrders.filter(order => order.status === 'delivered');
