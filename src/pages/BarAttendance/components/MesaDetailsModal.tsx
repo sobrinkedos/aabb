@@ -10,9 +10,6 @@ interface TableWithComanda extends BarTable {
   peopleCount?: number;
 }
 
-interface ComandaWithItems extends Comanda {
-  items: ComandaItem[];
-}
 import { useComandas } from '../../../hooks/useComandas';
 import { useBarAttendance } from '../../../hooks/useBarAttendance';
 import { supabase } from '../../../lib/supabase';
@@ -33,7 +30,7 @@ const MesaDetailsModal: React.FC<MesaDetailsModalProps> = ({
   // Early return ANTES de todos os hooks
   if (!isOpen || !mesa) return null;
 
-  const { getComandaByTable, addItemToComanda, removeItemFromComanda } = useComandas();
+  const { addItemToComanda, removeItemFromComanda } = useComandas();
   const { fecharComanda } = useBarAttendance();
   const [comanda, setComanda] = useState<ComandaWithItems | null>(null);
   const [loading, setLoading] = useState(false);
@@ -51,10 +48,44 @@ const MesaDetailsModal: React.FC<MesaDetailsModalProps> = ({
     
     try {
       setLoading(true);
-      const comandaData = await getComandaByTable(mesa.id);
-      setComanda(comandaData);
+      
+      // Buscar comanda ativa da mesa com todos os itens
+      const { data: comandaData, error } = await supabase
+        .from('comandas')
+        .select(`
+          *,
+          bar_tables(number, capacity),
+          comanda_items(
+            *,
+            menu_items(name, price, category)
+          )
+        `)
+        .eq('table_id', mesa.id)
+        .eq('status', 'open')
+        .single();
+
+      if (error) {
+        if (error.code !== 'PGRST116') { // Ignora erro de "não encontrado"
+          throw error;
+        }
+        setComanda(null);
+        return;
+      }
+
+      // Mapear para o formato ComandaWithItems
+      const comandaComItens: ComandaWithItems = {
+        ...comandaData,
+        items: comandaData.comanda_items?.map((item: any) => ({
+          ...item,
+          menu_item: item.menu_items
+        })) || [],
+        table: comandaData.bar_tables
+      };
+
+      setComanda(comandaComItens);
     } catch (error) {
       console.error('Erro ao carregar detalhes da comanda:', error);
+      setComanda(null);
     } finally {
       setLoading(false);
     }
