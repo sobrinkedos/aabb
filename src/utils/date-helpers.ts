@@ -14,13 +14,25 @@ export const getToday = (): Date => {
 
 /**
  * Obtém a data de hoje no formato YYYY-MM-DD para inputs de data
+ * Usa o fuso horário de Brasília
  */
 export const getTodayString = (): string => {
-  const today = getToday();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  // Criar data no fuso de Brasília
+  const now = new Date();
+  const brasiliaDate = new Date(now.toLocaleString('en-US', { timeZone: TIMEZONE }));
+  
+  const year = brasiliaDate.getFullYear();
+  const month = String(brasiliaDate.getMonth() + 1).padStart(2, '0');
+  const day = String(brasiliaDate.getDate()).padStart(2, '0');
+  
+  const result = `${year}-${month}-${day}`;
+  console.log('📅 getTodayString:', {
+    utcNow: now.toISOString(),
+    brasiliaDate: brasiliaDate.toLocaleString('pt-BR'),
+    result
+  });
+  
+  return result;
 };
 
 /**
