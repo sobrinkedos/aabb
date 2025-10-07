@@ -24,6 +24,41 @@ export const getTodayString = (): string => {
 };
 
 /**
+ * Converte uma data YYYY-MM-DD para timestamps de início e fim do dia
+ * Para usar em queries do Supabase
+ * IMPORTANTE: Como o Postgres armazena em UTC mas queremos buscar pelo dia local,
+ * precisamos buscar um range mais amplo que cubra todo o dia no fuso de Brasília
+ */
+export const getDateRangeForQuery = (dateString: string): { start: string; end: string } => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  
+  // Criar data local (navegador já está no fuso correto)
+  const startDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+  const endDate = new Date(year, month - 1, day, 23, 59, 59, 999);
+  
+  // Expandir o range para cobrir possíveis diferenças de fuso
+  // Subtrair 6 horas do início e adicionar 6 horas ao fim
+  // Isso garante que pegaremos todas as transações do dia independente do fuso
+  const startWithBuffer = new Date(startDate.getTime() - (6 * 60 * 60 * 1000));
+  const endWithBuffer = new Date(endDate.getTime() + (6 * 60 * 60 * 1000));
+  
+  const result = {
+    start: startWithBuffer.toISOString(),
+    end: endWithBuffer.toISOString()
+  };
+  
+  console.log('🕐 getDateRangeForQuery:', {
+    input: dateString,
+    startLocal: startDate.toLocaleString('pt-BR'),
+    endLocal: endDate.toLocaleString('pt-BR'),
+    startUTC: result.start,
+    endUTC: result.end
+  });
+  
+  return result;
+};
+
+/**
  * Obtém o início do dia atual no fuso horário de Brasília
  */
 export const getStartOfToday = (): Date => {
