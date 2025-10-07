@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, DollarSign, Users, Calendar } from 'lucide-react';
 import { useCashManagement } from '../../../hooks/useCashManagement';
 import { formatCurrency, PaymentMethod } from '../../../types/cash-management';
+import { getTodayString } from '../../../utils/date-helpers';
 
 export const CashReports: React.FC = () => {
   const { getDailySummary, todaysSummary, loading } = useCashManagement();
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getTodayString());
 
   useEffect(() => {
     // Carregar dados do dia selecionado

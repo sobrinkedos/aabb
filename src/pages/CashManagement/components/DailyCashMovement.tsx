@@ -3,11 +3,12 @@ import { Calendar, DollarSign, Users, TrendingUp, Clock, AlertCircle, Eye, EyeOf
 import { useCashManagement } from '../../../hooks/useCashManagement';
 import { CashSessionWithEmployee, CashTransactionWithDetails, formatCurrency, PAYMENT_METHOD_LABELS, TRANSACTION_TYPE_LABELS } from '../../../types/cash-management';
 import { getComandaNumber, extractOrderNumberFromNotes } from '../../../utils/comanda-formatter';
+import { getTodayString } from '../../../utils/date-helpers';
 
 export const DailyCashMovement: React.FC = () => {
   const { getDailyCashMovement, loading: hookLoading } = useCashManagement();
   
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getTodayString());
   const [data, setData] = useState<{
     sessions: CashSessionWithEmployee[];
     transactions: CashTransactionWithDetails[];
