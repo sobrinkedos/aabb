@@ -517,11 +517,6 @@ export const useCashManagement = (): UseCashManagementReturn => {
     try {
       updateState({ loading: true, error: null });
 
-      // Fechar comanda usando o hook do bar attendance
-      await fecharComanda(data.comanda_id, data.payment_method, data.notes);
-
-      // Registrar transação no caixa
-      console.log('💰 Criando transação de pagamento...');
       // Obter empresa_id do usuário atual
       const empresaId = await getCurrentUserEmpresaId();
       
@@ -529,6 +524,65 @@ export const useCashManagement = (): UseCashManagementReturn => {
         throw new Error('Não foi possível identificar a empresa do usuário');
       }
 
+      // 1. Buscar dados da comanda antes de fechar
+      console.log('📋 Buscando dados da comanda...');
+      const { data: comanda, error: comandaError } = await (supabase as any)
+        .from('comandas')
+        .select('table_id, total, customer_name')
+        .eq('id', data.comanda_id)
+        .single();
+
+      if (comandaError) {
+        console.error('❌ Erro ao buscar comanda:', comandaError);
+        throw comandaError;
+      }
+
+      console.log('✅ Comanda encontrada:', comanda);
+
+      // 2. Fechar a comanda (mudar status para closed)
+      console.log('🔒 Fechando comanda...');
+      const { error: closeError } = await (supabase as any)
+        .from('comandas')
+        .update({
+          status: 'closed',
+          payment_method: data.payment_method,
+          notes: data.notes,
+          processed_at: new Date().toISOString(),
+          processed_by: user!.id,
+          closed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', data.comanda_id);
+
+      if (closeError) {
+        console.error('❌ Erro ao fechar comanda:', closeError);
+        throw closeError;
+      }
+
+      console.log('✅ Comanda fechada com sucesso');
+
+      // 3. Liberar a mesa se houver
+      if (comanda.table_id) {
+        console.log('🪑 Liberando mesa:', comanda.table_id);
+        const { error: tableError } = await (supabase as any)
+          .from('bar_tables')
+          .update({
+            status: 'available',
+            current_comanda_id: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', comanda.table_id);
+
+        if (tableError) {
+          console.warn('⚠️ Erro ao liberar mesa:', tableError);
+          // Não falhar a operação por causa disso
+        } else {
+          console.log('✅ Mesa liberada com sucesso');
+        }
+      }
+
+      // 4. Registrar transação no caixa
+      console.log('💰 Criando transação de pagamento...');
       const transactionData = {
         cash_session_id: state.currentSession.id,
         comanda_id: data.comanda_id,
@@ -537,7 +591,7 @@ export const useCashManagement = (): UseCashManagementReturn => {
         amount: data.amount,
         processed_by: user!.id,
         reference_number: data.reference_number,
-        customer_name: data.customer_name,
+        customer_name: data.customer_name || comanda.customer_name,
         notes: data.notes,
         empresa_id: empresaId
       };
