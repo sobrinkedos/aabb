@@ -40,61 +40,7 @@ const ComandasView: React.FC = () => {
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closeModalComanda, setCloseModalComanda] = useState<ComandaWithItems | null>(null);
   const [isClosingComanda, setIsClosingComanda] = useState(false);
-  } = useCloseAccountModal({
-    onSuccess: async (result) => {
-      console.log('✅ Modal processado com sucesso:', result);
-      
-      // Agora fechar a comanda no sistema real do bar
-      if (selectedComanda) {
-        try {
-          console.log('💳 Fechando comanda no sistema do bar:', selectedComanda.id);
-          
-          // Atualizar status da comanda para pendente de pagamento diretamente
-          const { error: updateError } = await supabase
-            .from('comandas')
-            .update({
-              status: 'pending_payment',
-              payment_method: 'pending',
-              notes: 'Enviado para caixa - aguardando processamento',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', selectedComanda.id);
 
-          if (updateError) {
-            throw new Error(`Erro ao atualizar comanda: ${updateError.message}`);
-          }
-          
-          console.log('✅ [MODAL NOVO] Comanda atualizada para pendente de pagamento com sucesso');
-          
-          // Atualizar dados
-          await refetch();
-          await refreshBarOrders();
-          await refreshKitchenOrders();
-          
-          // Voltar para a lista
-          setViewMode('list');
-          setSelectedComanda(null);
-          setCart([]);
-          
-          setSuccessMessage('Comanda enviada para o caixa com sucesso!');
-          setShowSuccessMessage(true);
-          setTimeout(() => setShowSuccessMessage(false), 3000);
-          
-        } catch (error) {
-          console.error('❌ [MODAL NOVO] Erro ao fechar comanda no sistema do bar:', error);
-          setSuccessMessage('❌ Erro ao processar fechamento da comanda');
-          setShowSuccessMessage(true);
-          setTimeout(() => setShowSuccessMessage(false), 5000);
-        }
-      }
-    },
-    onError: (error) => {
-      console.error('❌ Erro no modal:', error);
-      setSuccessMessage(`Erro: ${error.message}`);
-      setShowSuccessMessage(true);
-      setTimeout(() => setShowSuccessMessage(false), 5000);
-    }
-  });
   // Hook para menu items
   const { menuItems, loading: menuLoading } = useMenuItems(true);
   const { adicionarItemComanda, fecharComanda } = useBarAttendance();
