@@ -81,7 +81,7 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
 
       console.log('📊 Transações encontradas:', transactions?.length || 0);
       console.log('📋 Transações:', transactions);
-      
+
       if (transactions && transactions.length > 0) {
         console.log('🔍 Tipos de transação:', [...new Set(transactions.map((t: any) => t.transaction_type))]);
         console.log('💳 Métodos de pagamento:', [...new Set(transactions.map((t: any) => t.payment_method))]);
