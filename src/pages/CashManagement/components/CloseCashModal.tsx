@@ -68,12 +68,11 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
     try {
       console.log('🔍 Carregando breakdown para sessão:', session.id);
 
-      // Buscar transações diretamente
+      // Buscar transações diretamente (todas as transações da sessão)
       const { data: transactions, error } = await (supabase as any)
         .from('cash_transactions')
         .select('*')
-        .eq('cash_session_id', session.id)
-        .in('transaction_type', ['sale', 'refund', 'adjustment']);
+        .eq('cash_session_id', session.id);
 
       if (error) {
         console.error('❌ Erro ao buscar transações:', error);
@@ -82,6 +81,11 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
 
       console.log('📊 Transações encontradas:', transactions?.length || 0);
       console.log('📋 Transações:', transactions);
+      
+      if (transactions && transactions.length > 0) {
+        console.log('🔍 Tipos de transação:', [...new Set(transactions.map((t: any) => t.transaction_type))]);
+        console.log('💳 Métodos de pagamento:', [...new Set(transactions.map((t: any) => t.payment_method))]);
+      }
 
       // Agrupar por método de pagamento
       const breakdown: Record<PaymentMethod, { expected_amount: number; transaction_count: number }> = {
@@ -96,8 +100,16 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
       let totalVendasOutrosMetodos = 0;
 
       transactions?.forEach((transaction: any) => {
+        // Considerar apenas vendas (sales) para o cálculo
+        if (transaction.transaction_type !== 'sale') {
+          console.log('⏭️ Ignorando transação não-venda:', transaction.transaction_type);
+          return;
+        }
+
         const method = transaction.payment_method as PaymentMethod;
         const amount = Number(transaction.amount) || 0;
+
+        console.log(`💰 Processando: ${method} = R$ ${amount.toFixed(2)}`);
 
         if (breakdown[method]) {
           if (method === 'dinheiro') {
