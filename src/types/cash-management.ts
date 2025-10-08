@@ -781,4 +781,19 @@ export interface UseCashManagementReturn extends CashManagementState {
       transaction_count: number;
     };
   }>;
+  
+  // Funções avançadas de fechamento
+  closeCashSessionEnhanced: (data: CashClosingData) => Promise<CashClosingReceipt>;
+  calculatePaymentBreakdown: (sessionId: string) => Promise<PaymentMethodBreakdown[]>;
+  validateCashClosing: (sessionId: string, closingAmount: number) => Promise<CashClosingValidation>;
+  registerTreasuryTransfer: (sessionId: string, data: TreasuryTransferData) => Promise<void>;
+  registerDiscrepancyHandling: (sessionId: string, data: DiscrepancyHandlingData) => Promise<void>;
+  generateClosingReceipt: (sessionId: string) => Promise<CashClosingReceipt>;
+  
+  // Funções de movimentação de caixa
+  processCashSupply: (data: CashSupplyData) => Promise<CashMovementReceipt>;
+  processCashWithdrawalEnhanced: (data: CashWithdrawalData) => Promise<CashMovementReceipt>;
+  getCashMovements: (sessionId: string) => Promise<CashMovementWithDetails[]>;
+  getCashMovementAlerts: (sessionId: string) => Promise<CashMovementAlert[]>;
+  getCashMovementSummary: (sessionId: string) => Promise<CashMovementSummary>;
 }

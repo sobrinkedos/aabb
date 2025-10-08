@@ -780,7 +780,6 @@ export const DashboardOverview: React.FC = () => {
           isOpen={showCloseModal}
           onClose={() => setShowCloseModal(false)}
           session={currentSession}
-          onCloseCash={closeCashSession}
         />
       )}
 
