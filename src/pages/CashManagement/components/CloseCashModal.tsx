@@ -67,7 +67,7 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
     setLoadingBreakdown(true);
     try {
       console.log('🔍 Carregando breakdown para sessão:', session.id);
-      
+
       // Buscar transações diretamente
       const { data: transactions, error } = await (supabase as any)
         .from('cash_transactions')
