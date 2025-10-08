@@ -97,8 +97,6 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
       };
 
       // Calcular vendas por método
-      let totalVendasOutrosMetodos = 0;
-
       transactions?.forEach((transaction: any) => {
         // Considerar apenas vendas (sales) para o cálculo
         if (transaction.transaction_type !== 'sale') {
@@ -112,30 +110,16 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
         console.log(`💰 Processando: ${method} = R$ ${amount.toFixed(2)}`);
 
         if (breakdown[method]) {
-          if (method === 'dinheiro') {
-            // Para dinheiro: adiciona vendas em dinheiro
-            breakdown[method].expected_amount += amount;
-            breakdown[method].transaction_count += 1;
-          } else {
-            // Para outros métodos: apenas registra o valor
-            breakdown[method].expected_amount += amount;
-            breakdown[method].transaction_count += 1;
-            // Acumula para subtrair do dinheiro (saiu do caixa)
-            totalVendasOutrosMetodos += amount;
-          }
+          // Para todos os métodos: soma o valor das vendas
+          breakdown[method].expected_amount += amount;
+          breakdown[method].transaction_count += 1;
         }
       });
 
-      console.log('🧮 ANTES da subtração:');
-      console.log('  💵 Dinheiro (saldo inicial + vendas):', breakdown.dinheiro.expected_amount);
-      console.log('  📤 Total a subtrair (outros métodos):', totalVendasOutrosMetodos);
-
-      // Subtrai do dinheiro as vendas em outros métodos (que saíram do caixa físico)
-      breakdown.dinheiro.expected_amount -= totalVendasOutrosMetodos;
-
-      console.log('🧮 DEPOIS da subtração:');
-      console.log('  💵 Dinheiro esperado final:', breakdown.dinheiro.expected_amount);
       console.log('💰 Breakdown calculado:', breakdown);
+      console.log('💵 Dinheiro esperado:', breakdown.dinheiro.expected_amount);
+      console.log('💳 Cartão Débito esperado:', breakdown.cartao_debito.expected_amount);
+      console.log('📱 PIX esperado:', breakdown.pix.expected_amount);
 
       setFormData(prev => ({
         ...prev,
@@ -414,7 +398,7 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
                   </div>
                   <div className="flex justify-between">
                     <span>Valor esperado total:</span>
-                    <span className="font-medium">{formatCurrency(session.expected_amount)}</span>
+                    <span className="font-medium">{formatCurrency(totalExpectedAmount)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Aberta em:</span>
