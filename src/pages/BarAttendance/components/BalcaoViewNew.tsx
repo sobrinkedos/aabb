@@ -463,8 +463,10 @@ const BalcaoViewNew: React.FC = () => {
             </div>
           </div>
 
-          {/* Itens do Carrinho */}
-          <div className="flex-1 min-h-[400px] overflow-auto p-4">
+          {/* Área Scrollável - Itens + Checkout */}
+          <div className="flex-1 overflow-auto">
+            {/* Itens do Carrinho */}
+            <div className="p-4">
             {cart.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-500">Carrinho vazio</p>
@@ -515,29 +517,29 @@ const BalcaoViewNew: React.FC = () => {
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Cliente Selecionado */}
-          {selectedCustomer && (
-            <div className="p-4 border-t bg-blue-50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-blue-900">{selectedCustomer.name}</p>
-                  <p className="text-sm text-blue-700">Membro - Desconto 10%</p>
-                </div>
-                <button
-                  onClick={() => setSelectedCustomer(null)}
-                  className="text-blue-600 hover:text-blue-700"
-                >
-                  <XMarkIcon className="h-5 w-5" />
-                </button>
-              </div>
             </div>
-          )}
 
-          {/* Resumo e Checkout */}
-          {cart.length > 0 && (
-            <div className="p-4 border-t bg-gray-50">
+            {/* Cliente Selecionado */}
+            {selectedCustomer && (
+              <div className="p-4 border-t bg-blue-50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-blue-900">{selectedCustomer.name}</p>
+                    <p className="text-sm text-blue-700">Membro - Desconto 10%</p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedCustomer(null)}
+                    className="text-blue-600 hover:text-blue-700"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Resumo e Checkout */}
+            {cart.length > 0 && (
+              <div className="p-4 border-t bg-gray-50">
               {/* Botão Cliente */}
               <button
                 onClick={() => setShowCustomerSearch(true)}
@@ -600,8 +602,9 @@ const BalcaoViewNew: React.FC = () => {
               >
                 {processing ? 'Criando Pedido...' : 'Enviar para Caixa'}
               </button>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
