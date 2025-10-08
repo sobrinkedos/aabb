@@ -85,22 +85,41 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
 
       // Agrupar por método de pagamento
       const breakdown: Record<PaymentMethod, { expected_amount: number; transaction_count: number }> = {
-        dinheiro: { expected_amount: 0, transaction_count: 0 },
+        dinheiro: { expected_amount: session.opening_amount, transaction_count: 0 }, // Começa com saldo inicial
         cartao_debito: { expected_amount: 0, transaction_count: 0 },
         cartao_credito: { expected_amount: 0, transaction_count: 0 },
         pix: { expected_amount: 0, transaction_count: 0 },
         transferencia: { expected_amount: 0, transaction_count: 0 }
       };
 
+      // Calcular vendas por método
+      let totalVendasOutrosMetodos = 0;
+
       transactions?.forEach((transaction: any) => {
         const method = transaction.payment_method as PaymentMethod;
+        const amount = Number(transaction.amount) || 0;
+        
         if (breakdown[method]) {
-          breakdown[method].expected_amount += Number(transaction.amount) || 0;
-          breakdown[method].transaction_count += 1;
+          if (method === 'dinheiro') {
+            // Para dinheiro: adiciona vendas em dinheiro
+            breakdown[method].expected_amount += amount;
+            breakdown[method].transaction_count += 1;
+          } else {
+            // Para outros métodos: apenas registra o valor
+            breakdown[method].expected_amount += amount;
+            breakdown[method].transaction_count += 1;
+            // Acumula para subtrair do dinheiro (saiu do caixa)
+            totalVendasOutrosMetodos += amount;
+          }
         }
       });
 
+      // Subtrai do dinheiro as vendas em outros métodos (que saíram do caixa físico)
+      breakdown.dinheiro.expected_amount -= totalVendasOutrosMetodos;
+
       console.log('💰 Breakdown calculado:', breakdown);
+      console.log('💵 Dinheiro esperado:', breakdown.dinheiro.expected_amount);
+      console.log('📤 Total saído em outros métodos:', totalVendasOutrosMetodos);
 
       setFormData(prev => ({
         ...prev,
