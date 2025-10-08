@@ -255,8 +255,9 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
     }));
   };
 
+  const totalExpectedAmount = formData.reconciliation.reduce((sum, recon) => sum + recon.expected_amount, 0);
   const totalActualAmount = formData.reconciliation.reduce((sum, recon) => sum + recon.actual_amount, 0);
-  const cashDiscrepancy = totalActualAmount - session.expected_amount;
+  const cashDiscrepancy = totalActualAmount - totalExpectedAmount;
 
   // Calcular total de pedidos pendentes
   const totalPendingOrders = preparingOrders.length + readyOrders.length + pendingCommandaItems.length;
@@ -481,7 +482,7 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="flex justify-between">
                     <span>Total esperado:</span>
-                    <span className="font-medium">{formatCurrency(session.expected_amount)}</span>
+                    <span className="font-medium">{formatCurrency(totalExpectedAmount)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Total contado:</span>
