@@ -5,21 +5,17 @@ import {
   MinusIcon,
   TrashIcon,
   UserIcon,
-  BanknotesIcon,
-  CreditCardIcon,
-  DevicePhoneMobileIcon,
   XMarkIcon,
   CheckCircleIcon,
   ClockIcon,
   MagnifyingGlassIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import { useAuth } from '../../../contexts/AuthContextSimple';
 import { useMenuItems } from '../../../hooks/useMenuItems';
 import { useBalcaoOrders } from '../../../hooks/useBalcaoOrders';
 import { useCashManagement } from '../../../hooks/useCashManagementSimple';
 import { useApp } from '../../../contexts/AppContext';
-import { CreateBalcaoOrderData, PaymentMethod } from '../../../types/balcao-orders';
+import { CreateBalcaoOrderData } from '../../../types/balcao-orders';
 import { BarCustomer, MenuItem } from '../../../types';
 import { formatCurrency } from '../../../types/cash-management';
 import CustomerSearchModal from './CustomerSearchModal';
@@ -32,17 +28,9 @@ interface CartItem {
   notes?: string;
 }
 
-interface PaymentMethodOption {
-  id: PaymentMethod;
-  name: string;
-  icon: React.ComponentType<any>;
-  color: string;
-}
-
 const BalcaoViewNew: React.FC = () => {
-  const { user } = useAuth();
   const { menuItems, loading: menuLoading } = useMenuItems(true);
-  const { createOrder, loading: orderLoading } = useBalcaoOrders();
+  const { createOrder } = useBalcaoOrders();
   const { currentSession } = useCashManagement();
   const { inventory, syncInventoryToMenu } = useApp();
 
@@ -476,7 +464,7 @@ const BalcaoViewNew: React.FC = () => {
           </div>
 
           {/* Itens do Carrinho */}
-          <div className="flex-1 overflow-auto p-4">
+          <div className="flex-1 min-h-[400px] overflow-auto p-4">
             {cart.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-500">Carrinho vazio</p>
