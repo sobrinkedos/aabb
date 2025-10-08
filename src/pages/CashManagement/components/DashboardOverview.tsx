@@ -24,7 +24,7 @@ import { useCashManagement } from '../../../hooks/useCashManagement';
 import { useBalcaoOrders } from '../../../hooks/useBalcaoOrders';
 import { useAuth } from '../../../contexts/AuthContextSimple';
 import { OpenCashModal } from './OpenCashModal';
-import { CloseCashModalEnhanced } from './CloseCashModalEnhanced';
+import { CloseCashModal } from './CloseCashModal';
 import CashWithdrawalModal from './CashWithdrawalModal';
 import TreasuryTransferModal from './TreasuryTransferModal';
 import TreasuryTransferReceipt from './TreasuryTransferReceipt';
@@ -776,10 +776,11 @@ export const DashboardOverview: React.FC = () => {
       />
 
       {currentSession && (
-        <CloseCashModalEnhanced
+        <CloseCashModal
           isOpen={showCloseModal}
           onClose={() => setShowCloseModal(false)}
           session={currentSession}
+          onCloseCash={closeCashSession}
         />
       )}
 
