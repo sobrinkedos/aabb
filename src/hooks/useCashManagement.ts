@@ -1650,8 +1650,7 @@ export const useCashManagement = (): UseCashManagementReturn => {
         actual_amount: recon.actual_amount,
         transaction_count: recon.transaction_count,
         reconciled_by: user!.id,
-        notes: recon.notes,
-        empresa_id: empresaId
+        notes: recon.notes
       }));
 
       const { error: reconError } = await (supabase as any)
