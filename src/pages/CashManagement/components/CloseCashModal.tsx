@@ -26,7 +26,7 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
   session
 }) => {
   const { preparingOrders, readyOrders } = useBalcaoOrders();
-  const { closeCashSessionEnhanced, calculatePaymentBreakdown } = useCashManagement();
+  const { closeCashSessionEnhanced } = useCashManagement();
   const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'reconciliation' | 'transfer' | 'discrepancy'>('reconciliation');
@@ -66,20 +66,54 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
   const loadPaymentBreakdown = async () => {
     setLoadingBreakdown(true);
     try {
-      const breakdown = await calculatePaymentBreakdown(session.id);
+      console.log('🔍 Carregando breakdown para sessão:', session.id);
+      
+      // Buscar transações diretamente
+      const { data: transactions, error } = await (supabase as any)
+        .from('cash_transactions')
+        .select('*')
+        .eq('cash_session_id', session.id)
+        .in('transaction_type', ['sale', 'refund', 'adjustment']);
+
+      if (error) {
+        console.error('❌ Erro ao buscar transações:', error);
+        throw error;
+      }
+
+      console.log('📊 Transações encontradas:', transactions?.length || 0);
+      console.log('📋 Transações:', transactions);
+
+      // Agrupar por método de pagamento
+      const breakdown: Record<PaymentMethod, { expected_amount: number; transaction_count: number }> = {
+        dinheiro: { expected_amount: 0, transaction_count: 0 },
+        cartao_debito: { expected_amount: 0, transaction_count: 0 },
+        cartao_credito: { expected_amount: 0, transaction_count: 0 },
+        pix: { expected_amount: 0, transaction_count: 0 },
+        transferencia: { expected_amount: 0, transaction_count: 0 }
+      };
+
+      transactions?.forEach((transaction: any) => {
+        const method = transaction.payment_method as PaymentMethod;
+        if (breakdown[method]) {
+          breakdown[method].expected_amount += Number(transaction.amount) || 0;
+          breakdown[method].transaction_count += 1;
+        }
+      });
+
+      console.log('💰 Breakdown calculado:', breakdown);
 
       setFormData(prev => ({
         ...prev,
         closing_amount: session.expected_amount,
-        reconciliation: breakdown.map((item: any) => ({
-          payment_method: item.payment_method,
-          expected_amount: item.expected_amount,
+        reconciliation: Object.entries(breakdown).map(([method, data]) => ({
+          payment_method: method as PaymentMethod,
+          expected_amount: data.expected_amount,
           actual_amount: 0, // Usuário vai preencher
-          transaction_count: item.transaction_count
+          transaction_count: data.transaction_count
         }))
       }));
     } catch (error) {
-      console.error('Erro ao carregar breakdown de pagamentos:', error);
+      console.error('❌ Erro ao carregar breakdown de pagamentos:', error);
       // Manter valores padrão em caso de erro
     } finally {
       setLoadingBreakdown(false);
