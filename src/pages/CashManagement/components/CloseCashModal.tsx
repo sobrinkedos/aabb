@@ -98,7 +98,7 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
       transactions?.forEach((transaction: any) => {
         const method = transaction.payment_method as PaymentMethod;
         const amount = Number(transaction.amount) || 0;
-        
+
         if (breakdown[method]) {
           if (method === 'dinheiro') {
             // Para dinheiro: adiciona vendas em dinheiro
