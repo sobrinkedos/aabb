@@ -126,12 +126,16 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
         }
       });
 
+      console.log('🧮 ANTES da subtração:');
+      console.log('  💵 Dinheiro (saldo inicial + vendas):', breakdown.dinheiro.expected_amount);
+      console.log('  📤 Total a subtrair (outros métodos):', totalVendasOutrosMetodos);
+
       // Subtrai do dinheiro as vendas em outros métodos (que saíram do caixa físico)
       breakdown.dinheiro.expected_amount -= totalVendasOutrosMetodos;
 
+      console.log('🧮 DEPOIS da subtração:');
+      console.log('  💵 Dinheiro esperado final:', breakdown.dinheiro.expected_amount);
       console.log('💰 Breakdown calculado:', breakdown);
-      console.log('💵 Dinheiro esperado:', breakdown.dinheiro.expected_amount);
-      console.log('📤 Total saído em outros métodos:', totalVendasOutrosMetodos);
 
       setFormData(prev => ({
         ...prev,
