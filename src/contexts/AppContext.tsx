@@ -1201,26 +1201,54 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       if (comandaError) throw comandaError;
 
       // Buscar pedidos de balcão (apenas pagos)
-      const { data: balcaoData, error: balcaoError } = await supabase
-        .from('balcao_order_items')
-        .select(`
-          *,
-          balcao_order:balcao_orders!inner(
-            id,
-            order_number,
-            customer_name,
-            status,
-            created_at
-          ),
-          menu_item:menu_items(
-            *,
-            inventory_items!left(name, image_url)
-          )
-        `)
-        .in('balcao_order.status', ['paid', 'preparing', 'ready'])
-        .order('created_at', { ascending: true });
+      // Primeiro buscar os pedidos com status correto
+      const { data: balcaoOrders, error: balcaoOrdersError } = await supabase
+        .from('balcao_orders')
+        .select('id')
+        .in('status', ['paid', 'preparing', 'ready']);
 
-      if (balcaoError) throw balcaoError;
+      if (balcaoOrdersError) {
+        console.error('❌ Erro ao buscar pedidos de balcão:', balcaoOrdersError);
+        throw balcaoOrdersError;
+      }
+
+      const balcaoOrderIds = balcaoOrders?.map(o => o.id) || [];
+      console.log(`📦 ${balcaoOrderIds.length} pedidos de balcão com status válido`);
+
+      // Depois buscar os itens desses pedidos
+      let balcaoData = null;
+      let balcaoError = null;
+
+      if (balcaoOrderIds.length > 0) {
+        const result = await supabase
+          .from('balcao_order_items')
+          .select(`
+            *,
+            balcao_order:balcao_orders(
+              id,
+              order_number,
+              customer_name,
+              status,
+              created_at
+            ),
+            menu_item:menu_items(
+              *,
+              inventory_items!left(name, image_url)
+            )
+          `)
+          .in('balcao_order_id', balcaoOrderIds)
+          .order('created_at', { ascending: true });
+
+        balcaoData = result.data;
+        balcaoError = result.error;
+      }
+
+      if (balcaoError) {
+        console.error('❌ Erro ao buscar itens de balcão:', balcaoError);
+        throw balcaoError;
+      }
+
+      console.log(`📦 ${balcaoData?.length || 0} itens de balcão encontrados`);
 
       // Agrupar itens por comanda E por timestamp de adição para criar pedidos separados
       const orderMap = new Map<string, Order>();
@@ -1325,6 +1353,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // Função para buscar pedidos da cozinha (apenas itens preparados)
   const fetchKitchenOrders = async () => {
+    console.log('👨‍🍳 Buscando pedidos da cozinha...');
     try {
       // Buscar pedidos de comandas (apenas itens preparados)
       const { data: comandaData, error: comandaError } = await supabase
@@ -1348,24 +1377,52 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       if (comandaError) throw comandaError;
 
       // Buscar pedidos de balcão (apenas itens preparados e pagos)
-      const { data: balcaoData, error: balcaoError } = await supabase
-        .from('balcao_order_items')
-        .select(`
-          *,
-          balcao_order:balcao_orders!inner(
-            id,
-            order_number,
-            customer_name,
-            status,
-            created_at
-          ),
-          menu_item:menu_items!inner(*)
-        `)
-        .in('balcao_order.status', ['paid', 'preparing'])
-        .neq('menu_item.item_type', 'direct') // Excluir itens diretos do estoque
-        .order('created_at', { ascending: true });
+      // Primeiro buscar os pedidos com status correto
+      const { data: balcaoOrders, error: balcaoOrdersError } = await supabase
+        .from('balcao_orders')
+        .select('id')
+        .in('status', ['paid', 'preparing']);
 
-      if (balcaoError) throw balcaoError;
+      if (balcaoOrdersError) {
+        console.error('❌ Erro ao buscar pedidos de balcão (cozinha):', balcaoOrdersError);
+        throw balcaoOrdersError;
+      }
+
+      const balcaoOrderIds = balcaoOrders?.map(o => o.id) || [];
+      console.log(`📦 ${balcaoOrderIds.length} pedidos de balcão para cozinha`);
+
+      // Depois buscar os itens desses pedidos
+      let balcaoData = null;
+      let balcaoError = null;
+
+      if (balcaoOrderIds.length > 0) {
+        const result = await supabase
+          .from('balcao_order_items')
+          .select(`
+            *,
+            balcao_order:balcao_orders(
+              id,
+              order_number,
+              customer_name,
+              status,
+              created_at
+            ),
+            menu_item:menu_items!inner(*)
+          `)
+          .in('balcao_order_id', balcaoOrderIds)
+          .neq('menu_item.item_type', 'direct') // Excluir itens diretos do estoque
+          .order('created_at', { ascending: true });
+
+        balcaoData = result.data;
+        balcaoError = result.error;
+      }
+
+      if (balcaoError) {
+        console.error('❌ Erro ao buscar itens de balcão (cozinha):', balcaoError);
+        throw balcaoError;
+      }
+
+      console.log(`📦 ${balcaoData?.length || 0} itens de balcão para cozinha`);
 
       // Agrupar itens por comanda E por timestamp de adição para criar pedidos separados
       const orderMap = new Map<string, Order>();
@@ -1451,9 +1508,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         order.total += item.unit_price * item.quantity;
       });
 
-      setKitchenOrders(Array.from(orderMap.values()));
+      const orders = Array.from(orderMap.values());
+      console.log(`✅ ${orders.length} pedidos da cozinha carregados`);
+      setKitchenOrders(orders);
     } catch (error) {
-      console.error('Erro ao buscar pedidos da cozinha:', error);
+      console.error('❌ Erro ao buscar pedidos da cozinha:', error);
     }
   };
 
