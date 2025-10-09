@@ -45,9 +45,11 @@ export const GestaoFuncionarios: React.FC = () => {
       setIsLoading(true);
       
       if (!empresa?.id) {
-        console.error('ID da empresa não encontrado');
+        console.error('❌ ID da empresa não encontrado');
         return;
       }
+
+      console.log('🔍 Carregando funcionários para empresa:', empresa.id);
 
       const { data, error } = await supabase
         .from('usuarios_empresa')
@@ -56,7 +58,7 @@ export const GestaoFuncionarios: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Erro ao carregar funcionários:', error);
+        console.error('❌ Erro ao carregar funcionários:', error);
         console.error('Detalhes do erro:', {
           message: error.message,
           details: error.details,
@@ -66,9 +68,14 @@ export const GestaoFuncionarios: React.FC = () => {
         return;
       }
 
+      console.log('✅ Funcionários carregados:', data?.length || 0);
+      if (data && data.length > 0) {
+        console.log('📋 Primeiro funcionário:', data[0]);
+      }
+
       setFuncionarios(data || []);
     } catch (error) {
-      console.error('Erro ao carregar funcionários:', error);
+      console.error('❌ Erro ao carregar funcionários:', error);
     } finally {
       setIsLoading(false);
     }
@@ -229,6 +236,7 @@ export const GestaoFuncionarios: React.FC = () => {
         }
 
         console.log('✅ Funcionário criado com sucesso via serviço');
+        console.log('📊 ID do funcionário criado:', result.funcionario_id);
 
         // Se foi criado com acesso ao sistema, mostrar a senha
         if (result.senha_provisoria) {
@@ -237,8 +245,11 @@ export const GestaoFuncionarios: React.FC = () => {
         }
       }
 
-      // Recarregar lista
+      // Recarregar lista com delay para garantir que o banco atualizou
+      console.log('🔄 Recarregando lista de funcionários...');
+      await new Promise(resolve => setTimeout(resolve, 500)); // Aguardar 500ms
       await carregarFuncionarios();
+      console.log('✅ Lista recarregada');
       
       // Fechar modal e limpar formulário
       setShowModal(false);
