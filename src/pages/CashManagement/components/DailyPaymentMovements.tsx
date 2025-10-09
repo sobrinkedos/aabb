@@ -232,8 +232,8 @@ export const DailyPaymentMovements: React.FC = () => {
                                 setSelectedDate(new Date().toISOString().split('T')[0]);
                             }}
                             className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${dateRange === 'today'
-                                    ? 'bg-blue-100 text-blue-700'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                         >
                             Hoje
@@ -246,8 +246,8 @@ export const DailyPaymentMovements: React.FC = () => {
                                 setSelectedDate(date.toISOString().split('T')[0]);
                             }}
                             className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${dateRange === 'week'
-                                    ? 'bg-blue-100 text-blue-700'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                         >
                             Última Semana
@@ -298,8 +298,8 @@ export const DailyPaymentMovements: React.FC = () => {
                         <button
                             onClick={() => setActiveTab('movements')}
                             className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'movements'
-                                    ? 'bg-blue-50 text-blue-700'
-                                    : 'text-gray-600 hover:bg-gray-50'
+                                ? 'bg-blue-50 text-blue-700'
+                                : 'text-gray-600 hover:bg-gray-50'
                                 }`}
                         >
                             Movimentações por Forma de Pagamento
@@ -307,8 +307,8 @@ export const DailyPaymentMovements: React.FC = () => {
                         <button
                             onClick={() => setActiveTab('transfers')}
                             className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'transfers'
-                                    ? 'bg-blue-50 text-blue-700'
-                                    : 'text-gray-600 hover:bg-gray-50'
+                                ? 'bg-blue-50 text-blue-700'
+                                : 'text-gray-600 hover:bg-gray-50'
                                 }`}
                         >
                             Transferências para Tesouraria
@@ -424,10 +424,10 @@ export const DailyPaymentMovements: React.FC = () => {
                                                     {new Date(transfer.transfer_time).toLocaleTimeString('pt-BR')}
                                                 </p>
                                                 <span className={`inline-block px-2 py-1 text-xs rounded-full ${transfer.status === 'completed'
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : transfer.status === 'pending'
-                                                            ? 'bg-yellow-100 text-yellow-800'
-                                                            : 'bg-red-100 text-red-800'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : transfer.status === 'pending'
+                                                        ? 'bg-yellow-100 text-yellow-800'
+                                                        : 'bg-red-100 text-red-800'
                                                     }`}>
                                                     {transfer.status === 'completed' ? 'Concluída' :
                                                         transfer.status === 'pending' ? 'Pendente' : 'Cancelada'}
