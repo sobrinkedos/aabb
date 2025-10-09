@@ -51,6 +51,8 @@ export default function MovimentacoesEstoque() {
     const loadMovements = async () => {
         setLoading(true);
         try {
+            console.log('🔍 Carregando movimentações...');
+            
             let query = supabase
                 .from('inventory_movements')
                 .select(`
@@ -80,10 +82,17 @@ export default function MovimentacoesEstoque() {
 
             const { data, error } = await query;
 
-            if (error) throw error;
+            console.log('📊 Resultado da query:', { data, error, count: data?.length });
+
+            if (error) {
+                console.error('❌ Erro na query:', error);
+                throw error;
+            }
+            
             setMovements(data || []);
+            console.log('✅ Movimentações carregadas:', data?.length || 0);
         } catch (error) {
-            console.error('Erro ao carregar movimentações:', error);
+            console.error('❌ Erro ao carregar movimentações:', error);
         } finally {
             setLoading(false);
         }
