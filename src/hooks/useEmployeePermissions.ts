@@ -27,44 +27,33 @@ export const useEmployeePermissions = () => {
 
       console.log('🔍 Buscando permissões para employeeId:', employeeId);
 
-      let usuarioEmpresa = null;
-      let usuarioError = null;
+      // 1. Buscar employee para obter profile_id
+      const { data: employee, error: employeeError } = await supabase
+        .from('employees')
+        .select('id, name, profile_id, tem_acesso_sistema')
+        .eq('id', employeeId)
+        .single();
 
-      // BYPASS TEMPORÁRIO PARA ZECA BALEIRO (RLS BLOQUEANDO)
-      if (employeeId === '95886a5e-893c-4889-85a0-8989d48d19fd') {
-        console.log('🔧 BYPASS TEMPORÁRIO (GET): Usando dados conhecidos para Zeca Baleiro');
-        usuarioEmpresa = {
-          id: '95886a5e-893c-4889-85a0-8989d48d19fd',
-          user_id: '7b79f89a-a457-432f-bc1a-78aacdef66a1',
-          nome_completo: 'Zeca Baleiro',
-          tem_acesso_sistema: true,
-          status: 'ativo'
-        };
-      } else {
-        // Query normal para outros usuários
-        const result = await supabase
-          .from('usuarios_empresa')
-          .select('id, user_id, nome_completo, tem_acesso_sistema, status')
-          .eq('id', employeeId)
-          .maybeSingle();
-        
-        usuarioEmpresa = result.data;
-        usuarioError = result.error;
+      if (employeeError || !employee) {
+        console.error('❌ Erro ao buscar employee:', employeeError);
+        return [];
       }
 
-      if (usuarioError) {
+      // 2. Verificar se tem credenciais
+      if (!employee.profile_id || !employee.tem_acesso_sistema) {
+        console.log('⚠️ Employee sem credenciais, sem permissões específicas');
+        return [];
+      }
+
+      // 3. Buscar usuarios_empresa pelo profile_id
+      const { data: usuarioEmpresa, error: usuarioError } = await supabase
+        .from('usuarios_empresa')
+        .select('id, user_id, nome_completo, tem_acesso_sistema, status')
+        .eq('user_id', employee.profile_id)
+        .single();
+
+      if (usuarioError || !usuarioEmpresa) {
         console.error('❌ Erro ao buscar usuario_empresa:', usuarioError);
-        return [];
-      }
-
-      if (!usuarioEmpresa) {
-        console.log('⚠️ Usuário não encontrado:', employeeId);
-        return [];
-      }
-
-      // Verificar se tem credenciais válidas
-      if (!usuarioEmpresa.user_id || !usuarioEmpresa.tem_acesso_sistema) {
-        console.log('⚠️ Usuário sem credenciais válidas, sem permissões específicas');
         return [];
       }
 
@@ -110,43 +99,42 @@ export const useEmployeePermissions = () => {
       console.log('💾 Salvando permissões para funcionário:', employeeId);
       console.log('📋 Permissões:', permissoes);
 
-      // CORREÇÃO: Buscar diretamente na tabela usuarios_empresa usando o employeeId
-      // O employeeId na verdade é o ID do registro na usuarios_empresa
-      console.log('🔍 Buscando usuário na usuarios_empresa...');
+      // CORREÇÃO: Buscar employee e depois usuarios_empresa
+      console.log('🔍 Buscando employee e suas credenciais...');
       
-      let usuarioEmpresa = null;
-      let usuarioError = null;
+      // 1. Buscar employee para obter profile_id
+      const { data: employee, error: employeeError } = await supabase
+        .from('employees')
+        .select('id, name, email, profile_id, tem_acesso_sistema')
+        .eq('id', employeeId)
+        .single();
 
-      // BYPASS TEMPORÁRIO PARA ZECA BALEIRO (RLS BLOQUEANDO)
-      if (employeeId === '95886a5e-893c-4889-85a0-8989d48d19fd') {
-        console.log('🔧 BYPASS TEMPORÁRIO (SAVE): Usando dados conhecidos para Zeca Baleiro');
-        usuarioEmpresa = {
-          id: '95886a5e-893c-4889-85a0-8989d48d19fd',
-          user_id: '7b79f89a-a457-432f-bc1a-78aacdef66a1',
-          nome_completo: 'Zeca Baleiro',
-          tem_acesso_sistema: true,
-          status: 'ativo'
-        };
-      } else {
-        // Query normal para outros usuários
-        const result = await supabase
-          .from('usuarios_empresa')
-          .select('id, user_id, nome_completo, tem_acesso_sistema, status')
-          .eq('id', employeeId)
-          .maybeSingle();
-        
-        usuarioEmpresa = result.data;
-        usuarioError = result.error;
+      if (employeeError || !employee) {
+        console.error('❌ Erro ao buscar employee:', employeeError);
+        throw new Error('Funcionário não encontrado.');
       }
 
-      if (usuarioError) {
+      console.log('👤 Employee encontrado:', employee);
+
+      // 2. Verificar se tem profile_id (credenciais)
+      if (!employee.profile_id || !employee.tem_acesso_sistema) {
+        console.error('❌ Employee sem credenciais:', {
+          profile_id: employee.profile_id,
+          tem_acesso_sistema: employee.tem_acesso_sistema
+        });
+        throw new Error('Funcionário não tem credenciais de sistema. Crie credenciais primeiro.');
+      }
+
+      // 3. Buscar usuarios_empresa pelo profile_id
+      const { data: usuarioEmpresa, error: usuarioError } = await supabase
+        .from('usuarios_empresa')
+        .select('id, user_id, nome_completo, tem_acesso_sistema, status')
+        .eq('user_id', employee.profile_id)
+        .single();
+
+      if (usuarioError || !usuarioEmpresa) {
         console.error('❌ Erro ao buscar usuario_empresa:', usuarioError);
-        throw new Error(`Erro ao buscar usuário: ${usuarioError.message}`);
-      }
-
-      if (!usuarioEmpresa) {
-        console.error('❌ Usuário não encontrado para ID:', employeeId);
-        throw new Error('Usuário não encontrado. Verifique se o ID está correto.');
+        throw new Error('Vínculo do usuário não encontrado.');
       }
 
       console.log('👤 Usuário encontrado:', usuarioEmpresa);
@@ -168,35 +156,21 @@ export const useEmployeePermissions = () => {
 
       console.log('✅ Usuário válido para salvar permissões');
 
-      // BYPASS PARA DELETE TAMBÉM (ZECA BALEIRO)
-      if (employeeId === '95886a5e-893c-4889-85a0-8989d48d19fd') {
-        console.log('🔧 BYPASS DELETE: Pulando remoção para Zeca Baleiro (RLS bloquearia)');
-      } else {
-        // Remover permissões existentes - APENAS PARA OUTROS USUÁRIOS
-        console.log('🗑️ Removendo permissões existentes...');
-        const { error: deleteError } = await supabase
-          .from('permissoes_usuario')
-          .delete()
-          .eq('usuario_empresa_id', usuarioEmpresa.id);
+      // Remover permissões existentes
+      console.log('🗑️ Removendo permissões existentes...');
+      const { error: deleteError } = await supabase
+        .from('permissoes_usuario')
+        .delete()
+        .eq('usuario_empresa_id', usuarioEmpresa.id);
 
-        if (deleteError) {
-          console.error('❌ Erro ao deletar permissões existentes:', deleteError);
-          throw new Error(`Erro ao limpar permissões existentes: ${deleteError.message}`);
-        }
-
-        console.log('✅ Permissões existentes removidas');
+      if (deleteError) {
+        console.error('❌ Erro ao deletar permissões existentes:', deleteError);
+        throw new Error(`Erro ao limpar permissões existentes: ${deleteError.message}`);
       }
 
-      // BYPASS COMPLETO PARA ZECA BALEIRO (RLS + FOREIGN KEY)
-      if (employeeId === '95886a5e-893c-4889-85a0-8989d48d19fd') {
-        console.log('🔧 BYPASS COMPLETO: Simulando salvamento para Zeca Baleiro');
-        console.log(`✅ ${permissoes.length} permissões "salvas" com sucesso (bypass)`);
-        
-        // Simular sucesso sem acessar o banco
-        return { success: true };
-      }
+      console.log('✅ Permissões existentes removidas');
 
-      // Inserir novas permissões (se houver) - APENAS PARA OUTROS USUÁRIOS
+      // Inserir novas permissões (se houver)
       if (permissoes.length > 0) {
         console.log(`💾 Inserindo ${permissoes.length} novas permissões...`);
         
