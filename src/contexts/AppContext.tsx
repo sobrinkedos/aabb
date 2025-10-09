@@ -1175,6 +1175,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // Função para buscar pedidos do bar (todos os itens)
   const fetchBarOrders = async () => {
+    console.log('🍺 Buscando pedidos do bar...');
     try {
       // Buscar pedidos de comandas
       const { data: comandaData, error: comandaError } = await supabase
@@ -1314,9 +1315,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
          order.total += item.unit_price * item.quantity;
        });
 
-      setBarOrders(Array.from(orderMap.values()));
+      const orders = Array.from(orderMap.values());
+      console.log(`✅ ${orders.length} pedidos do bar carregados`);
+      setBarOrders(orders);
     } catch (error) {
-      console.error('Erro ao buscar pedidos do bar:', error);
+      console.error('❌ Erro ao buscar pedidos do bar:', error);
     }
   };
 
@@ -1515,6 +1518,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         },
         (payload) => {
           console.log('🔥 REALTIME - balcao_orders:', payload.eventType);
+          console.log('📦 Payload:', { old: payload.old?.status, new: payload.new?.status });
           
           // Verificar se é mudança de status de pending_payment para paid
           if (payload.eventType === 'UPDATE' && 
@@ -1524,6 +1528,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           }
           
           // Recarregar pedidos imediatamente
+          console.log('🔄 Chamando fetchKitchenOrders e fetchBarOrders...');
           fetchKitchenOrders();
           fetchBarOrders();
         }
