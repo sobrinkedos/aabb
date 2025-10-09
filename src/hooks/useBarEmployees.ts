@@ -201,21 +201,43 @@ export const useBarEmployees = () => {
 
         console.log('✅ Creating employee for empresa:', empresaId);
 
-        // Construir notes de forma limpa, evitando duplicação
-        const notesArray = [];
-        if (employeeData.name) notesArray.push(`Nome: ${employeeData.name}`);
-        if (employeeData.cpf) notesArray.push(`CPF: ${employeeData.cpf}`);
-        if (employeeData.email) notesArray.push(`Email: ${employeeData.email}`);
-        if (employeeData.phone) notesArray.push(`Telefone: ${employeeData.phone}`);
-        if (employeeData.notes) notesArray.push(`Observações: ${employeeData.notes}`);
+        // CORREÇÃO: Primeiro criar na tabela employees
+        console.log('📝 Criando registro na tabela employees...');
+        const employeeCode = `EMP-${Date.now()}`;
         
+        const { data: newEmployee, error: employeeError } = await client
+          .from('employees')
+          .insert([{
+            employee_code: employeeCode,
+            name: employeeData.name,
+            email: employeeData.email || null,
+            phone: employeeData.phone || null,
+            cpf: employeeData.cpf || null,
+            empresa_id: empresaId,
+            status: 'active',
+            tem_acesso_sistema: false
+          }])
+          .select()
+          .single();
+
+        if (employeeError) {
+          console.error('❌ Erro ao criar employee:', employeeError);
+          throw employeeError;
+        }
+
+        console.log('✅ Employee criado:', newEmployee.id);
+
+        // Construir notes de forma limpa
+        const notesArray = [];
+        if (employeeData.notes) notesArray.push(employeeData.notes);
         const cleanNotes = notesArray.join(', ');
 
-        // Criar registro diretamente na tabela bar_employees
+        // Agora criar na tabela bar_employees com o employee_id correto
+        console.log('📝 Criando registro na tabela bar_employees...');
         const { data: newBarEmployee, error: barEmployeeError } = await client
           .from('bar_employees')
           .insert([{
-            employee_id: null, // Por enquanto sem relação com employees
+            employee_id: newEmployee.id, // ✅ Usar o ID do employee criado
             bar_role: employeeData.bar_role,
             shift_preference: employeeData.shift_preference || 'qualquer',
             specialties: employeeData.specialties || [],
@@ -228,9 +250,16 @@ export const useBarEmployees = () => {
           .select()
           .single();
 
-        if (barEmployeeError) throw barEmployeeError;
+        if (barEmployeeError) {
+          console.error('❌ Erro ao criar bar_employee:', barEmployeeError);
+          // Se falhar, tentar deletar o employee criado
+          await client.from('employees').delete().eq('id', newEmployee.id);
+          throw barEmployeeError;
+        }
 
-        console.log('✅ Employee created successfully:', newBarEmployee.id);
+        console.log('✅ Bar employee criado:', newBarEmployee.id);
+        console.log('✅ Funcionário completo criado com sucesso!');
+        
         return newBarEmployee;
       }, employeeData, `pending_save_employee_${Date.now()}`);
 
