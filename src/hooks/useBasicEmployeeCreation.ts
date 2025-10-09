@@ -116,29 +116,75 @@ export const useBasicEmployeeCreation = () => {
       console.log('  - cpf:', employeeInsertData.cpf);
       console.log('  - empresa_id:', employeeInsertData.empresa_id);
       
-      // Usar client de administração ou simular sucesso devido a limitações de tipo
-      console.log('⚠️ Simulação de criação de employee devido a limitações de tipo');
-      const employeeRecord = { id: `emp_${Date.now()}` };
-      console.log('✅ Employee simulado criado:', employeeRecord);
+      // CORREÇÃO: Criar de verdade na tabela employees
+      console.log('📝 Criando registro REAL na tabela employees...');
+      const { data: employeeRecord, error: employeeError } = await supabase
+        .from('employees')
+        .insert(employeeInsertData)
+        .select('id')
+        .single();
 
-      // 3. Criar registro na tabela bar_employees (temporariamente desabilitado)
-      console.log('⚠️ Simulação de criação de bar_employee devido a limitações de tipo');
-      console.log('✅ Bar_employee simulado criado com sucesso');
+      if (employeeError) {
+        console.error('❌ Erro ao criar employee:', employeeError);
+        throw new Error(`Erro ao criar funcionário: ${employeeError.message}`);
+      }
 
-      console.log('✅ Funcionário básico simulado criado com sucesso:', {
+      if (!employeeRecord) {
+        throw new Error('Funcionário criado mas ID não retornado');
+      }
+
+      console.log('✅ Employee criado com sucesso:', employeeRecord.id);
+
+      // 3. Criar registro na tabela bar_employees
+      console.log('📝 Criando registro REAL na tabela bar_employees...');
+      const barEmployeeData = {
+        employee_id: employeeRecord.id,
+        bar_role: employeeData.bar_role,
+        shift_preference: 'qualquer',
+        is_active: true,
+        start_date: new Date().toISOString().split('T')[0],
+        notes: employeeData.observacoes || '',
+        empresa_id: empresaId
+      };
+
+      const { error: barEmployeeError } = await supabase
+        .from('bar_employees')
+        .insert(barEmployeeData);
+
+      if (barEmployeeError) {
+        console.error('❌ Erro ao criar bar_employee:', barEmployeeError);
+        // Tentar deletar o employee criado
+        await supabase.from('employees').delete().eq('id', employeeRecord.id);
+        throw new Error(`Erro ao criar registro do bar: ${barEmployeeError.message}`);
+      }
+
+      console.log('✅ Bar_employee criado com sucesso');
+
+      console.log('✅ Funcionário básico criado com sucesso:', {
         employeeId: employeeRecord.id,
         nome: employeeData.nome_completo,
         role: employeeData.bar_role,
         empresaId
       });
 
-      // Pular verificação devido a limitações de tipo
-      console.log('🔍 Pulando verificação no banco devido a limitações de tipo');
+      // Verificar se foi criado
+      console.log('🔍 Verificando criação no banco...');
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('employees')
+        .select('id, name, email')
+        .eq('id', employeeRecord.id)
+        .single();
+
+      if (verifyError || !verifyData) {
+        console.warn('⚠️ Aviso: Não foi possível verificar a criação');
+      } else {
+        console.log('✅ Verificação OK:', verifyData);
+      }
 
       return {
         success: true,
         employeeId: employeeRecord.id,
-        message: 'Funcionário simulado criado com sucesso! (devido a limitações de tipo do Supabase)'
+        message: 'Funcionário criado com sucesso!'
       };
 
     } catch (err) {
