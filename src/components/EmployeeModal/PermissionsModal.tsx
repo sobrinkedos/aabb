@@ -98,34 +98,42 @@ export const PermissionsModal: React.FC<PermissionsModalProps> = ({
 
       console.log('🔍 Carregando permissões para employeeId:', employeeId);
 
-      // BUSCA SIMPLES E DIRETA: Apenas na tabela usuarios_empresa
-      console.log('🔍 Buscando usuário na usuarios_empresa...');
+      // BUSCA CORRETA: Buscar employee e depois usuarios_empresa
+      console.log('🔍 Buscando employee e suas credenciais...');
       
-      let usuarioEmpresa = null;
-      let usuarioError = null;
+      // 1. Buscar employee para obter profile_id
+      const { data: employee, error: employeeError } = await supabase
+        .from('employees')
+        .select('id, name, email, profile_id, tem_acesso_sistema')
+        .eq('id', employeeId)
+        .single();
 
-      // BYPASS TEMPORÁRIO PARA ZECA BALEIRO (RLS BLOQUEANDO)
-      if (employeeId === '95886a5e-893c-4889-85a0-8989d48d19fd') {
-        console.log('🔧 BYPASS TEMPORÁRIO: Usando dados conhecidos para Zeca Baleiro');
-        usuarioEmpresa = {
-          id: '95886a5e-893c-4889-85a0-8989d48d19fd',
-          user_id: '7b79f89a-a457-432f-bc1a-78aacdef66a1',
-          nome_completo: 'Zeca Baleiro',
-          tem_acesso_sistema: true,
-          status: 'ativo',
-          email: 'zeca@teste.com'
-        };
-      } else {
-        // Query normal para outros usuários
-        const result = await supabase
-          .from('usuarios_empresa')
-          .select('id, user_id, nome_completo, tem_acesso_sistema, status, email')
-          .eq('id', employeeId)
-          .maybeSingle();
-        
-        usuarioEmpresa = result.data;
-        usuarioError = result.error;
+      if (employeeError || !employee) {
+        console.error('❌ Erro ao buscar employee:', employeeError);
+        setHasCredentials(false);
+        setShowNoCredentialsWarning(true);
+        return;
       }
+
+      console.log('👤 Employee encontrado:', employee);
+
+      // 2. Verificar se tem profile_id (credenciais)
+      if (!employee.profile_id || !employee.tem_acesso_sistema) {
+        console.log('❌ Employee sem credenciais:', {
+          profile_id: employee.profile_id,
+          tem_acesso_sistema: employee.tem_acesso_sistema
+        });
+        setHasCredentials(false);
+        setShowNoCredentialsWarning(true);
+        return;
+      }
+
+      // 3. Buscar usuarios_empresa pelo profile_id
+      const { data: usuarioEmpresa, error: usuarioError } = await supabase
+        .from('usuarios_empresa')
+        .select('id, user_id, nome_completo, tem_acesso_sistema, status, email')
+        .eq('user_id', employee.profile_id)
+        .maybeSingle();
 
       // LOGS DETALHADOS PARA DEBUG
       console.log('🔍 DEBUG - Resultado da query:', { 
