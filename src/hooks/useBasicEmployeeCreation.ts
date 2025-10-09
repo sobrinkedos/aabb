@@ -74,23 +74,90 @@ export const useBasicEmployeeCreation = () => {
         throw new Error('Não foi possível obter o ID da empresa');
       }
 
-      // 1. Buscar department e position padrão
+      // 1. Buscar ou criar department e position padrão
       console.log('🔍 Buscando department e position...');
+      
+      // Buscar department
+      let departmentId: string | undefined;
       const { data: departments } = await supabase
         .from("departments")
         .select("id")
         .eq('is_active', true)
         .limit(1);
+      
+      if (departments && departments.length > 0) {
+        departmentId = departments[0].id;
+      } else {
+        // Criar department padrão se não existir
+        console.log('📝 Criando department padrão...');
+        const { data: newDept, error: deptError } = await supabase
+          .from("departments")
+          .insert({
+            name: 'Operacional',
+            description: 'Departamento operacional padrão',
+            is_active: true,
+            empresa_id: empresaId
+          })
+          .select('id')
+          .single();
+        
+        if (!deptError && newDept) {
+          departmentId = newDept.id;
+          console.log('✅ Department criado:', departmentId);
+        }
+      }
 
+      // Buscar position
+      let positionId: string | undefined;
       const { data: positions } = await supabase
         .from("positions")
         .select("id")
         .eq('is_active', true)
         .limit(1);
 
-      const departmentId = departments?.[0]?.id;
-      const positionId = positions?.[0]?.id;
-      console.log('📋 Department/Position encontrados:', { departmentId, positionId });
+      if (positions && positions.length > 0) {
+        positionId = positions[0].id;
+      } else {
+        // Criar position padrão se não existir
+        console.log('📝 Criando position padrão...');
+        const { data: newPos, error: posError } = await supabase
+          .from("positions")
+          .insert({
+            title: employeeData.cargo || 'Funcionário',
+            description: 'Cargo padrão',
+            is_active: true,
+            empresa_id: empresaId
+          })
+          .select('id')
+          .single();
+        
+        if (!posError && newPos) {
+          positionId = newPos.id;
+          console.log('✅ Position criado:', positionId);
+        }
+      }
+
+      console.log('📋 Department/Position:', { departmentId, positionId });
+
+      // Se ainda não tiver position_id, criar um genérico
+      if (!positionId) {
+        console.log('⚠️ Criando position genérico como fallback...');
+        const { data: fallbackPos } = await supabase
+          .from("positions")
+          .insert({
+            title: 'Funcionário',
+            description: 'Cargo genérico',
+            is_active: true,
+            empresa_id: empresaId
+          })
+          .select('id')
+          .single();
+        
+        if (fallbackPos) {
+          positionId = fallbackPos.id;
+          console.log('✅ Position fallback criado:', positionId);
+        }
+      }
 
       // 2. Criar registro na tabela employees (apenas campos essenciais)
       const employeeInsertData: any = {
@@ -98,15 +165,15 @@ export const useBasicEmployeeCreation = () => {
         name: employeeData.nome_completo,
         hire_date: new Date().toISOString().split('T')[0],
         status: 'active',
-        empresa_id: empresaId
+        empresa_id: empresaId,
+        position_id: positionId // Sempre incluir, mesmo que seja undefined (vai dar erro se for obrigatório)
       };
 
       // Adicionar campos opcionais apenas se existirem
       if (employeeData.email) employeeInsertData.email = employeeData.email;
       if (employeeData.telefone) employeeInsertData.phone = employeeData.telefone;
-      if (employeeData.cpf) employeeInsertData.cpf = employeeData.cpf; // ✅ CORREÇÃO: Adicionar CPF
+      if (employeeData.cpf) employeeInsertData.cpf = employeeData.cpf;
       if (departmentId) employeeInsertData.department_id = departmentId;
-      if (positionId) employeeInsertData.position_id = positionId;
 
       console.log('💾 Inserindo employee com dados:');
       console.log('  - employee_code:', employeeInsertData.employee_code);
