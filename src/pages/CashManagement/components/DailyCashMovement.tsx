@@ -1,12 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, DollarSign, Users, TrendingUp, Clock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useCashManagement } from '../../../hooks/useCashManagement';
+import { useCashRealtime } from '../../../hooks/useCashRealtime';
 import { CashSessionWithEmployee, CashTransactionWithDetails, formatCurrency, PAYMENT_METHOD_LABELS, TRANSACTION_TYPE_LABELS } from '../../../types/cash-management';
 import { getComandaNumber, extractOrderNumberFromNotes } from '../../../utils/comanda-formatter';
 import { getTodayString } from '../../../utils/date-helpers';
 
 export const DailyCashMovement: React.FC = () => {
   const { getDailyCashMovement, loading: hookLoading } = useCashManagement();
+  
+  // Hook para atualização em tempo real
+  useCashRealtime({
+    onNewOrder: () => {
+      console.log('🔔 Novo pedido detectado! Recarregando...');
+      if (selectedDate === getTodayString()) {
+        loadData(selectedDate);
+      }
+    },
+    onOrderUpdate: () => {
+      console.log('🔔 Pedido atualizado! Recarregando...');
+      if (selectedDate === getTodayString()) {
+        loadData(selectedDate);
+      }
+    }
+  });
 
   const [selectedDate, setSelectedDate] = useState(getTodayString());
   const [data, setData] = useState<{

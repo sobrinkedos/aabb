@@ -1500,13 +1500,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           table: 'comandas'
         },
         (payload) => {
-          console.log('🔥 SUBSCRIPTION ATIVADA - comandas:', payload);
-          // Recarregar pedidos quando comandas mudarem também
-          setTimeout(() => {
-            console.log('🔄 Recarregando pedidos da cozinha e bar (comandas)...');
-            fetchKitchenOrders();
-            fetchBarOrders();
-          }, 100);
+          console.log('🔥 REALTIME - comandas:', payload.eventType);
+          // Recarregar pedidos imediatamente
+          fetchKitchenOrders();
+          fetchBarOrders();
         }
       )
       .on(
@@ -1517,27 +1514,18 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           table: 'balcao_orders'
         },
         (payload) => {
-          console.log('🔥 SUBSCRIPTION ATIVADA - balcao_orders:', payload);
-          console.log('Event Type:', payload.eventType);
-          console.log('New data:', payload.new);
-          console.log('Old data:', payload.old);
+          console.log('🔥 REALTIME - balcao_orders:', payload.eventType);
           
           // Verificar se é mudança de status de pending_payment para paid
           if (payload.eventType === 'UPDATE' && 
               payload.old?.status === 'pending_payment' && 
               payload.new?.status === 'paid') {
-            console.log('🎉 PEDIDO PAGO DETECTADO! Forçando atualização imediata...');
-            // Atualização imediata + fallback
-            fetchKitchenOrders();
-            fetchBarOrders();
+            console.log('💰 Pedido pago! Atualizando monitores...');
           }
           
-          // Recarregar pedidos quando pedidos de balcão mudarem
-          setTimeout(() => {
-            console.log('🔄 Recarregando pedidos da cozinha e bar (balcão)...');
-            fetchKitchenOrders();
-            fetchBarOrders();
-          }, 1000); // Aumentado para 1000ms para garantir sincronização
+          // Recarregar pedidos imediatamente
+          fetchKitchenOrders();
+          fetchBarOrders();
         }
       )
       .on(
@@ -1548,15 +1536,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           table: 'balcao_order_items'
         },
         (payload) => {
-          console.log('🔥 SUBSCRIPTION ATIVADA - balcao_order_items:', payload);
-          console.log('Event Type:', payload.eventType);
+          console.log('🔥 REALTIME - balcao_order_items:', payload.eventType);
           
-          // Recarregar pedidos quando itens de balcão mudarem
-          setTimeout(() => {
-            console.log('🔄 Recarregando pedidos da cozinha e bar (itens balcão)...');
-            fetchKitchenOrders();
-            fetchBarOrders();
-          }, 500);
+          // Recarregar pedidos imediatamente
+          fetchKitchenOrders();
+          fetchBarOrders();
         }
       )
       .subscribe((status) => {
