@@ -238,16 +238,17 @@ export const useBasicEmployeeCreation = () => {
         throw new Error('Funcionário não encontrado');
       }
 
-      // 1. Verificar se o usuário já existe no Auth
+      // 1. Salvar sessão atual antes de qualquer operação
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      // 2. Verificar se o usuário já existe no Auth
       console.log('🔍 Verificando se usuário já existe:', email);
       
-      // Tentar buscar usuário existente (isso não funciona diretamente, então vamos tentar criar e tratar o erro)
-      
-      // 2. Gerar senha temporária
+      // 3. Gerar senha temporária
       const senhaTemporaria = '123456'; // Senha padrão
 
-      // 3. Tentar criar usuário no Auth
-      let authData: any;
+      // 4. Tentar criar usuário no Auth
+      let userId: string;
       const { data: signUpData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: senhaTemporaria,
@@ -257,41 +258,43 @@ export const useBasicEmployeeCreation = () => {
       });
 
       if (authError) {
-        // Se usuário já existe, tentar fazer login para obter o ID
+        // Se usuário já existe, precisamos obter o ID de outra forma
         if (authError.message.includes('User already registered') || authError.message.includes('already registered')) {
-          console.log('⚠️ Usuário já existe, tentando fazer login para obter ID...');
+          console.log('⚠️ Usuário já existe no Auth');
           
-          // Tentar login para obter o user ID
-          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-            email: email,
-            password: senhaTemporaria
-          });
+          // Buscar o user_id na tabela usuarios_empresa pelo email
+          const { data: existingUser } = await supabase
+            .from('usuarios_empresa')
+            .select('user_id')
+            .eq('email', email)
+            .eq('empresa_id', empresaId)
+            .single();
           
-          if (loginError) {
-            throw new Error(`Usuário já existe mas não foi possível fazer login. Pode ser necessário resetar a senha: ${loginError.message}`);
+          if (existingUser?.user_id) {
+            userId = existingUser.user_id;
+            console.log('✅ User ID encontrado em usuarios_empresa:', userId);
+          } else {
+            throw new Error(`Usuário ${email} já existe no Auth mas não está vinculado a esta empresa. Entre em contato com o suporte.`);
           }
-          
-          if (!loginData.user?.id) {
-            throw new Error('Não foi possível obter ID do usuário existente');
-          }
-          
-          // Usar o ID do usuário existente
-          const userId = loginData.user.id;
-          console.log('✅ Usando usuário existente:', userId);
-          
-          // Continuar com o fluxo usando o userId existente
-          authData = { user: loginData.user };
         } else {
           throw new Error(`Erro ao criar usuário no Auth: ${authError.message}`);
         }
       } else {
         // Usuário criado com sucesso
-        authData = signUpData;
+        if (!signUpData.user?.id) {
+          throw new Error('Falha ao obter ID do usuário criado');
+        }
+        userId = signUpData.user.id;
+        console.log('✅ Novo usuário criado no Auth:', userId);
       }
-
-      const userId = authData.user?.id;
-      if (!userId) {
-        throw new Error('Falha ao obter ID do usuário criado');
+      
+      // 5. IMPORTANTE: Restaurar sessão original imediatamente
+      if (currentSession) {
+        await supabase.auth.setSession({
+          access_token: currentSession.access_token,
+          refresh_token: currentSession.refresh_token
+        });
+        console.log('✅ Sessão original restaurada');
       }
 
       // 3. CRÍTICO: Atualizar employee com profile_id
