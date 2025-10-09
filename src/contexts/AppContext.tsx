@@ -846,13 +846,29 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         const movementType = diferencaEstoque > 0 ? 'entrada_ajuste' : 'saida_ajuste';
         const quantity = Math.abs(diferencaEstoque);
         
+        // Buscar custo anterior para comparação
+        const { data: itemAnteriorCompleto } = await supabase
+          .from('inventory_items')
+          .select('cost')
+          .eq('id', updatedItem.id)
+          .single();
+        
+        const custoAnterior = itemAnteriorCompleto?.cost;
+        const custoNovo = updatedItem.cost;
+        
+        // Criar nota detalhada
+        let notaDetalhada = `Ajuste manual de estoque via edição de item`;
+        if (custoAnterior && custoNovo && custoAnterior !== custoNovo) {
+          notaDetalhada += ` | Custo alterado: R$ ${Number(custoAnterior).toFixed(2)} → R$ ${Number(custoNovo).toFixed(2)}`;
+        }
+        
         try {
           const { error: movementError } = await supabase.rpc('register_inventory_movement', {
             p_inventory_item_id: updatedItem.id,
             p_movement_type: movementType,
             p_quantity: quantity,
             p_unit_cost: updatedItem.cost || null,
-            p_notes: `Ajuste manual de estoque via edição de item`,
+            p_notes: notaDetalhada,
             p_reference_document: null,
             p_created_by: user.id
           });

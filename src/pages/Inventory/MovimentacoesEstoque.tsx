@@ -17,6 +17,8 @@ interface Movement {
     quantity: number;
     stock_before: number;
     stock_after: number;
+    unit_cost: number | null;
+    total_cost: number | null;
     notes: string | null;
     reference_document: string | null;
     created_at: string;
@@ -284,7 +286,7 @@ export default function MovimentacoesEstoque() {
                                                             </span>
                                                         </div>
 
-                                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2 text-sm">
+                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2 text-sm">
                                                             <div>
                                                                 <span className="text-gray-500">Quantidade:</span>
                                                                 <span className="ml-2 font-medium text-gray-900">
@@ -298,6 +300,24 @@ export default function MovimentacoesEstoque() {
                                                                     {movement.stock_before} → {movement.stock_after}
                                                                 </span>
                                                             </div>
+
+                                                            {movement.unit_cost && (
+                                                                <div>
+                                                                    <span className="text-gray-500">Custo Unit.:</span>
+                                                                    <span className="ml-2 font-medium text-gray-900">
+                                                                        R$ {Number(movement.unit_cost).toFixed(2)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+
+                                                            {movement.total_cost && (
+                                                                <div>
+                                                                    <span className="text-gray-500">Custo Total:</span>
+                                                                    <span className="ml-2 font-medium text-gray-900">
+                                                                        R$ {Number(movement.total_cost).toFixed(2)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                         </div>
 
                                                         {(movement.reference_document || movement.notes) && (
