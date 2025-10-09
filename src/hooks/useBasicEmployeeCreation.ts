@@ -262,17 +262,21 @@ export const useBasicEmployeeCreation = () => {
         if (authError.message.includes('User already registered') || authError.message.includes('already registered')) {
           console.log('⚠️ Usuário já existe no Auth');
           
-          // Buscar o user_id na tabela usuarios_empresa pelo email
-          const { data: existingUser } = await supabase
-            .from('usuarios_empresa')
-            .select('user_id')
-            .eq('email', email)
-            .eq('empresa_id', empresaId)
-            .single();
+          // Usar função RPC que bypassa RLS para buscar user_id
+          const { data: existingUserId, error: rpcError } = await supabase
+            .rpc('get_user_id_by_email', {
+              p_email: email,
+              p_empresa_id: empresaId
+            });
           
-          if (existingUser?.user_id) {
-            userId = existingUser.user_id;
-            console.log('✅ User ID encontrado em usuarios_empresa:', userId);
+          if (rpcError) {
+            console.error('❌ Erro ao buscar user_id:', rpcError);
+            throw new Error(`Erro ao buscar usuário existente: ${rpcError.message}`);
+          }
+          
+          if (existingUserId) {
+            userId = existingUserId;
+            console.log('✅ User ID encontrado:', userId);
           } else {
             throw new Error(`Usuário ${email} já existe no Auth mas não está vinculado a esta empresa. Entre em contato com o suporte.`);
           }
