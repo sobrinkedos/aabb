@@ -792,6 +792,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
     const empresaId = usuarioEmpresa.empresa_id;
     
+    // Buscar estoque anterior para registrar movimentação
+    const { data: itemAnterior } = await supabase
+      .from('inventory_items')
+      .select('current_stock')
+      .eq('id', updatedItem.id)
+      .single();
+    
+    const estoqueAnterior = itemAnterior?.current_stock || 0;
+    const estoqueNovo = updatedItem.currentStock;
+    const diferencaEstoque = estoqueNovo - estoqueAnterior;
+    
     const itemToUpdate: any = {
         name: updatedItem.name,
         category_id: updatedItem.categoryId,
@@ -823,6 +834,39 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
     if (data) {
       console.log('✅ Item atualizado com sucesso!');
+      
+      // Registrar movimentação se houve mudança no estoque
+      if (diferencaEstoque !== 0) {
+        console.log('📊 Registrando movimentação de estoque:', {
+          diferenca: diferencaEstoque,
+          anterior: estoqueAnterior,
+          novo: estoqueNovo
+        });
+        
+        const movementType = diferencaEstoque > 0 ? 'entrada_ajuste' : 'saida_ajuste';
+        const quantity = Math.abs(diferencaEstoque);
+        
+        try {
+          const { error: movementError } = await supabase.rpc('register_inventory_movement', {
+            p_inventory_item_id: updatedItem.id,
+            p_movement_type: movementType,
+            p_quantity: quantity,
+            p_unit_cost: updatedItem.cost || null,
+            p_notes: `Ajuste manual de estoque via edição de item`,
+            p_reference_document: null,
+            p_created_by: user.id
+          });
+          
+          if (movementError) {
+            console.error('❌ Erro ao registrar movimentação:', movementError);
+          } else {
+            console.log('✅ Movimentação registrada com sucesso!');
+          }
+        } catch (movError) {
+          console.error('❌ Erro ao registrar movimentação:', movError);
+        }
+      }
+      
       setInventory(prev => prev.map(item => item.id === data.id ? fromInventorySupabase(data) : item).sort((a,b) => a.name.localeCompare(b.name)));
       
       // Recarregar menu items se o item está disponível para venda
