@@ -24,6 +24,7 @@ import KitchenModule from './pages/Kitchen';
 import InventoryModule from './pages/Inventory';
 import ListaEstoqueBaixo from './pages/Inventory/ListaEstoqueBaixo';
 import AtualizacaoMassiva from './pages/Inventory/AtualizacaoMassiva';
+import MovimentacoesEstoque from './pages/Inventory/MovimentacoesEstoque';
 import MembersModule from './pages/Members';
 import BarAttendance from './pages/BarAttendance';
 import CashManagement from './pages/CashManagement';
@@ -182,6 +183,11 @@ function App() {
               <Route path="inventory" element={
                 <PermissionProtectedRoute module="funcionarios">
                   <InventoryModule />
+                </PermissionProtectedRoute>
+              } />
+              <Route path="inventory/movements" element={
+                <PermissionProtectedRoute module="funcionarios">
+                  <MovimentacoesEstoque />
                 </PermissionProtectedRoute>
               } />
               <Route path="inventory/estoque-baixo" element={
