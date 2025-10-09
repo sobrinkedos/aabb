@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Package, AlertTriangle, DollarSign } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, DollarSign, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import ItemModal from './ItemModal';
@@ -57,6 +57,15 @@ const InventoryModule: React.FC = () => {
           <p className="text-gray-600">Controle e gestão de inventário</p>
         </div>
         <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 mt-4 sm:mt-0">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => navigate('/inventory/movements')}
+            className="bg-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center space-x-2"
+          >
+            <History size={20} />
+            <span>Movimentações</span>
+          </motion.button>
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
