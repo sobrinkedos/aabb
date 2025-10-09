@@ -300,19 +300,36 @@ export const useBasicEmployeeCreation = () => {
         .from("employees")
         .update({ profile_id: userId, tem_acesso_sistema: true })
         .eq('id', employeeId)
-        .select('id, profile_id')
-        .single();
+        .select('id, profile_id');
 
       if (updateError) {
-        console.error('❌ ERRO CRÍTICO ao atualizar profile_id:', updateError);
+        console.error('❌ ERRO ao atualizar profile_id:', updateError);
         throw new Error(`Falha ao vincular usuário ao funcionário: ${updateError.message}`);
       }
 
-      if (!updatedEmployee || !updatedEmployee.profile_id) {
-        throw new Error('Falha ao vincular profile_id - atualização não refletida');
+      if (!updatedEmployee || updatedEmployee.length === 0) {
+        console.error('❌ Nenhuma linha atualizada. Verificando se o employee existe...');
+        
+        // Verificar se o employee existe
+        const { data: checkEmployee } = await supabase
+          .from("employees")
+          .select('id, empresa_id')
+          .eq('id', employeeId)
+          .single();
+        
+        if (!checkEmployee) {
+          throw new Error('Funcionário não encontrado');
+        }
+        
+        // Verificar empresa_id
+        if (checkEmployee.empresa_id !== empresaId) {
+          throw new Error('Funcionário pertence a outra empresa');
+        }
+        
+        throw new Error('Falha ao atualizar profile_id - verifique as permissões RLS');
       }
 
-      console.log('✅ Profile_id atualizado com sucesso:', updatedEmployee.profile_id);
+      console.log('✅ Profile_id atualizado:', updatedEmployee[0].profile_id);
 
       // 4. Verificar se já existe registro na tabela usuarios_empresa
       console.log('🔍 Verificando se usuario_empresa já existe...');
