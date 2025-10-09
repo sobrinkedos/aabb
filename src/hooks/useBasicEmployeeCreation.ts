@@ -364,15 +364,25 @@ export const useBasicEmployeeCreation = () => {
         throw new Error('Falha ao obter ID do usuário criado');
       }
 
-      // 3. Atualizar employee com profile_id
-      const { error: updateError } = await supabase
+      // 3. CRÍTICO: Atualizar employee com profile_id
+      console.log('📝 Atualizando profile_id no employee...');
+      const { data: updatedEmployee, error: updateError } = await supabase
         .from("employees")
-        .update({ profile_id: userId })
-        .eq('id', employeeId);
+        .update({ profile_id: userId, tem_acesso_sistema: true })
+        .eq('id', employeeId)
+        .select('id, profile_id')
+        .single();
 
       if (updateError) {
-        console.warn('Aviso ao atualizar profile_id:', updateError.message);
+        console.error('❌ ERRO CRÍTICO ao atualizar profile_id:', updateError);
+        throw new Error(`Falha ao vincular usuário ao funcionário: ${updateError.message}`);
       }
+
+      if (!updatedEmployee || !updatedEmployee.profile_id) {
+        throw new Error('Falha ao vincular profile_id - atualização não refletida');
+      }
+
+      console.log('✅ Profile_id atualizado com sucesso:', updatedEmployee.profile_id);
 
       // 4. Verificar se já existe registro na tabela usuarios_empresa
       console.log('🔍 Verificando se usuario_empresa já existe...');
@@ -413,27 +423,53 @@ export const useBasicEmployeeCreation = () => {
       } else {
         // Criar novo registro
         console.log('📝 Criando novo usuario_empresa...');
+        const usuarioEmpresaInsert = {
+          user_id: userId,
+          empresa_id: empresaId,
+          nome_completo: employeeData.name,
+          email: employeeData.email,
+          tipo_usuario: 'funcionario',
+          cargo: 'Funcionário',
+          status: 'ativo',
+          ativo: true,
+          tem_acesso_sistema: true
+        };
+
+        console.log('📋 Dados do usuario_empresa:', usuarioEmpresaInsert);
+
         const { data: newData, error: usuarioEmpresaError } = await supabase
           .from("usuarios_empresa")
-          .insert({
-            user_id: userId,
-            empresa_id: empresaId,
-            nome_completo: employeeData.name,
-            email: employeeData.email,
-            tipo_usuario: 'funcionario',
-            cargo: 'Funcionário',
-            status: 'ativo',
-            ativo: true,
-            tem_acesso_sistema: true
-          })
-          .select('id')
+          .insert(usuarioEmpresaInsert)
+          .select('id, user_id, tem_acesso_sistema')
           .single();
 
         if (usuarioEmpresaError) {
+          console.error('❌ ERRO ao criar usuario_empresa:', usuarioEmpresaError);
           throw new Error(`Erro ao criar usuario_empresa: ${usuarioEmpresaError.message}`);
         }
+
+        if (!newData || !newData.id) {
+          throw new Error('Usuario_empresa criado mas ID não retornado');
+        }
+
+        console.log('✅ Usuario_empresa criado com sucesso:', newData);
         usuarioEmpresaData = newData;
       }
+
+      // Verificar se o vínculo foi criado corretamente
+      console.log('🔍 Verificando vínculo completo...');
+      const { data: verifyLink, error: verifyError } = await supabase
+        .from('usuarios_empresa')
+        .select('id, user_id, tem_acesso_sistema')
+        .eq('id', usuarioEmpresaData.id)
+        .single();
+
+      if (verifyError || !verifyLink) {
+        console.error('❌ Falha na verificação do vínculo:', verifyError);
+        throw new Error('Vínculo criado mas não pode ser verificado');
+      }
+
+      console.log('✅ Vínculo verificado:', verifyLink);
 
       // 5. Verificar e criar permissões
       console.log('🔍 Verificando permissões existentes...');
@@ -471,6 +507,14 @@ export const useBasicEmployeeCreation = () => {
         permissionsCount: permissionsToInsert.length
       });
 
+      // Verificação final completa
+      console.log('🎯 VERIFICAÇÃO FINAL COMPLETA:');
+      console.log('  ✅ Employee ID:', employeeId);
+      console.log('  ✅ Profile ID:', userId);
+      console.log('  ✅ Usuario Empresa ID:', usuarioEmpresaData.id);
+      console.log('  ✅ Tem Acesso Sistema:', true);
+      console.log('  ✅ Permissões:', permissionsToInsert.length + existingModules.length);
+
       return {
         success: true,
         credentials: {
@@ -478,7 +522,12 @@ export const useBasicEmployeeCreation = () => {
           senha_temporaria: senhaTemporaria,
           deve_alterar_senha: true
         },
-        message: 'Credenciais criadas com sucesso!'
+        message: 'Credenciais criadas com sucesso!',
+        details: {
+          employeeId,
+          userId,
+          usuarioEmpresaId: usuarioEmpresaData.id
+        }
       };
 
     } catch (err) {
