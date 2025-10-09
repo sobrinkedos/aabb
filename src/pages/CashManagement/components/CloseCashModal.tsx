@@ -139,7 +139,7 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
     }
   };
 
-  // Função para carregar itens de comandas pendentes de entrega
+  // Função para carregar itens de comandas pendentes de entrega do funcionário
   const loadPendingCommandaItems = async () => {
     setLoadingValidation(true);
     try {
@@ -151,12 +151,14 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
             id,
             customer_name,
             table_id,
+            employee_id,
             bar_tables(number)
           ),
           menu_item:menu_items(name)
         `)
         .in('status', ['pending', 'preparing', 'ready'])
         .eq('comanda.status', 'open')
+        .eq('comanda.employee_id', session.employee_id)
         .order('added_at', { ascending: true });
 
       if (error) {
@@ -234,11 +236,12 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
     const errors: string[] = [];
 
     try {
-      // Verificar comandas abertas
+      // Verificar comandas abertas do funcionário da sessão
       const { data: openComandas, error: comandasError } = await (supabase as any)
         .from('comandas')
         .select('id, customer_name, table_id, bar_tables(number)')
-        .eq('status', 'open');
+        .eq('status', 'open')
+        .eq('employee_id', session.employee_id);
 
       if (comandasError) throw comandasError;
 
@@ -253,39 +256,49 @@ export const CloseCashModal: React.FC<CloseCashModalProps> = ({
         }
       }
 
-      // Verificar mesas ocupadas
-      const { data: occupiedTables, error: tablesError } = await (supabase as any)
-        .from('bar_tables')
-        .select('id, number')
-        .eq('status', 'occupied');
+      // Verificar mesas ocupadas APENAS com comandas abertas deste funcionário
+      if (openComandas && openComandas.length > 0) {
+        const tableIds = openComandas
+          .filter((c: any) => c.table_id)
+          .map((c: any) => c.table_id);
 
-      if (tablesError) throw tablesError;
+        if (tableIds.length > 0) {
+          const { data: occupiedTables, error: tablesError } = await (supabase as any)
+            .from('bar_tables')
+            .select('id, number')
+            .in('id', tableIds)
+            .eq('status', 'occupied');
 
-      if (occupiedTables && occupiedTables.length > 0) {
-        errors.push(`⚠️ ${occupiedTables.length} mesa(s) ainda ocupada(s):`);
-        occupiedTables.slice(0, 5).forEach((t: any) => {
-          errors.push(`   • Mesa ${t.number}`);
-        });
+          if (tablesError) throw tablesError;
+
+          if (occupiedTables && occupiedTables.length > 0) {
+            errors.push(`⚠️ ${occupiedTables.length} mesa(s) com comandas suas ainda ocupada(s):`);
+            occupiedTables.slice(0, 5).forEach((t: any) => {
+              errors.push(`   • Mesa ${t.number}`);
+            });
+          }
+        }
       }
 
-      // Verificar pedidos de balcão pendentes
+      // Verificar pedidos de balcão pendentes do funcionário
       const { data: balcaoOrders, error: balcaoError } = await (supabase as any)
         .from('balcao_orders')
-        .select('id, order_number, status')
-        .in('status', ['pending', 'preparing', 'ready']);
+        .select('id, order_number, status, employee_id')
+        .in('status', ['pending', 'preparing', 'ready'])
+        .eq('employee_id', session.employee_id);
 
       if (balcaoError) throw balcaoError;
 
       if (balcaoOrders && balcaoOrders.length > 0) {
-        errors.push(`⚠️ ${balcaoOrders.length} pedido(s) de balcão pendente(s):`);
+        errors.push(`⚠️ ${balcaoOrders.length} pedido(s) de balcão seus pendente(s):`);
         balcaoOrders.slice(0, 5).forEach((o: any) => {
           errors.push(`   • Pedido #${o.order_number} - ${o.status}`);
         });
       }
 
-      // Verificar itens de comanda não entregues
+      // Verificar itens de comanda não entregues (já filtrados por funcionário)
       if (pendingCommandaItems.length > 0) {
-        errors.push(`⚠️ ${pendingCommandaItems.length} item(ns) de comanda não entregue(s)`);
+        errors.push(`⚠️ ${pendingCommandaItems.length} item(ns) de comanda seus não entregue(s)`);
       }
 
     } catch (error) {
