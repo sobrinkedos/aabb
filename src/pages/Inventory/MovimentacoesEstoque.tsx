@@ -52,7 +52,7 @@ export default function MovimentacoesEstoque() {
         setLoading(true);
         try {
             console.log('🔍 Carregando movimentações...');
-            
+
             let query = supabase
                 .from('inventory_movements')
                 .select(`
@@ -88,7 +88,7 @@ export default function MovimentacoesEstoque() {
                 console.error('❌ Erro na query:', error);
                 throw error;
             }
-            
+
             setMovements(data || []);
             console.log('✅ Movimentações carregadas:', data?.length || 0);
         } catch (error) {
