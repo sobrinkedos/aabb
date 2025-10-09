@@ -74,117 +74,64 @@ export const useBasicEmployeeCreation = () => {
         throw new Error('Não foi possível obter o ID da empresa');
       }
 
-      // 1. Buscar ou criar department e position padrão
+      // 1. Buscar department e position padrão (sempre existem no banco)
       console.log('🔍 Buscando department e position...');
       
-      // Buscar department
-      let departmentId: string | undefined;
-      const { data: departments } = await supabase
+      // Buscar department ativo
+      const { data: departments, error: deptError } = await supabase
         .from("departments")
         .select("id")
         .eq('is_active', true)
-        .limit(1);
+        .limit(1)
+        .single();
       
-      if (departments && departments.length > 0) {
-        departmentId = departments[0].id;
-      } else {
-        // Criar department padrão se não existir
-        console.log('📝 Criando department padrão...');
-        const { data: newDept, error: deptError } = await supabase
-          .from("departments")
-          .insert({
-            name: 'Operacional',
-            description: 'Departamento operacional padrão',
-            is_active: true,
-            empresa_id: empresaId
-          })
-          .select('id')
-          .single();
-        
-        if (!deptError && newDept) {
-          departmentId = newDept.id;
-          console.log('✅ Department criado:', departmentId);
-        }
+      if (deptError || !departments) {
+        throw new Error('Nenhum departamento ativo encontrado. Configure um departamento antes de criar funcionários.');
       }
+      
+      const departmentId = departments.id;
+      console.log('✅ Department encontrado:', departmentId);
 
-      // Buscar position
-      let positionId: string | undefined;
-      const { data: positions } = await supabase
+      // Buscar position ativa
+      const { data: positions, error: posError } = await supabase
         .from("positions")
         .select("id")
         .eq('is_active', true)
-        .limit(1);
+        .limit(1)
+        .single();
 
-      if (positions && positions.length > 0) {
-        positionId = positions[0].id;
-      } else {
-        // Criar position padrão se não existir
-        console.log('📝 Criando position padrão...');
-        const { data: newPos, error: posError } = await supabase
-          .from("positions")
-          .insert({
-            title: employeeData.cargo || 'Funcionário',
-            description: 'Cargo padrão',
-            is_active: true,
-            empresa_id: empresaId
-          })
-          .select('id')
-          .single();
-        
-        if (!posError && newPos) {
-          positionId = newPos.id;
-          console.log('✅ Position criado:', positionId);
-        }
+      if (posError || !positions) {
+        throw new Error('Nenhum cargo ativo encontrado. Configure um cargo antes de criar funcionários.');
       }
-
+      
+      const positionId = positions.id;
+      console.log('✅ Position encontrado:', positionId);
       console.log('📋 Department/Position:', { departmentId, positionId });
 
-      // Se ainda não tiver position_id, criar um genérico
-      if (!positionId) {
-        console.log('⚠️ Criando position genérico como fallback...');
-        const { data: fallbackPos } = await supabase
-          .from("positions")
-          .insert({
-            title: 'Funcionário',
-            description: 'Cargo genérico',
-            is_active: true,
-            empresa_id: empresaId
-          })
-          .select('id')
-          .single();
-        
-        if (fallbackPos) {
-          positionId = fallbackPos.id;
-          console.log('✅ Position fallback criado:', positionId);
-        }
-      }
-
-      // 2. Criar registro na tabela employees (apenas campos essenciais)
+      // 2. Criar registro na tabela employees
       const employeeInsertData: any = {
         employee_code: `EMP-${Date.now()}`,
         name: employeeData.nome_completo,
         hire_date: new Date().toISOString().split('T')[0],
         status: 'active',
         empresa_id: empresaId,
-        position_id: positionId // Sempre incluir, mesmo que seja undefined (vai dar erro se for obrigatório)
+        position_id: positionId,
+        department_id: departmentId
       };
 
       // Adicionar campos opcionais apenas se existirem
       if (employeeData.email) employeeInsertData.email = employeeData.email;
       if (employeeData.telefone) employeeInsertData.phone = employeeData.telefone;
       if (employeeData.cpf) employeeInsertData.cpf = employeeData.cpf;
-      if (departmentId) employeeInsertData.department_id = departmentId;
 
-      console.log('💾 Inserindo employee com dados:');
-      console.log('  - employee_code:', employeeInsertData.employee_code);
-      console.log('  - name:', employeeInsertData.name);
-      console.log('  - email:', employeeInsertData.email);
-      console.log('  - phone:', employeeInsertData.phone);
-      console.log('  - cpf:', employeeInsertData.cpf);
-      console.log('  - empresa_id:', employeeInsertData.empresa_id);
+      console.log('💾 Criando employee:', {
+        code: employeeInsertData.employee_code,
+        name: employeeInsertData.name,
+        email: employeeInsertData.email,
+        position_id: positionId,
+        department_id: departmentId
+      });
       
-      // CORREÇÃO: Criar de verdade na tabela employees
-      console.log('📝 Criando registro REAL na tabela employees...');
       const { data: employeeRecord, error: employeeError } = await supabase
         .from('employees')
         .insert(employeeInsertData)
@@ -200,10 +147,10 @@ export const useBasicEmployeeCreation = () => {
         throw new Error('Funcionário criado mas ID não retornado');
       }
 
-      console.log('✅ Employee criado com sucesso:', employeeRecord.id);
+      console.log('✅ Employee criado:', employeeRecord.id);
 
       // 3. Criar registro na tabela bar_employees
-      console.log('📝 Criando registro REAL na tabela bar_employees...');
+      console.log('� Criaando bar_employee...');
       const barEmployeeData = {
         employee_id: employeeRecord.id,
         bar_role: employeeData.bar_role,
@@ -225,28 +172,11 @@ export const useBasicEmployeeCreation = () => {
         throw new Error(`Erro ao criar registro do bar: ${barEmployeeError.message}`);
       }
 
-      console.log('✅ Bar_employee criado com sucesso');
-
-      console.log('✅ Funcionário básico criado com sucesso:', {
-        employeeId: employeeRecord.id,
+      console.log('✅ Funcionário criado:', {
+        id: employeeRecord.id,
         nome: employeeData.nome_completo,
-        role: employeeData.bar_role,
-        empresaId
+        role: employeeData.bar_role
       });
-
-      // Verificar se foi criado
-      console.log('🔍 Verificando criação no banco...');
-      const { data: verifyData, error: verifyError } = await supabase
-        .from('employees')
-        .select('id, name, email')
-        .eq('id', employeeRecord.id)
-        .single();
-
-      if (verifyError || !verifyData) {
-        console.warn('⚠️ Aviso: Não foi possível verificar a criação');
-      } else {
-        console.log('✅ Verificação OK:', verifyData);
-      }
 
       return {
         success: true,
@@ -386,7 +316,7 @@ export const useBasicEmployeeCreation = () => {
 
       // 4. Verificar se já existe registro na tabela usuarios_empresa
       console.log('🔍 Verificando se usuario_empresa já existe...');
-      const { data: existingUsuarioEmpresa, error: checkError } = await supabase
+      const { data: existingUsuarioEmpresa } = await supabase
         .from("usuarios_empresa")
         .select('id, status')
         .eq('user_id', userId)
