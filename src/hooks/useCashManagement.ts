@@ -1600,6 +1600,59 @@ export const useCashManagement = (): UseCashManagementReturn => {
   }, [user, calculatePaymentBreakdown]);
 
   /**
+   * Registra movimentação diária por forma de pagamento
+   */
+  const registerDailyPaymentMovement = useCallback(async (
+    sessionId: string,
+    closingData: CashClosingData
+  ): Promise<void> => {
+    try {
+      console.log('📊 Registrando movimentação diária...');
+
+      // Preparar dados de reconciliação por forma de pagamento
+      const paymentBreakdown: any = {};
+      closingData.reconciliation.forEach(recon => {
+        paymentBreakdown[recon.payment_method] = {
+          expected: recon.expected_amount,
+          actual: recon.actual_amount,
+          count: recon.transaction_count
+        };
+      });
+
+      // Preparar dados de transferências (se houver)
+      const transfers = closingData.treasury_transfer ? [{
+        amount: closingData.treasury_transfer.amount,
+        payment_method: 'dinheiro', // Assumindo que transferências são sempre em dinheiro
+        destination: closingData.treasury_transfer.destination,
+        received_by_name: closingData.treasury_transfer.recipient_name,
+        receipt_number: closingData.treasury_transfer.receipt_number,
+        notes: closingData.treasury_transfer.notes
+      }] : null;
+
+      // Chamar função do banco para registrar fechamento
+      const { data, error } = await supabase.rpc('register_cash_closing', {
+        p_session_id: sessionId,
+        p_employee_id: user!.id,
+        p_payment_breakdown: paymentBreakdown,
+        p_total_expected: closingData.reconciliation.reduce((sum, r) => sum + r.expected_amount, 0),
+        p_total_actual: closingData.reconciliation.reduce((sum, r) => sum + r.actual_amount, 0),
+        p_transfers: transfers,
+        p_notes: closingData.closing_notes
+      });
+
+      if (error) {
+        console.error('❌ Erro ao registrar movimentação diária:', error);
+        throw error;
+      }
+
+      console.log('✅ Movimentação diária registrada com sucesso:', data);
+    } catch (error) {
+      console.error('Erro ao registrar movimentação diária:', error);
+      throw error;
+    }
+  }, [user]);
+
+  /**
    * Fecha caixa com funcionalidades aprimoradas
    */
   const closeCashSessionEnhanced = useCallback(async (data: CashClosingData): Promise<CashClosingReceipt> => {
@@ -1667,6 +1720,14 @@ export const useCashManagement = (): UseCashManagementReturn => {
           console.warn('⚠️ Erro ao registrar transferência (tabela pode não existir):', transferError);
           // Não quebra o fechamento se a transferência falhar
         }
+      }
+
+      // 5.1. Registrar no sistema de movimentação diária
+      try {
+        await registerDailyPaymentMovement(state.currentSession.id, data);
+      } catch (movementError) {
+        console.warn('⚠️ Erro ao registrar movimentação diária:', movementError);
+        // Não quebra o fechamento se o registro falhar
       }
 
       // 6. Registrar tratamento de discrepância (se houver)
