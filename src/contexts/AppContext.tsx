@@ -1518,6 +1518,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // Buscar pedidos da cozinha e do bar quando o componente monta
   useEffect(() => {
+    console.log('🚀🚀🚀 INICIANDO SUBSCRIPTIONS DE REALTIME 🚀🚀🚀');
     fetchKitchenOrders();
     fetchBarOrders();
     
