@@ -12,7 +12,7 @@ const BarModule: React.FC = () => {
   const navigate = useNavigate();
   const { barOrders, menuItems, loadMenuItems, refreshBarOrders } = useApp();
   const { totalRevenue, ordersToday, pendingOrders, deliveredOrders, loading: statsLoading } = useBarStats();
-  
+
   // Hook para atualização em tempo real
   useBarMonitorRealtime({
     onOrderUpdate: () => {
@@ -20,7 +20,7 @@ const BarModule: React.FC = () => {
       refreshBarOrders();
     }
   });
-  
+
   // Carregar dados iniciais quando o componente for montado
   React.useEffect(() => {
     console.log('🚀 Monitor Bar montado - carregando dados iniciais...');
@@ -63,8 +63,8 @@ const BarModule: React.FC = () => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     const matchesTable = tableFilter === 'all' || (order.tableNumber || 'Balcão') === tableFilter;
     const matchesSearch = order.tableNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.notes?.toLowerCase().includes(searchTerm.toLowerCase());
+      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.notes?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesTable && matchesSearch;
   });
 
@@ -193,11 +193,10 @@ const BarModule: React.FC = () => {
                   <button
                     key={tableNumber}
                     onClick={() => setTableFilter(tableNumber)}
-                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors hover:shadow-md transform hover:scale-105 ${
-                      tableFilter === tableNumber
-                        ? 'bg-orange-400 text-white'
-                        : 'bg-orange-200 text-orange-800 hover:bg-orange-300'
-                    }`}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors hover:shadow-md transform hover:scale-105 ${tableFilter === tableNumber
+                      ? 'bg-orange-400 text-white'
+                      : 'bg-orange-200 text-orange-800 hover:bg-orange-300'
+                      }`}
                     title={`Filtrar pedidos da ${tableNumber}`}
                   >
                     Mesa {tableNumber}: {orders.length} pedidos
@@ -209,9 +208,9 @@ const BarModule: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredOrders.map((order) => (
-            <OrderCard 
-              key={order.id} 
-              order={order} 
+            <OrderCard
+              key={order.id}
+              order={order}
               menuItems={menuItems}
               hasMultipleOrders={hasMultipleOrdersForTable(order.tableNumber || 'Balcão')}
               orderNumber={getOrderNumber(order)}
