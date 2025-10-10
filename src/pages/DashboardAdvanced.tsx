@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  TrendingUp, 
+import {
+  TrendingUp,
   TrendingDown,
   DollarSign,
   ShoppingCart,
@@ -61,7 +61,7 @@ const DashboardAdvanced: React.FC = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        
+
         // Buscar pedidos (comandas e balcão)
         const { data: comandasData } = await supabase
           .from('comandas')
@@ -157,7 +157,7 @@ const DashboardAdvanced: React.FC = () => {
     const previousPeriodEnd = endOfDay(subDays(now, selectedPeriod));
 
     // Pedidos do período atual
-    const currentPeriodOrders = orders.filter(o => 
+    const currentPeriodOrders = orders.filter(o =>
       isWithinInterval(o.createdAt, { start: periodStart, end: periodEnd })
     );
 
@@ -168,10 +168,10 @@ const DashboardAdvanced: React.FC = () => {
 
     // Pedidos finalizados (considerar 'closed', 'paid', 'delivered', 'completed')
     const completedStatuses = ['closed', 'paid', 'delivered', 'completed', 'finalizado'];
-    const completedOrders = currentPeriodOrders.filter(o => 
+    const completedOrders = currentPeriodOrders.filter(o =>
       completedStatuses.includes(o.status?.toLowerCase())
     );
-    const previousCompletedOrders = previousPeriodOrders.filter(o => 
+    const previousCompletedOrders = previousPeriodOrders.filter(o =>
       completedStatuses.includes(o.status?.toLowerCase())
     );
 
@@ -182,13 +182,13 @@ const DashboardAdvanced: React.FC = () => {
     const revenue = completedOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
     console.log('Faturamento calculado:', revenue);
     const previousRevenue = previousCompletedOrders.reduce((sum, o) => sum + o.total, 0);
-    const revenueChange = previousRevenue > 0 
-      ? ((revenue - previousRevenue) / previousRevenue) * 100 
+    const revenueChange = previousRevenue > 0
+      ? ((revenue - previousRevenue) / previousRevenue) * 100
       : 0;
 
     // Ticket médio
-    const avgTicket = completedOrders.length > 0 
-      ? revenue / completedOrders.length 
+    const avgTicket = completedOrders.length > 0
+      ? revenue / completedOrders.length
       : 0;
     const previousAvgTicket = previousCompletedOrders.length > 0
       ? previousRevenue / previousCompletedOrders.length
@@ -209,7 +209,7 @@ const DashboardAdvanced: React.FC = () => {
 
     // Estoque
     const lowStockItems = inventory.filter(i => i.currentStock <= i.minStock).length;
-    const totalStockValue = inventory.reduce((sum, i) => 
+    const totalStockValue = inventory.reduce((sum, i) =>
       sum + (i.currentStock * (i.price || 0)), 0
     );
 
@@ -240,9 +240,9 @@ const DashboardAdvanced: React.FC = () => {
     // Tempo médio de atendimento (em minutos)
     const avgServiceTime = completedOrders.length > 0
       ? completedOrders.reduce((sum, o) => {
-          const diff = o.updatedAt.getTime() - o.createdAt.getTime();
-          return sum + (diff / 1000 / 60);
-        }, 0) / completedOrders.length
+        const diff = o.updatedAt.getTime() - o.createdAt.getTime();
+        return sum + (diff / 1000 / 60);
+      }, 0) / completedOrders.length
       : 0;
 
     return {
@@ -263,14 +263,14 @@ const DashboardAdvanced: React.FC = () => {
   }, [orders, inventory, selectedPeriod]);
 
   // Componente de Card de Métrica
-  const MetricCard: React.FC<MetricCardProps> = ({ 
-    title, 
-    value, 
-    change, 
-    icon: Icon, 
-    color, 
+  const MetricCard: React.FC<MetricCardProps> = ({
+    title,
+    value,
+    change,
+    icon: Icon,
+    color,
     bgColor,
-    trend 
+    trend
   }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -282,9 +282,8 @@ const DashboardAdvanced: React.FC = () => {
           <Icon className={`w-6 h-6 ${color}`} />
         </div>
         {change !== undefined && (
-          <div className={`flex items-center space-x-1 text-sm font-medium ${
-            change > 0 ? 'text-green-600' : change < 0 ? 'text-red-600' : 'text-gray-600'
-          }`}>
+          <div className={`flex items-center space-x-1 text-sm font-medium ${change > 0 ? 'text-green-600' : change < 0 ? 'text-red-600' : 'text-gray-600'
+            }`}>
             {change > 0 ? (
               <ArrowUpRight className="w-4 h-4" />
             ) : change < 0 ? (
@@ -333,11 +332,10 @@ const DashboardAdvanced: React.FC = () => {
             <button
               key={period.days}
               onClick={() => setSelectedPeriod(period.days)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                selectedPeriod === period.days
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${selectedPeriod === period.days
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+                }`}
             >
               {period.label}
             </button>
@@ -497,12 +495,11 @@ const DashboardAdvanced: React.FC = () => {
             {metrics.topProducts.length > 0 ? (
               metrics.topProducts.map((product, index) => (
                 <div key={product.name} className="flex items-center space-x-4">
-                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                    index === 0 ? 'bg-yellow-100 text-yellow-700' :
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-yellow-100 text-yellow-700' :
                     index === 1 ? 'bg-gray-100 text-gray-700' :
-                    index === 2 ? 'bg-orange-100 text-orange-700' :
-                    'bg-blue-100 text-blue-700'
-                  }`}>
+                      index === 2 ? 'bg-orange-100 text-orange-700' :
+                        'bg-blue-100 text-blue-700'
+                    }`}>
                     {index + 1}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -622,10 +619,9 @@ const DashboardAdvanced: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white rounded-lg p-4">
                 <p className="text-sm text-gray-600 mb-1">Crescimento</p>
-                <p className={`text-xl font-bold ${
-                  metrics.revenueChange > 0 ? 'text-green-600' : 
+                <p className={`text-xl font-bold ${metrics.revenueChange > 0 ? 'text-green-600' :
                   metrics.revenueChange < 0 ? 'text-red-600' : 'text-gray-600'
-                }`}>
+                  }`}>
                   {metrics.revenueChange > 0 ? '+' : ''}{metrics.revenueChange.toFixed(1)}%
                 </p>
                 <p className="text-xs text-gray-500 mt-1">vs período anterior</p>
