@@ -39,6 +39,7 @@ const BalcaoPendingPanel: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<BalcaoOrderWithDetails | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('dinheiro');
   const [processing, setProcessing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Processar pagamento do pedido
   const handleProcessPayment = async () => {
@@ -273,11 +274,23 @@ const BalcaoPendingPanel: React.FC = () => {
           )}
           
           <button
-            onClick={refreshData}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+            onClick={async () => {
+              setRefreshing(true);
+              try {
+                console.log('🔄 Atualizando pedidos manualmente...');
+                await refreshData();
+                console.log('✅ Pedidos atualizados!');
+              } catch (error) {
+                console.error('❌ Erro ao atualizar:', error);
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+            disabled={refreshing}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            <ArrowPathIcon className="h-4 w-4" />
-            <span>Atualizar</span>
+            <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span>{refreshing ? 'Atualizando...' : 'Atualizar'}</span>
           </button>
         </div>
       </div>
