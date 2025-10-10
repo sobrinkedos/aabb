@@ -4,6 +4,7 @@ import { ProtectedRoute } from '../../components/Auth/ProtectedRoute';
 import { ModuloSistema, CategoriaConfiguracao, ConfiguracaoEmpresa } from '../../types/multitenant';
 import { supabase } from '../../lib/supabase';
 import { useDebounce } from '../../hooks/useDebounce';
+import { ConfiguracaoCargos } from '../../components/Configuracoes/ConfiguracaoCargos';
 
 interface ConfiguracaoSeguranca {
   tempo_sessao: number; // em minutos
@@ -501,6 +502,12 @@ export const ConfiguracoesEmpresa: React.FC = () => {
       description: 'Dados e informações da empresa'
     },
     {
+      id: 'cargos' as CategoriaConfiguracao,
+      name: 'Cargos',
+      icon: '👔',
+      description: 'Gerenciar cargos e departamentos'
+    },
+    {
       id: CategoriaConfiguracao.SISTEMA,
       name: 'Sistema',
       icon: '⚙️',
@@ -805,6 +812,11 @@ export const ConfiguracoesEmpresa: React.FC = () => {
                     </ul>
                   </div>
                 </div>
+              )}
+
+              {/* Configurações de Cargos e Departamentos */}
+              {activeTab === 'cargos' && (
+                <ConfiguracaoCargos />
               )}
 
               {/* Configurações de Sistema */}
