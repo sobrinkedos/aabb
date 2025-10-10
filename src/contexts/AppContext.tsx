@@ -1532,26 +1532,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           table: 'comanda_items'
         },
         (payload) => {
-          console.log('🔥 SUBSCRIPTION ATIVADA - comanda_items:', payload);
-          console.log('Event Type:', payload.eventType);
-          console.log('New data:', payload.new);
-          console.log('Old data:', payload.old);
-          
-          // Aguardar um pouco para garantir que a transação foi commitada
-          setTimeout(() => {
-            console.log('🔄 Recarregando pedidos da cozinha e bar...');
-            fetchKitchenOrders();
-            fetchBarOrders();
-          }, 100);
-          
-          // Log adicional para debug
-          if (payload.eventType === 'INSERT') {
-            console.log('✅ Novo item inserido na comanda');
-          } else if (payload.eventType === 'UPDATE') {
-            console.log('🔄 Item da comanda atualizado');
-          } else if (payload.eventType === 'DELETE') {
-            console.log('🗑️ Item da comanda removido');
-          }
+          console.log('🔥 REALTIME - comanda_items:', payload.eventType);
+          fetchKitchenOrders();
+          fetchBarOrders();
         }
       )
       .on(
@@ -1576,18 +1559,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           table: 'balcao_orders'
         },
         (payload) => {
-          console.log('🔥 REALTIME - balcao_orders:', payload.eventType);
-          console.log('📦 Payload:', { old: payload.old?.status, new: payload.new?.status });
+          console.log('🔥🔥🔥 REALTIME - balcao_orders:', payload.eventType, '🔥🔥🔥');
+          console.log('📦 Status:', payload.old?.status, '→', payload.new?.status);
           
           // Verificar se é mudança de status de pending_payment para paid
           if (payload.eventType === 'UPDATE' && 
               payload.old?.status === 'pending_payment' && 
               payload.new?.status === 'paid') {
-            console.log('💰 Pedido pago! Atualizando monitores...');
+            console.log('💰💰💰 PEDIDO PAGO! Atualizando monitores... 💰💰💰');
           }
           
           // Recarregar pedidos imediatamente
-          console.log('🔄 Chamando fetchKitchenOrders e fetchBarOrders...');
           fetchKitchenOrders();
           fetchBarOrders();
         }
