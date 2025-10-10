@@ -40,7 +40,7 @@ export const useBasicEmployeeCreation = () => {
     console.log('  - cpf:', employeeData.cpf);
     console.log('  - bar_role:', employeeData.bar_role);
     console.log('  - cargo:', employeeData.cargo);
-    
+
     try {
       setLoading(true);
       setError(null);
@@ -57,7 +57,7 @@ export const useBasicEmployeeCreation = () => {
       // Obter empresa_id de forma mais segura
       console.log('🔍 Tentando obter empresa_id...');
       let empresaId: string;
-      
+
       try {
         const empresaIdResult = await getCurrentUserEmpresaId();
         if (!empresaIdResult) {
@@ -69,14 +69,14 @@ export const useBasicEmployeeCreation = () => {
         console.error('❌ Erro ao obter empresa_id:', empresaError);
         throw new Error('Não foi possível obter o ID da empresa do usuário logado');
       }
-      
+
       if (!empresaId) {
         throw new Error('Não foi possível obter o ID da empresa');
       }
 
       // 1. Buscar department e position padrão (sempre existem no banco)
       console.log('🔍 Buscando department e position...');
-      
+
       // Buscar department ativo
       const { data: departments, error: deptError } = await supabase
         .from("departments")
@@ -84,11 +84,11 @@ export const useBasicEmployeeCreation = () => {
         .eq('is_active', true)
         .limit(1)
         .single();
-      
+
       if (deptError || !departments) {
         throw new Error('Nenhum departamento ativo encontrado. Configure um departamento antes de criar funcionários.');
       }
-      
+
       const departmentId = departments.id;
       console.log('✅ Department encontrado:', departmentId);
 
@@ -103,7 +103,7 @@ export const useBasicEmployeeCreation = () => {
       if (posError || !positions) {
         throw new Error('Nenhum cargo ativo encontrado. Configure um cargo antes de criar funcionários.');
       }
-      
+
       const positionId = positions.id;
       console.log('✅ Position encontrado:', positionId);
       console.log('📋 Department/Position:', { departmentId, positionId });
@@ -131,7 +131,7 @@ export const useBasicEmployeeCreation = () => {
         position_id: positionId,
         department_id: departmentId
       });
-      
+
       const { data: employeeRecord, error: employeeError } = await supabase
         .from('employees')
         .insert(employeeInsertData)
@@ -192,7 +192,7 @@ export const useBasicEmployeeCreation = () => {
         message: errorMessage,
         stack: err instanceof Error ? err.stack : 'No stack'
       });
-      
+
       return {
         success: false,
         error: errorMessage
@@ -240,10 +240,10 @@ export const useBasicEmployeeCreation = () => {
 
       // 1. Salvar sessão atual antes de qualquer operação
       const { data: { session: currentSession } } = await supabase.auth.getSession();
-      
+
       // 2. Verificar se o usuário já existe no Auth
       console.log('🔍 Verificando se usuário já existe:', email);
-      
+
       // 3. Gerar senha temporária
       const senhaTemporaria = '123456'; // Senha padrão
 
@@ -261,19 +261,19 @@ export const useBasicEmployeeCreation = () => {
         // Se usuário já existe, precisamos obter o ID de outra forma
         if (authError.message.includes('User already registered') || authError.message.includes('already registered')) {
           console.log('⚠️ Usuário já existe no Auth');
-          
+
           // Usar função RPC que busca no auth.users
           console.log('🔍 Buscando user_id no Auth para:', email);
           const { data: existingUserId, error: rpcError } = await supabase
             .rpc('get_auth_user_id_by_email', {
               p_email: email
             });
-          
+
           if (rpcError) {
             console.error('❌ Erro ao buscar user_id:', rpcError);
             throw new Error(`Erro ao buscar usuário existente: ${rpcError.message}`);
           }
-          
+
           if (existingUserId) {
             userId = existingUserId;
             console.log('✅ User ID encontrado no Auth:', userId);
@@ -291,7 +291,7 @@ export const useBasicEmployeeCreation = () => {
         userId = signUpData.user.id;
         console.log('✅ Novo usuário criado no Auth:', userId);
       }
-      
+
       // 5. IMPORTANTE: Restaurar sessão original imediatamente
       if (currentSession) {
         await supabase.auth.setSession({
@@ -316,23 +316,23 @@ export const useBasicEmployeeCreation = () => {
 
       if (!updatedEmployee || updatedEmployee.length === 0) {
         console.error('❌ Nenhuma linha atualizada. Verificando se o employee existe...');
-        
+
         // Verificar se o employee existe
         const { data: checkEmployee } = await supabase
           .from("employees")
           .select('id, empresa_id')
           .eq('id', employeeId)
           .single();
-        
+
         if (!checkEmployee) {
           throw new Error('Funcionário não encontrado');
         }
-        
+
         // Verificar empresa_id
         if (checkEmployee.empresa_id !== empresaId) {
           throw new Error('Funcionário pertence a outra empresa');
         }
-        
+
         throw new Error('Falha ao atualizar profile_id - verifique as permissões RLS');
       }
 
@@ -351,7 +351,7 @@ export const useBasicEmployeeCreation = () => {
 
       if (existingUsuarioEmpresa) {
         console.log('✅ Usuario empresa já existe, usando existente:', existingUsuarioEmpresa.id);
-        
+
         // Se existe mas está inativo, reativar
         if (existingUsuarioEmpresa.status !== 'ativo') {
           const { data: updatedData, error: updateError } = await supabase
@@ -433,7 +433,7 @@ export const useBasicEmployeeCreation = () => {
         .eq('usuario_empresa_id', usuarioEmpresaData.id);
 
       const existingModules = existingPermissions?.map(p => p.modulo) || [];
-      
+
       const permissionsToInsert = Object.entries(credentialsData.permissoes_modulos)
         .filter(([modulo]) => !existingModules.includes(modulo)) // Só inserir se não existir
         .map(([modulo, permissoes]) => ({
@@ -488,7 +488,7 @@ export const useBasicEmployeeCreation = () => {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao criar credenciais';
       setError(errorMessage);
       console.error('❌ Erro ao criar credenciais:', err);
-      
+
       return {
         success: false,
         error: errorMessage
