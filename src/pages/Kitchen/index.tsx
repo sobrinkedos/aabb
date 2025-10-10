@@ -2,12 +2,27 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Filter, Clock, AlertCircle } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { useKitchenMonitorRealtime } from '../../hooks/useKitchenMonitorRealtime';
 import MenuManagement from './MenuManagement';
 import KitchenOrders from './KitchenOrders';
 
 const KitchenModule: React.FC = () => {
-  const { kitchenOrders, menuItems } = useApp();
+  const { kitchenOrders, menuItems, refreshKitchenOrders } = useApp();
   const [activeTab, setActiveTab] = useState<'orders' | 'menu'>('orders');
+
+  // Hook para atualização em tempo real
+  useKitchenMonitorRealtime({
+    onOrderUpdate: () => {
+      console.log('🔔 Atualização detectada! Recarregando Monitor Cozinha...');
+      refreshKitchenOrders();
+    }
+  });
+
+  // Carregar pedidos iniciais quando o componente for montado
+  React.useEffect(() => {
+    console.log('🚀 Monitor Cozinha montado - carregando dados iniciais...');
+    refreshKitchenOrders();
+  }, []);
 
   const pendingKitchenOrders = kitchenOrders.filter(order => 
     order.status === 'pending' || order.status === 'preparing'

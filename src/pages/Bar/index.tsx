@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Filter, Search, CheckCircle } from 'lucide-react';
+import { Plus, Search, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { useBarStats } from '../../hooks/useBarStats';
@@ -21,9 +21,11 @@ const BarModule: React.FC = () => {
     }
   });
   
-  // Carregar menu items quando o componente for montado
+  // Carregar dados iniciais quando o componente for montado
   React.useEffect(() => {
+    console.log('🚀 Monitor Bar montado - carregando dados iniciais...');
     loadMenuItems();
+    refreshBarOrders(); // Carregar pedidos iniciais
   }, []); // Executar apenas uma vez ao montar o componente
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
