@@ -47,6 +47,7 @@ const DashboardAdvanced: React.FC = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openCashRegister, setOpenCashRegister] = useState<any>(null);
 
   const periods: PeriodFilter[] = [
     { label: 'Hoje', days: 1 },
@@ -72,27 +73,33 @@ const DashboardAdvanced: React.FC = () => {
           .select('*')
           .order('created_at', { ascending: false });
 
+        console.log('Comandas:', comandasData);
+        console.log('Balcão:', balcaoData);
+
         // Combinar e transformar pedidos
         const allOrders = [
           ...(comandasData || []).map(c => ({
             id: c.id,
             tableNumber: c.table_number,
-            total: c.total || 0,
+            total: parseFloat(c.total) || 0,
             status: c.status,
             createdAt: new Date(c.created_at),
             updatedAt: new Date(c.updated_at || c.created_at),
-            items: c.items || []
+            items: Array.isArray(c.items) ? c.items : []
           })),
           ...(balcaoData || []).map(b => ({
             id: b.id,
             tableNumber: null,
-            total: b.total || 0,
+            total: parseFloat(b.total) || 0,
             status: b.status,
             createdAt: new Date(b.created_at),
             updatedAt: new Date(b.updated_at || b.created_at),
-            items: b.items || []
+            items: Array.isArray(b.items) ? b.items : []
           }))
         ];
+
+        console.log('Total de pedidos:', allOrders.length);
+        console.log('Pedidos transformados:', allOrders);
 
         // Buscar inventário
         const { data: inventoryData } = await supabase
@@ -106,8 +113,25 @@ const DashboardAdvanced: React.FC = () => {
           currentStock: item.current_stock || 0,
           minStock: item.min_stock || 0,
           unit: item.unit || 'un',
-          price: item.price || 0
+          price: parseFloat(item.price) || 0
         }));
+
+        console.log('Inventário:', transformedInventory);
+
+        // Buscar caixa aberto
+        const { data: cashData } = await supabase
+          .from('cash_registers')
+          .select(`
+            *,
+            employee:employees(name, full_name)
+          `)
+          .eq('status', 'open')
+          .order('opened_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        console.log('Caixa aberto:', cashData);
+        setOpenCashRegister(cashData);
 
         setOrders(allOrders);
         setInventory(transformedInventory);
@@ -142,12 +166,21 @@ const DashboardAdvanced: React.FC = () => {
       isWithinInterval(o.createdAt, { start: previousPeriodStart, end: previousPeriodEnd })
     );
 
-    // Pedidos finalizados
-    const completedOrders = currentPeriodOrders.filter(o => o.status === 'delivered');
-    const previousCompletedOrders = previousPeriodOrders.filter(o => o.status === 'delivered');
+    // Pedidos finalizados (considerar 'closed', 'paid', 'delivered', 'completed')
+    const completedStatuses = ['closed', 'paid', 'delivered', 'completed', 'finalizado'];
+    const completedOrders = currentPeriodOrders.filter(o => 
+      completedStatuses.includes(o.status?.toLowerCase())
+    );
+    const previousCompletedOrders = previousPeriodOrders.filter(o => 
+      completedStatuses.includes(o.status?.toLowerCase())
+    );
+
+    console.log('Pedidos finalizados:', completedOrders);
+    console.log('Total de pedidos finalizados:', completedOrders.length);
 
     // Faturamento
-    const revenue = completedOrders.reduce((sum, o) => sum + o.total, 0);
+    const revenue = completedOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+    console.log('Faturamento calculado:', revenue);
     const previousRevenue = previousCompletedOrders.reduce((sum, o) => sum + o.total, 0);
     const revenueChange = previousRevenue > 0 
       ? ((revenue - previousRevenue) / previousRevenue) * 100 
@@ -346,6 +379,42 @@ const DashboardAdvanced: React.FC = () => {
           bgColor="bg-orange-100"
         />
       </div>
+
+      {/* Card de Caixa Aberto */}
+      {openCashRegister && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg shadow-lg p-6"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-green-500 rounded-full">
+                <DollarSign className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-1">
+                  💰 Caixa Aberto
+                </h3>
+                <p className="text-gray-600">
+                  Operador: <span className="font-medium text-gray-800">
+                    {openCashRegister.employee?.full_name || openCashRegister.employee?.name || 'Não identificado'}
+                  </span>
+                </p>
+                <p className="text-sm text-gray-500">
+                  Aberto em: {format(new Date(openCashRegister.opened_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-600 mb-1">Saldo Inicial</p>
+              <p className="text-2xl font-bold text-green-600">
+                R$ {parseFloat(openCashRegister.opening_balance || 0).toFixed(2)}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Métricas Secundárias */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
