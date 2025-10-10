@@ -4,7 +4,7 @@ import { Plus, Search, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { useBarStats } from '../../hooks/useBarStats';
-timport { useBarMonitorRealtime } from '../../hooks/useBarMonitorRealtime';
+import { useBarMonitorRealtime } from '../../hooks/useBarMonitorRealtime';
 import OrderModal from './OrderModal';
 import OrderCard from './OrderCard';
 
