@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   TrendingUp, 
@@ -23,6 +23,7 @@ import { useApp } from '../contexts/AppContext';
 import { format, subDays, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 // Tipos
 interface MetricCardProps {
@@ -41,8 +42,11 @@ interface PeriodFilter {
 }
 
 const DashboardAdvanced: React.FC = () => {
-  const { orders, inventory } = useApp();
+  const { orders: contextOrders, inventory: contextInventory } = useApp();
   const [selectedPeriod, setSelectedPeriod] = useState<number>(7);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const periods: PeriodFilter[] = [
     { label: 'Hoje', days: 1 },
@@ -50,6 +54,75 @@ const DashboardAdvanced: React.FC = () => {
     { label: '30 dias', days: 30 },
     { label: '90 dias', days: 90 }
   ];
+
+  // Buscar dados reais do Supabase
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        
+        // Buscar pedidos (comandas e balcão)
+        const { data: comandasData } = await supabase
+          .from('comandas')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        const { data: balcaoData } = await supabase
+          .from('balcao_orders')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        // Combinar e transformar pedidos
+        const allOrders = [
+          ...(comandasData || []).map(c => ({
+            id: c.id,
+            tableNumber: c.table_number,
+            total: c.total || 0,
+            status: c.status,
+            createdAt: new Date(c.created_at),
+            updatedAt: new Date(c.updated_at || c.created_at),
+            items: c.items || []
+          })),
+          ...(balcaoData || []).map(b => ({
+            id: b.id,
+            tableNumber: null,
+            total: b.total || 0,
+            status: b.status,
+            createdAt: new Date(b.created_at),
+            updatedAt: new Date(b.updated_at || b.created_at),
+            items: b.items || []
+          }))
+        ];
+
+        // Buscar inventário
+        const { data: inventoryData } = await supabase
+          .from('inventory')
+          .select('*');
+
+        const transformedInventory = (inventoryData || []).map(item => ({
+          id: item.id,
+          name: item.name,
+          category: item.category,
+          currentStock: item.current_stock || 0,
+          minStock: item.min_stock || 0,
+          unit: item.unit || 'un',
+          price: item.price || 0
+        }));
+
+        setOrders(allOrders);
+        setInventory(transformedInventory);
+      } catch (error) {
+        console.error('Erro ao buscar dados do dashboard:', error);
+        // Fallback para dados do contexto
+        setOrders(contextOrders);
+        setInventory(contextInventory);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [contextOrders, contextInventory]);
 
   // Calcular métricas avançadas
   const metrics = useMemo(() => {
@@ -194,6 +267,17 @@ const DashboardAdvanced: React.FC = () => {
       </div>
     </motion.div>
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-8">
