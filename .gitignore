@@ -4,3 +4,8 @@ git-portable/
 docs/
 .env*
 *.md
+
+# Backups do banco de dados (contém dados sensíveis)
+backups/
+*.dump
+*.sql.gz

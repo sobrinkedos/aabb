@@ -24,7 +24,9 @@
     "deploy:prod": "node scripts/deploy.js --prod",
     "deploy:check": "node scripts/deploy.js --check-only",
     "commit:optimizations": "node scripts/commit-optimizations.js",
-    "release": "npm run commit:optimizations && npm run deploy:prod"
+    "release": "npm run commit:optimizations && npm run deploy:prod",
+    "backup:db": "tsx scripts/backup-database.ts",
+    "restore:db": "tsx scripts/restore-database.ts"
   },
   "dependencies": {
     "@faker-js/faker": "^10.0.0",
