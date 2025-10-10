@@ -149,6 +149,7 @@ interface AppProviderProps {
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
+  console.log('🎯🎯🎯 AppProvider MONTADO 🎯🎯🎯');
   const { user } = useAuth(); // Adicionar hook de autenticação
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
