@@ -81,6 +81,7 @@ export const DashboardOverview: React.FC = () => {
   const [showPendingAlert, setShowPendingAlert] = useState(true);
   const [isBlinking, setIsBlinking] = useState(false);
   const [previousPendingCount, setPreviousPendingCount] = useState(0);
+  const [refreshingBalcao, setRefreshingBalcao] = useState(false);
 
   // Função para processar pagamento de pedido de balcão
   const handleBalcaoPayment = async (order: BalcaoOrderWithDetails) => {
@@ -681,12 +682,34 @@ export const DashboardOverview: React.FC = () => {
 
       {/* Pedidos de Balcão Pendentes */}
       <div id="pending-orders-section" className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <ShoppingCart className="h-6 w-6 text-blue-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Pedidos de Balcão Aguardando Pagamento</h3>
-          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-            {pendingBalcaoOrders.length}
-          </span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <ShoppingCart className="h-6 w-6 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Pedidos de Balcão Aguardando Pagamento</h3>
+            <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+              {pendingBalcaoOrders.length}
+            </span>
+          </div>
+          <button
+            onClick={async () => {
+              setRefreshingBalcao(true);
+              try {
+                console.log('🔄 Atualizando pedidos de balcão...');
+                await refreshBalcaoData();
+                console.log('✅ Pedidos atualizados!');
+              } catch (error) {
+                console.error('❌ Erro ao atualizar:', error);
+              } finally {
+                setRefreshingBalcao(false);
+              }
+            }}
+            disabled={refreshingBalcao}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Atualizar lista de pedidos"
+          >
+            <ArrowRightLeft className={`h-4 w-4 ${refreshingBalcao ? 'animate-spin' : ''}`} />
+            <span>{refreshingBalcao ? 'Atualizando...' : 'Atualizar'}</span>
+          </button>
         </div>
         
         {pendingBalcaoOrders.length === 0 ? (
