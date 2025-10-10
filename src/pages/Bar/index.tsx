@@ -4,13 +4,22 @@ import { Plus, Filter, Search, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { useBarStats } from '../../hooks/useBarStats';
+import { useBarMonitorRealtime } from '../../hooks/useBarMonitorRealtime';
 import OrderModal from './OrderModal';
 import OrderCard from './OrderCard';
 
 const BarModule: React.FC = () => {
   const navigate = useNavigate();
-  const { barOrders, menuItems, loadMenuItems } = useApp();
+  const { barOrders, menuItems, loadMenuItems, refreshBarOrders } = useApp();
   const { totalRevenue, ordersToday, pendingOrders, deliveredOrders, loading: statsLoading } = useBarStats();
+  
+  // Hook para atualização em tempo real
+  useBarMonitorRealtime({
+    onOrderUpdate: () => {
+      console.log('🔔 Atualização detectada! Recarregando Monitor Bar...');
+      refreshBarOrders();
+    }
+  });
   
   // Carregar menu items quando o componente for montado
   React.useEffect(() => {
