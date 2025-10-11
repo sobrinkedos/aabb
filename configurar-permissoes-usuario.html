@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚙️ Configurar Permissões de Usuário</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .config-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .success { background-color: #d4edda; border: 2px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .error { background-color: #f8d7da; border: 2px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .info { background-color: #d1ecf1; border: 2px solid #bee5eb; color: #0c5460; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 8px; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #218838; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .permission-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0; }
+        .module-card { border: 1px solid #ddd; border-radius: 8px; padding: 15px; }
+        .module-card h4 { margin-top: 0; color: #007bff; }
+        .permission-checkbox { margin: 5px 0; }
+        .permission-checkbox input { width: auto; margin-right: 8px; }
+        .user-list { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; }
+        .user-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .user-item:hover { background-color: #f8f9fa; }
+        .user-item.selected { background-color: #007bff; color: white; }
+    </style>
+</head>
+<body>
+    <div class="config-section">
+        <h1>⚙️ Configurar Permissões de Usuário</h1>
+        <p>Configure permissões específicas para usuários individuais</p>
+        
+        <div class="info">
+            <strong>📋 Como Funciona:</strong><br>
+            1. Selecione um usuário da lista<br>
+            2. Configure quais módulos ele pode acessar<br>
+            3. Defina as permissões específicas para cada módulo<br>
+            4. Salve as configurações
+        </div>
+        
+        <button onclick="carregarUsuarios()" id="btn-carregar">👥 Carregar Usuários</button>
+        
+        <div id="usuarios-lista"></div>
+        <div id="configuracao-permissoes"></div>
+        <div id="resultado"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let usuarioSelecionado = null;
+        let usuarios = [];
+
+        const modulos = [
+            { id: 'dashboard', nome: 'Dashboard', descricao: 'Visão geral do sistema' },
+            { id: 'gestao_caixa', nome: 'Gestão de Caixa', descricao: 'Operações de caixa e pagamentos' },
+            { id: 'atendimento_bar', nome: 'Atendimento Bar', descricao: 'Atendimento e pedidos do bar' },
+            { id: 'monitor_bar', nome: 'Monitor Bar', descricao: 'Monitoramento do bar' },
+            { id: 'monitor_cozinha', nome: 'Monitor Cozinha', descricao: 'Monitoramento da cozinha' },
+            { id: 'clientes', nome: 'Clientes', descricao: 'Gestão de clientes' },
+            { id: 'funcionarios', nome: 'Funcionários', descricao: 'Gestão de funcionários' },
+            { id: 'relatorios', nome: 'Relatórios', descricao: 'Relatórios e análises' },
+            { id: 'configuracoes', nome: 'Configurações', descricao: 'Configurações do sistema' }
+        ];
+
+        async function carregarUsuarios() {
+            try {
+                document.getElementById('resultado').innerHTML = `
+                    <div class="info">🔄 Carregando usuários...</div>
+                `;
+
+                // Login como admin
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                    email: 'riltons@gmail.com',
+                    password: '000000'
+                });
+
+                if (authError) {
+                    throw new Error(`Erro no login: ${authError.message}`);
+                }
+
+                const empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e';
+
+                // Buscar usuários
+                const { data: usuariosData, error: usuariosError } = await supabase
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .eq('empresa_id', empresaId)
+                    .eq('status', 'ativo')
+                    .order('nome_completo');
+
+                if (usuariosError) {
+                    throw new Error(`Erro ao buscar usuários: ${usuariosError.message}`);
+                }
+
+                usuarios = usuariosData || [];
+
+                let html = `
+                    <h3>👥 Selecione um Usuário:</h3>
+                    <div class="user-list">
+                `;
+
+                usuarios.forEach(usuario => {
+                    html += `
+                        <div class="user-item" onclick="selecionarUsuario('${usuario.id}')">
+                            <strong>${usuario.nome_completo}</strong><br>
+                            <small>${usuario.email} - ${usuario.cargo}</small>
+                        </div>
+                    `;
+                });
+
+                html += `</div>`;
+
+                document.getElementById('usuarios-lista').innerHTML = html;
+                document.getElementById('resultado').innerHTML = `
+                    <div class="success">✅ ${usuarios.length} usuários carregados</div>
+                `;
+
+            } catch (error) {
+                document.getElementById('resultado').innerHTML = `
+                    <div class="error">❌ Erro: ${error.message}</div>
+                `;
+            }
+        }
+
+        async function selecionarUsuario(usuarioId) {
+            usuarioSelecionado = usuarios.find(u => u.id === usuarioId);
+            
+            // Atualizar seleção visual
+            document.querySelectorAll('.user-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            event.target.closest('.user-item').classList.add('selected');
+
+            // Carregar permissões atuais
+            await carregarPermissoesUsuario();
+        }
+
+        async function carregarPermissoesUsuario() {
+            if (!usuarioSelecionado) return;
+
+            try {
+                // Buscar permissões atuais
+                const { data: permissoesAtuais, error } = await supabase
+                    .from('permissoes_usuario')
+                    .select('modulo, permissoes')
+                    .eq('usuario_empresa_id', usuarioSelecionado.id);
+
+                if (error) {
+                    console.warn('Erro ao buscar permissões:', error);
+                }
+
+                const permissoesMap = {};
+                if (permissoesAtuais) {
+                    permissoesAtuais.forEach(perm => {
+                        permissoesMap[perm.modulo] = perm.permissoes;
+                    });
+                }
+
+                let html = `
+                    <h3>🔑 Configurar Permissões para: ${usuarioSelecionado.nome_completo}</h3>
+                    <p><strong>Email:</strong> ${usuarioSelecionado.email}</p>
+                    <p><strong>Cargo:</strong> ${usuarioSelecionado.cargo}</p>
+                    
+                    <div class="permission-grid">
+                `;
+
+                modulos.forEach(modulo => {
+                    const permissoes = permissoesMap[modulo.id] || {
+                        visualizar: false,
+                        criar: false,
+                        editar: false,
+                        excluir: false,
+                        administrar: false
+                    };
+
+                    html += `
+                        <div class="module-card">
+                            <h4>${modulo.nome}</h4>
+                            <p><small>${modulo.descricao}</small></p>
+                            
+                            <div class="permission-checkbox">
+                                <input type="checkbox" id="${modulo.id}_visualizar" ${permissoes.visualizar ? 'checked' : ''}>
+                                <label for="${modulo.id}_visualizar">Visualizar</label>
+                            </div>
+                            <div class="permission-checkbox">
+                                <input type="checkbox" id="${modulo.id}_criar" ${permissoes.criar ? 'checked' : ''}>
+                                <label for="${modulo.id}_criar">Criar</label>
+                            </div>
+                            <div class="permission-checkbox">
+                                <input type="checkbox" id="${modulo.id}_editar" ${permissoes.editar ? 'checked' : ''}>
+                                <label for="${modulo.id}_editar">Editar</label>
+                            </div>
+                            <div class="permission-checkbox">
+                                <input type="checkbox" id="${modulo.id}_excluir" ${permissoes.excluir ? 'checked' : ''}>
+                                <label for="${modulo.id}_excluir">Excluir</label>
+                            </div>
+                            <div class="permission-checkbox">
+                                <input type="checkbox" id="${modulo.id}_administrar" ${permissoes.administrar ? 'checked' : ''}>
+                                <label for="${modulo.id}_administrar">Administrar</label>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <button onclick="salvarPermissoes()" class="btn-success">💾 Salvar Permissões</button>
+                        <button onclick="limparPermissoes()" class="btn-danger">🗑️ Limpar Todas</button>
+                        <button onclick="aplicarPresetCaixa()" style="background: #ffc107; color: #000;">🏪 Preset: Apenas Caixa</button>
+                    </div>
+                `;
+
+                document.getElementById('configuracao-permissoes').innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('resultado').innerHTML = `
+                    <div class="error">❌ Erro ao carregar permissões: ${error.message}</div>
+                `;
+            }
+        }
+
+        async function salvarPermissoes() {
+            if (!usuarioSelecionado) return;
+
+            try {
+                document.getElementById('resultado').innerHTML = `
+                    <div class="info">🔄 Salvando permissões...</div>
+                `;
+
+                // Primeiro, remover permissões existentes
+                await supabase
+                    .from('permissoes_usuario')
+                    .delete()
+                    .eq('usuario_empresa_id', usuarioSelecionado.id);
+
+                // Coletar permissões marcadas
+                const permissoesParaSalvar = [];
+
+                modulos.forEach(modulo => {
+                    const visualizar = document.getElementById(`${modulo.id}_visualizar`).checked;
+                    const criar = document.getElementById(`${modulo.id}_criar`).checked;
+                    const editar = document.getElementById(`${modulo.id}_editar`).checked;
+                    const excluir = document.getElementById(`${modulo.id}_excluir`).checked;
+                    const administrar = document.getElementById(`${modulo.id}_administrar`).checked;
+
+                    // Só salvar se pelo menos uma permissão estiver marcada
+                    if (visualizar || criar || editar || excluir || administrar) {
+                        permissoesParaSalvar.push({
+                            usuario_empresa_id: usuarioSelecionado.id,
+                            modulo: modulo.id,
+                            permissoes: {
+                                visualizar,
+                                criar,
+                                editar,
+                                excluir,
+                                administrar
+                            }
+                        });
+                    }
+                });
+
+                if (permissoesParaSalvar.length > 0) {
+                    const { error } = await supabase
+                        .from('permissoes_usuario')
+                        .insert(permissoesParaSalvar);
+
+                    if (error) {
+                        throw new Error(`Erro ao salvar: ${error.message}`);
+                    }
+                }
+
+                document.getElementById('resultado').innerHTML = `
+                    <div class="success">
+                        ✅ <strong>Permissões salvas com sucesso!</strong><br>
+                        👤 Usuário: ${usuarioSelecionado.nome_completo}<br>
+                        📋 Módulos configurados: ${permissoesParaSalvar.length}<br>
+                        🔄 O usuário verá apenas os módulos configurados na próxima vez que fizer login
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('resultado').innerHTML = `
+                    <div class="error">❌ Erro ao salvar: ${error.message}</div>
+                `;
+            }
+        }
+
+        async function limparPermissoes() {
+            if (!usuarioSelecionado) return;
+            
+            if (!confirm(`Tem certeza que deseja limpar todas as permissões de ${usuarioSelecionado.nome_completo}?`)) {
+                return;
+            }
+
+            try {
+                await supabase
+                    .from('permissoes_usuario')
+                    .delete()
+                    .eq('usuario_empresa_id', usuarioSelecionado.id);
+
+                document.getElementById('resultado').innerHTML = `
+                    <div class="success">✅ Permissões removidas. O usuário usará as permissões padrão do role.</div>
+                `;
+
+                // Recarregar interface
+                await carregarPermissoesUsuario();
+
+            } catch (error) {
+                document.getElementById('resultado').innerHTML = `
+                    <div class="error">❌ Erro ao limpar: ${error.message}</div>
+                `;
+            }
+        }
+
+        function aplicarPresetCaixa() {
+            // Desmarcar tudo
+            modulos.forEach(modulo => {
+                ['visualizar', 'criar', 'editar', 'excluir', 'administrar'].forEach(perm => {
+                    document.getElementById(`${modulo.id}_${perm}`).checked = false;
+                });
+            });
+
+            // Marcar apenas gestao_caixa
+            document.getElementById('gestao_caixa_visualizar').checked = true;
+            document.getElementById('gestao_caixa_criar').checked = true;
+            document.getElementById('gestao_caixa_editar').checked = true;
+
+            document.getElementById('resultado').innerHTML = `
+                <div class="info">🏪 Preset aplicado: Usuário verá apenas o módulo "Gestão de Caixa"</div>
+            `;
+        }
+    </script>
+</body>
+</html>

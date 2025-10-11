@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚨 Debug - Erros 400 Supabase</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #c0392b;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .error-section {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border: 2px solid #f44336;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .test-section {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border: 1px solid #2196f3;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .success-card {
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+            border: 1px solid #4caf50;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .warning-card {
+            background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+            border: 1px solid #ff9800;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+            padding: 18px 35px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            width: 100%;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: linear-gradient(135deg, #cccccc, #999999);
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚨 Debug - Erros 400 Supabase</h1>
+        
+        <div class="error-section">
+            <h3>❌ Erros Identificados</h3>
+            <ul>
+                <li><strong>Auth Error:</strong> POST /auth/v1/token?grant_type=password 400 (Bad Request)</li>
+                <li><strong>REST Error:</strong> GET /rest/v1/bar_employees 400 (Bad Request)</li>
+                <li><strong>Padrão:</strong> Múltiplos erros 400 em sequência</li>
+            </ul>
+            
+            <div class="warning-card">
+                <h4>🔍 Possíveis Causas:</h4>
+                <ol>
+                    <li><strong>Chave API inválida ou expirada</strong></li>
+                    <li><strong>URL do projeto incorreta</strong></li>
+                    <li><strong>Configuração de CORS</strong></li>
+                    <li><strong>Projeto Supabase pausado/suspenso</strong></li>
+                    <li><strong>Políticas RLS muito restritivas</strong></li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Testes de Diagnóstico</h3>
+            <button onclick="testBasicConnection()">1️⃣ Testar Conexão Básica</button>
+            <button onclick="testAuthEndpoint()">2️⃣ Testar Endpoint Auth</button>
+            <button onclick="testRestEndpoint()">3️⃣ Testar Endpoint REST</button>
+            <button onclick="testProjectStatus()">4️⃣ Verificar Status do Projeto</button>
+            <button onclick="testWithDifferentKeys()">5️⃣ Testar Chaves Alternativas</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Informações do Projeto</h3>
+            <div class="code-block">
+                <div><strong>URL:</strong> https://wznycskqsavpmejwpksp.supabase.co</div>
+                <div><strong>Project ID:</strong> wznycskqsavpmejwpksp</div>
+                <div><strong>Anon Key:</strong> eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8</div>
+            </div>
+        </div>
+
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        // Configuração atual
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        
+        let supabase;
+
+        function addMessage(message, type = 'info') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            
+            let className = 'test-section';
+            if (type === 'success') className = 'success-card';
+            if (type === 'error') className = 'error-section';
+            if (type === 'warning') className = 'warning-card';
+            
+            messageDiv.className = className;
+            messageDiv.innerHTML = message;
+            messagesDiv.appendChild(messageDiv);
+            
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function testBasicConnection() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando conexão...';
+
+            try {
+                addMessage('1️⃣ <strong>Testando conexão básica com Supabase...</strong>', 'info');
+                
+                // Tentar criar cliente
+                supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+                addMessage('✅ Cliente Supabase criado com sucesso', 'success');
+
+                // Testar se a URL responde
+                try {
+                    const response = await fetch(supabaseUrl + '/rest/v1/', {
+                        method: 'GET',
+                        headers: {
+                            'apikey': supabaseAnonKey,
+                            'Authorization': 'Bearer ' + supabaseAnonKey
+                        }
+                    });
+
+                    addMessage(`📡 <strong>Resposta HTTP:</strong> ${response.status} ${response.statusText}`, 
+                        response.ok ? 'success' : 'error');
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        addMessage(`❌ <strong>Erro detalhado:</strong> ${errorText}`, 'error');
+                    }
+
+                } catch (fetchError) {
+                    addMessage(`❌ <strong>Erro de rede:</strong> ${fetchError.message}`, 'error');
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro geral:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '1️⃣ Testar Conexão Básica';
+            }
+        }
+
+        async function testAuthEndpoint() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando Auth...';
+
+            try {
+                addMessage('2️⃣ <strong>Testando endpoint de autenticação...</strong>', 'info');
+                
+                if (!supabase) {
+                    supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+                }
+
+                // Testar endpoint de auth diretamente
+                try {
+                    const response = await fetch(supabaseUrl + '/auth/v1/settings', {
+                        method: 'GET',
+                        headers: {
+                            'apikey': supabaseAnonKey,
+                            'Authorization': 'Bearer ' + supabaseAnonKey
+                        }
+                    });
+
+                    addMessage(`🔐 <strong>Auth Settings:</strong> ${response.status} ${response.statusText}`, 
+                        response.ok ? 'success' : 'error');
+
+                    if (response.ok) {
+                        const settings = await response.json();
+                        addMessage(`✅ <strong>Configurações Auth:</strong><br><pre>${JSON.stringify(settings, null, 2)}</pre>`, 'success');
+                    } else {
+                        const errorText = await response.text();
+                        addMessage(`❌ <strong>Erro Auth:</strong> ${errorText}`, 'error');
+                    }
+
+                } catch (fetchError) {
+                    addMessage(`❌ <strong>Erro de rede Auth:</strong> ${fetchError.message}`, 'error');
+                }
+
+                // Testar login com credenciais inválidas (para ver se o endpoint responde)
+                try {
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email: 'test@invalid.com',
+                        password: 'invalid123'
+                    });
+
+                    if (error) {
+                        if (error.message.includes('Invalid login credentials')) {
+                            addMessage('✅ <strong>Endpoint Auth funcionando</strong> (erro esperado de credenciais inválidas)', 'success');
+                        } else {
+                            addMessage(`⚠️ <strong>Erro Auth inesperado:</strong> ${error.message}`, 'warning');
+                        }
+                    }
+                } catch (authError) {
+                    addMessage(`❌ <strong>Erro no teste de login:</strong> ${authError.message}`, 'error');
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro geral:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '2️⃣ Testar Endpoint Auth';
+            }
+        }
+
+        async function testRestEndpoint() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando REST...';
+
+            try {
+                addMessage('3️⃣ <strong>Testando endpoint REST...</strong>', 'info');
+                
+                if (!supabase) {
+                    supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+                }
+
+                // Testar consulta simples
+                try {
+                    const { data, error, count } = await supabase
+                        .from('bar_employees')
+                        .select('id', { count: 'exact' })
+                        .limit(1);
+
+                    if (error) {
+                        addMessage(`❌ <strong>Erro REST:</strong> ${error.message}<br><strong>Código:</strong> ${error.code}<br><strong>Detalhes:</strong> ${error.details}`, 'error');
+                        
+                        // Analisar tipo de erro
+                        if (error.code === 'PGRST116') {
+                            addMessage('🔍 <strong>Diagnóstico:</strong> Tabela não existe ou sem permissão de acesso', 'warning');
+                        } else if (error.code === '42501') {
+                            addMessage('🔍 <strong>Diagnóstico:</strong> Sem permissão para acessar a tabela (RLS)', 'warning');
+                        } else if (error.message.includes('JWT')) {
+                            addMessage('🔍 <strong>Diagnóstico:</strong> Problema com token/chave API', 'warning');
+                        }
+                    } else {
+                        addMessage(`✅ <strong>REST funcionando!</strong> Encontrados ${count} registros`, 'success');
+                    }
+
+                } catch (restError) {
+                    addMessage(`❌ <strong>Erro REST:</strong> ${restError.message}`, 'error');
+                }
+
+                // Testar listar tabelas (se possível)
+                try {
+                    const response = await fetch(supabaseUrl + '/rest/v1/', {
+                        method: 'GET',
+                        headers: {
+                            'apikey': supabaseAnonKey,
+                            'Authorization': 'Bearer ' + supabaseAnonKey,
+                            'Accept': 'application/vnd.pgrst.object+json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const schema = await response.json();
+                        addMessage('✅ <strong>Schema disponível:</strong> Endpoint REST respondendo', 'success');
+                    } else {
+                        addMessage(`⚠️ <strong>Schema não disponível:</strong> ${response.status}`, 'warning');
+                    }
+                } catch (schemaError) {
+                    addMessage(`⚠️ <strong>Erro ao obter schema:</strong> ${schemaError.message}`, 'warning');
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro geral:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '3️⃣ Testar Endpoint REST';
+            }
+        }
+
+        async function testProjectStatus() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Verificando projeto...';
+
+            try {
+                addMessage('4️⃣ <strong>Verificando status do projeto...</strong>', 'info');
+                
+                // Verificar se o projeto está ativo
+                try {
+                    const response = await fetch(supabaseUrl + '/rest/v1/', {
+                        method: 'OPTIONS',
+                        headers: {
+                            'apikey': supabaseAnonKey
+                        }
+                    });
+
+                    addMessage(`🏗️ <strong>Status do projeto:</strong> ${response.status}`, 
+                        response.status === 200 ? 'success' : 'error');
+
+                    // Verificar headers CORS
+                    const corsHeaders = {
+                        'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                        'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
+                        'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers')
+                    };
+
+                    addMessage(`🌐 <strong>Headers CORS:</strong><br><pre>${JSON.stringify(corsHeaders, null, 2)}</pre>`, 'info');
+
+                } catch (statusError) {
+                    addMessage(`❌ <strong>Erro ao verificar status:</strong> ${statusError.message}`, 'error');
+                }
+
+                // Verificar se a chave API está válida
+                try {
+                    // Decodificar JWT para verificar expiração
+                    const payload = JSON.parse(atob(supabaseAnonKey.split('.')[1]));
+                    const now = Math.floor(Date.now() / 1000);
+                    const isExpired = payload.exp < now;
+
+                    addMessage(`🔑 <strong>Chave API:</strong><br>
+                        Emitida: ${new Date(payload.iat * 1000).toLocaleString()}<br>
+                        Expira: ${new Date(payload.exp * 1000).toLocaleString()}<br>
+                        Status: ${isExpired ? '❌ EXPIRADA' : '✅ VÁLIDA'}`, 
+                        isExpired ? 'error' : 'success');
+
+                } catch (jwtError) {
+                    addMessage(`⚠️ <strong>Erro ao decodificar JWT:</strong> ${jwtError.message}`, 'warning');
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro geral:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '4️⃣ Verificar Status do Projeto';
+            }
+        }
+
+        async function testWithDifferentKeys() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando chaves...';
+
+            try {
+                addMessage('5️⃣ <strong>Testando com configurações alternativas...</strong>', 'info');
+                
+                // Testar com diferentes configurações
+                const testConfigs = [
+                    {
+                        name: 'Configuração Atual',
+                        url: supabaseUrl,
+                        key: supabaseAnonKey
+                    },
+                    {
+                        name: 'Sem Headers Extras',
+                        url: supabaseUrl,
+                        key: supabaseAnonKey,
+                        options: { 
+                            auth: { 
+                                autoRefreshToken: false,
+                                persistSession: false 
+                            }
+                        }
+                    }
+                ];
+
+                for (const config of testConfigs) {
+                    try {
+                        addMessage(`🧪 <strong>Testando:</strong> ${config.name}`, 'info');
+                        
+                        const testClient = window.supabase.createClient(
+                            config.url, 
+                            config.key, 
+                            config.options || {}
+                        );
+
+                        // Teste simples
+                        const { data, error } = await testClient
+                            .from('bar_employees')
+                            .select('count')
+                            .limit(0);
+
+                        if (error) {
+                            addMessage(`❌ ${config.name}: ${error.message}`, 'error');
+                        } else {
+                            addMessage(`✅ ${config.name}: Funcionando!`, 'success');
+                        }
+
+                    } catch (configError) {
+                        addMessage(`❌ ${config.name}: ${configError.message}`, 'error');
+                    }
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro geral:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '5️⃣ Testar Chaves Alternativas';
+            }
+        }
+
+        // Executar teste básico automaticamente
+        window.addEventListener('load', () => {
+            setTimeout(testBasicConnection, 1000);
+        });
+    </script>
+</body>
+</html>

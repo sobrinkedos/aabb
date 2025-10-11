@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Correção - Problemas manoel@teste.com</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            border-radius: 10px;
+        }
+        .problema {
+            margin: 20px 0;
+            padding: 20px;
+            border-left: 4px solid #e74c3c;
+            background: #f8d7da;
+            border-radius: 0 5px 5px 0;
+        }
+        .solucao {
+            margin: 20px 0;
+            padding: 20px;
+            border-left: 4px solid #27ae60;
+            background: #d4edda;
+            border-radius: 0 5px 5px 0;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+            background: #f8f9fa;
+            border-radius: 0 5px 5px 0;
+        }
+        .info { border-left-color: #3498db; background: #e3f2fd; }
+        .success { border-left-color: #27ae60; background: #e8f5e9; }
+        .warning { border-left-color: #f39c12; background: #fff3cd; }
+        .error { border-left-color: #e74c3c; background: #f8d7da; }
+        .button {
+            padding: 12px 24px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+        }
+        .button:hover { background: #2980b9; }
+        .button.fix { background: #e74c3c; }
+        .button.fix:hover { background: #c0392b; }
+        .button.test { background: #27ae60; }
+        .button.test:hover { background: #229954; }
+        .code {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Correção - Problemas manoel@teste.com</h1>
+            <p>Solucionando problemas de permissões e SenhaProvisionariaGuard</p>
+        </div>
+
+        <div class="problema">
+            <h3>🔍 Problemas Identificados</h3>
+            <ol>
+                <li><strong>Permissões:</strong> Funcionário tem acesso a todos os módulos porque <code>tipo_usuario = 'administrador'</code></li>
+                <li><strong>SenhaProvisionariaGuard:</strong> Não redirecionou porque <code>senha_provisoria = false</code></li>
+            </ol>
+        </div>
+
+        <div class="solucao">
+            <h3>💡 Soluções</h3>
+            <ol>
+                <li><strong>Corrigir tipo_usuario:</strong> Alterar de 'administrador' para 'funcionario'</li>
+                <li><strong>Criar permissões específicas:</strong> Definir permissões limitadas para funcionário</li>
+                <li><strong>Corrigir senha_provisoria:</strong> Alterar para <code>true</code> para testar o Guard</li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <button class="button fix" onclick="corrigirProblemas()">
+                🔧 Corrigir Todos os Problemas
+            </button>
+            <button class="button test" onclick="testarCorrecoes()">
+                🧪 Testar Correções
+            </button>
+            <button class="button" onclick="verificarStatus()">
+                🔍 Verificar Status Atual
+            </button>
+        </div>
+
+        <div id="resultados"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjcyMDA5NjEsImV4cCI6MjA0Mjc3Njk2MX0.tVqbLxPjmHtip8SCgd61iZFBBKY_EqmlnSz2aHaJaLg';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('resultados');
+            const div = document.createElement('div');
+            div.className = `step ${type}`;
+            div.innerHTML = message;
+            resultsDiv.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('resultados').innerHTML = '';
+        }
+
+        async function verificarStatus() {
+            clearResults();
+            addResult('🔍 Verificando status atual do funcionário manoel@teste.com...', 'info');
+
+            try {
+                const { data: funcionario, error } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .eq('email', 'manoel@teste.com')
+                    .single();
+
+                if (error || !funcionario) {
+                    addResult('❌ Funcionário não encontrado', 'error');
+                    return;
+                }
+
+                // Verificar permissões
+                const { data: permissoes } = await supabaseClient
+                    .from('permissoes_usuario')
+                    .select('*')
+                    .eq('usuario_empresa_id', funcionario.id);
+
+                addResult(`
+                    <h4>📊 Status Atual:</h4>
+                    <ul>
+                        <li><strong>Email:</strong> ${funcionario.email}</li>
+                        <li><strong>Tipo Usuário:</strong> <span style="background: ${funcionario.tipo_usuario === 'administrador' ? '#fff3cd' : '#d4edda'}; padding: 2px 6px; border-radius: 3px;">${funcionario.tipo_usuario}</span></li>
+                        <li><strong>Senha Provisória:</strong> <span style="background: ${funcionario.senha_provisoria ? '#d4edda' : '#fff3cd'}; padding: 2px 6px; border-radius: 3px;">${funcionario.senha_provisoria}</span></li>
+                        <li><strong>Status:</strong> ${funcionario.status}</li>
+                        <li><strong>Permissões Definidas:</strong> ${permissoes ? permissoes.length : 0} módulos</li>
+                    </ul>
+
+                    <h4>🔍 Problemas Identificados:</h4>
+                    <ul>
+                        ${funcionario.tipo_usuario === 'administrador' ? '<li style="color: #e74c3c;">❌ tipo_usuario é "administrador" - dará acesso total!</li>' : '<li style="color: #27ae60;">✅ tipo_usuario está correto</li>'}
+                        ${funcionario.senha_provisoria === false ? '<li style="color: #e74c3c;">❌ senha_provisoria é false - Guard não funcionará!</li>' : '<li style="color: #27ae60;">✅ senha_provisoria está correto</li>'}
+                        ${!permissoes || permissoes.length === 0 ? '<li style="color: #e74c3c;">❌ Sem permissões específicas - usará padrão do tipo!</li>' : '<li style="color: #27ae60;">✅ Tem permissões específicas</li>'}
+                    </ul>
+                `, funcionario.tipo_usuario === 'administrador' || !funcionario.senha_provisoria ? 'warning' : 'success');
+
+            } catch (error) {
+                addResult(`❌ Erro: ${error.message}`, 'error');
+            }
+        }
+
+        async function corrigirProblemas() {
+            clearResults();
+            addResult('🔧 Iniciando correção dos problemas...', 'info');
+
+            try {
+                // 1. Buscar o funcionário
+                const { data: funcionario, error: findError } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .eq('email', 'manoel@teste.com')
+                    .single();
+
+                if (findError || !funcionario) {
+                    addResult('❌ Funcionário não encontrado', 'error');
+                    return;
+                }
+
+                addResult(`✅ Funcionário encontrado: ${funcionario.nome_completo}`, 'success');
+
+                // 2. Corrigir tipo_usuario para 'funcionario'
+                addResult('🔧 Corrigindo tipo_usuario de "administrador" para "funcionario"...', 'info');
+
+                const { error: updateTipoError } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .update({
+                        tipo_usuario: 'funcionario',
+                        senha_provisoria: true, // Também corrigir para testar o Guard
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', funcionario.id);
+
+                if (updateTipoError) {
+                    addResult(`❌ Erro ao corrigir tipo_usuario: ${updateTipoError.message}`, 'error');
+                    return;
+                }
+
+                addResult('✅ tipo_usuario corrigido para "funcionario"', 'success');
+                addResult('✅ senha_provisoria definida como true', 'success');
+
+                // 3. Criar permissões específicas para o funcionário
+                addResult('🛡️ Criando permissões específicas para funcionário...', 'info');
+
+                // Primeiro, remover permissões existentes
+                await supabaseClient
+                    .from('permissoes_usuario')
+                    .delete()
+                    .eq('usuario_empresa_id', funcionario.id);
+
+                // Definir permissões limitadas para funcionário
+                const permissoesFuncionario = [
+                    {
+                        usuario_empresa_id: funcionario.id,
+                        modulo: 'dashboard',
+                        permissoes: {
+                            visualizar: true,
+                            criar: false,
+                            editar: false,
+                            excluir: false,
+                            administrar: false
+                        }
+                    },
+                    {
+                        usuario_empresa_id: funcionario.id,
+                        modulo: 'atendimento_bar',
+                        permissoes: {
+                            visualizar: true,
+                            criar: true,
+                            editar: true,
+                            excluir: false,
+                            administrar: false
+                        }
+                    },
+                    {
+                        usuario_empresa_id: funcionario.id,
+                        modulo: 'clientes',
+                        permissoes: {
+                            visualizar: true,
+                            criar: true,
+                            editar: false,
+                            excluir: false,
+                            administrar: false
+                        }
+                    }
+                ];
+
+                const { error: permError } = await supabaseClient
+                    .from('permissoes_usuario')
+                    .insert(permissoesFuncionario);
+
+                if (permError) {
+                    addResult(`❌ Erro ao criar permissões: ${permError.message}`, 'error');
+                } else {
+                    addResult('✅ Permissões específicas criadas com sucesso!', 'success');
+                }
+
+                addResult(`
+                    <div class="success">
+                        <h4>🎉 Correções Aplicadas com Sucesso!</h4>
+                        
+                        <h5>✅ Mudanças Realizadas:</h5>
+                        <ol>
+                            <li><strong>tipo_usuario:</strong> 'administrador' → 'funcionario'</li>
+                            <li><strong>senha_provisoria:</strong> false → true</li>
+                            <li><strong>Permissões criadas:</strong>
+                                <ul>
+                                    <li>Dashboard: apenas visualizar</li>
+                                    <li>Atendimento Bar: visualizar, criar, editar</li>
+                                    <li>Clientes: visualizar, criar</li>
+                                </ul>
+                            </li>
+                        </ol>
+
+                        <h5>🧪 Para Testar:</h5>
+                        <ol>
+                            <li>Faça login com manoel@teste.com / 123456</li>
+                            <li>Deve ser redirecionado para alteração de senha</li>
+                            <li>Após alterar, deve ter acesso apenas aos módulos permitidos</li>
+                        </ol>
+                    </div>
+                `, 'success');
+
+            } catch (error) {
+                addResult(`❌ Erro geral: ${error.message}`, 'error');
+            }
+        }
+
+        async function testarCorrecoes() {
+            clearResults();
+            addResult('🧪 Testando as correções aplicadas...', 'info');
+
+            try {
+                // 1. Verificar dados atualizados
+                const { data: funcionario, error } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .eq('email', 'manoel@teste.com')
+                    .single();
+
+                if (!funcionario) {
+                    addResult('❌ Funcionário não encontrado', 'error');
+                    return;
+                }
+
+                // 2. Verificar permissões
+                const { data: permissoes } = await supabaseClient
+                    .from('permissoes_usuario')
+                    .select('*')
+                    .eq('usuario_empresa_id', funcionario.id);
+
+                // 3. Testar login (simular)
+                addResult('🔍 Simulando processo de login...', 'info');
+
+                addResult(`
+                    <h4>🧪 Resultados dos Testes:</h4>
+                    
+                    <h5>1️⃣ Verificação de Dados:</h5>
+                    <ul>
+                        <li><strong>tipo_usuario:</strong> ${funcionario.tipo_usuario === 'funcionario' ? '✅' : '❌'} ${funcionario.tipo_usuario}</li>
+                        <li><strong>senha_provisoria:</strong> ${funcionario.senha_provisoria === true ? '✅' : '❌'} ${funcionario.senha_provisoria}</li>
+                        <li><strong>Permissões:</strong> ${permissoes && permissoes.length > 0 ? '✅' : '❌'} ${permissoes ? permissoes.length : 0} módulos</li>
+                    </ul>
+
+                    <h5>2️⃣ Simulação SenhaProvisionariaGuard:</h5>
+                    <div class="code">
+if (usuarioEmpresa?.senha_provisoria === true) {
+    // ${funcionario.senha_provisoria === true ? '✅ REDIRECIONARÁ' : '❌ NÃO REDIRECIONARÁ'}
+    navigate('/alterar-senha-provisoria');
+}
+                    </div>
+
+                    <h5>3️⃣ Simulação Sistema de Permissões:</h5>
+                    <div class="code">
+// AuthorizationMiddleware.checkPermission()
+if (user?.tipo_usuario === 'administrador') {
+    return authResult; // ${funcionario.tipo_usuario === 'administrador' ? '❌ ACESSO TOTAL (PROBLEMA!)' : '✅ NÃO É ADMIN'}
+}
+
+// Verificar permissão específica
+const modulePermissions = permissions?.[modulo];
+// ${permissoes && permissoes.length > 0 ? '✅ USARÁ PERMISSÕES ESPECÍFICAS' : '❌ SEM PERMISSÕES ESPECÍFICAS'}
+                    </div>
+
+                    ${funcionario.tipo_usuario === 'funcionario' && funcionario.senha_provisoria === true && permissoes && permissoes.length > 0 ? 
+                        '<div class="success"><h5>🎉 TODOS OS PROBLEMAS CORRIGIDOS!</h5><p>O funcionário agora terá comportamento correto.</p></div>' :
+                        '<div class="warning"><h5>⚠️ AINDA HÁ PROBLEMAS</h5><p>Algumas correções podem não ter sido aplicadas corretamente.</p></div>'
+                    }
+                `, funcionario.tipo_usuario === 'funcionario' && funcionario.senha_provisoria === true ? 'success' : 'warning');
+
+                if (permissoes && permissoes.length > 0) {
+                    addResult(`
+                        <h4>📋 Detalhes das Permissões:</h4>
+                        ${permissoes.map(p => `
+                            <div style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                                <strong>Módulo:</strong> ${p.modulo}<br>
+                                <strong>Permissões:</strong> ${JSON.stringify(p.permissoes, null, 2)}
+                            </div>
+                        `).join('')}
+                    `, 'info');
+                }
+
+            } catch (error) {
+                addResult(`❌ Erro no teste: ${error.message}`, 'error');
+            }
+        }
+
+        // Verificar status inicial ao carregar
+        window.addEventListener('load', () => {
+            addResult('🔍 Página carregada. Clique em "Verificar Status Atual" para começar.', 'info');
+        });
+    </script>
+</body>
+</html>

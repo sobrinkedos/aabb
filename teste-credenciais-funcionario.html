@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Teste Credenciais - Funcionário</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .success { background-color: #d4edda; border: 2px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .error { background-color: #f8d7da; border: 2px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .info { background-color: #d1ecf1; border: 2px solid #bee5eb; color: #0c5460; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 8px; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        .step { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin: 10px 0; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="test-section">
+        <h1>🧪 Teste Credenciais - Funcionário</h1>
+        <p>Teste completo do fluxo de criação de funcionário + credenciais</p>
+        
+        <div class="info">
+            <strong>✅ Correções Aplicadas:</strong><br>
+            1. CPF sendo salvo corretamente ✅<br>
+            2. Função sendo salva corretamente ✅<br>
+            3. Campo <code>nome_completo</code> incluído na tabela <code>usuarios_empresa</code> ✅
+        </div>
+        
+        <button onclick="testarFluxoCompleto()" id="btn-teste">🧪 Testar Fluxo Completo</button>
+        
+        <div id="resultado-teste"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function testarFluxoCompleto() {
+            try {
+                document.getElementById('resultado-teste').innerHTML = `
+                    <div class="info">🔄 Testando fluxo completo...</div>
+                `;
+
+                // Passo 1: Login
+                console.log('🔐 Fazendo login...');
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                    email: 'riltons@gmail.com',
+                    password: '000000'
+                });
+
+                if (authError) {
+                    throw new Error(`Erro no login: ${authError.message}`);
+                }
+
+                const empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e';
+                console.log('✅ Login realizado');
+
+                let html = `<div class="step"><h3>Passo 1: Login ✅</h3><p>Usuário autenticado com sucesso</p></div>`;
+
+                // Passo 2: Criar funcionário básico
+                console.log('👤 Criando funcionário básico...');
+                const timestamp = Date.now();
+                const employeeData = {
+                    nome_completo: `Teste Completo ${timestamp.toString().slice(-4)}`,
+                    email: `teste.completo.${timestamp}@exemplo.com`,
+                    telefone: '(11) 99999-9999',
+                    cpf: `${timestamp.toString().slice(-11, -8)}.${timestamp.toString().slice(-8, -5)}.${timestamp.toString().slice(-5, -2)}-${timestamp.toString().slice(-2)}`,
+                    bar_role: 'cozinheiro', // Testando função diferente de atendente
+                    cargo: 'Cozinheiro'
+                };
+
+                // Simular criação do funcionário
+                const { data: departments } = await supabase
+                    .from("departments")
+                    .select("id")
+                    .eq('is_active', true)
+                    .limit(1);
+
+                const { data: positions } = await supabase
+                    .from("positions")
+                    .select("id")
+                    .eq('is_active', true)
+                    .limit(1);
+
+                const departmentId = departments?.[0]?.id;
+                const positionId = positions?.[0]?.id;
+
+                const employeeInsertData = {
+                    employee_code: `EMP-${timestamp}`,
+                    name: employeeData.nome_completo,
+                    email: employeeData.email,
+                    phone: employeeData.telefone,
+                    cpf: employeeData.cpf,
+                    hire_date: new Date().toISOString().split('T')[0],
+                    status: 'active',
+                    empresa_id: empresaId,
+                    department_id: departmentId,
+                    position_id: positionId
+                };
+
+                const { data: employeeRecord, error: employeeError } = await supabase
+                    .from("employees")
+                    .insert(employeeInsertData)
+                    .select('*')
+                    .single();
+
+                if (employeeError) {
+                    throw new Error(`Erro ao criar funcionário: ${employeeError.message}`);
+                }
+
+                // Criar bar_employee
+                const { error: barEmployeeError } = await supabase
+                    .from("bar_employees")
+                    .insert({
+                        employee_id: employeeRecord.id,
+                        bar_role: employeeData.bar_role,
+                        is_active: true
+                    });
+
+                if (barEmployeeError) {
+                    throw new Error(`Erro ao criar bar_employee: ${barEmployeeError.message}`);
+                }
+
+                html += `
+                    <div class="step">
+                        <h3>Passo 2: Funcionário Criado ✅</h3>
+                        <p><strong>Nome:</strong> ${employeeRecord.name}</p>
+                        <p><strong>Email:</strong> ${employeeRecord.email}</p>
+                        <p><strong>CPF:</strong> ${employeeRecord.cpf}</p>
+                        <p><strong>Função:</strong> ${employeeData.bar_role}</p>
+                        <p><strong>ID:</strong> ${employeeRecord.id}</p>
+                    </div>
+                `;
+
+                // Passo 3: Criar credenciais (versão corrigida)
+                console.log('🔑 Criando credenciais...');
+                
+                const senhaTemporaria = '123456';
+
+                // Criar usuário no Auth
+                const { data: authUserData, error: authUserError } = await supabase.auth.signUp({
+                    email: employeeData.email,
+                    password: senhaTemporaria,
+                    options: {
+                        emailRedirectTo: undefined
+                    }
+                });
+
+                if (authUserError) {
+                    throw new Error(`Erro ao criar usuário Auth: ${authUserError.message}`);
+                }
+
+                const userId = authUserData.user?.id;
+                if (!userId) {
+                    throw new Error('Falha ao obter ID do usuário criado');
+                }
+
+                // Atualizar employee com profile_id
+                await supabase
+                    .from("employees")
+                    .update({ profile_id: userId })
+                    .eq('id', employeeRecord.id);
+
+                // Criar usuario_empresa (VERSÃO CORRIGIDA)
+                const { data: usuarioEmpresaData, error: usuarioEmpresaError } = await supabase
+                    .from("usuarios_empresa")
+                    .insert({
+                        user_id: userId,
+                        empresa_id: empresaId,
+                        nome_completo: employeeRecord.name, // ✅ CORREÇÃO APLICADA
+                        email: employeeRecord.email, // ✅ CORREÇÃO APLICADA
+                        tipo_usuario: 'funcionario',
+                        cargo: 'Funcionário',
+                        status: 'ativo',
+                        ativo: true,
+                        tem_acesso_sistema: true
+                    })
+                    .select('*')
+                    .single();
+
+                if (usuarioEmpresaError) {
+                    throw new Error(`Erro ao criar usuario_empresa: ${usuarioEmpresaError.message}`);
+                }
+
+                html += `
+                    <div class="step">
+                        <h3>Passo 3: Credenciais Criadas ✅</h3>
+                        <p><strong>Email de Login:</strong> ${employeeData.email}</p>
+                        <p><strong>Senha Temporária:</strong> ${senhaTemporaria}</p>
+                        <p><strong>Auth User ID:</strong> ${userId}</p>
+                        <p><strong>Usuario Empresa ID:</strong> ${usuarioEmpresaData.id}</p>
+                    </div>
+                `;
+
+                // Passo 4: Verificação final
+                console.log('🔍 Verificando dados finais...');
+                
+                // Verificar funcionário com JOIN
+                const { data: finalCheck, error: finalError } = await supabase
+                    .from('employees')
+                    .select(`
+                        id, name, email, cpf, phone,
+                        bar_employees!inner(bar_role, is_active)
+                    `)
+                    .eq('id', employeeRecord.id)
+                    .single();
+
+                if (finalError) {
+                    throw new Error(`Erro na verificação final: ${finalError.message}`);
+                }
+
+                const barData = finalCheck.bar_employees?.[0] || {};
+
+                html += `
+                    <div class="step">
+                        <h3>Passo 4: Verificação Final ✅</h3>
+                        <p><strong>Nome:</strong> ${finalCheck.name}</p>
+                        <p><strong>Email:</strong> ${finalCheck.email}</p>
+                        <p><strong>CPF:</strong> <span style="background: ${finalCheck.cpf ? '#d4edda' : '#f8d7da'}; padding: 2px 5px; border-radius: 3px;">${finalCheck.cpf || 'ERRO'}</span></p>
+                        <p><strong>Função:</strong> <span style="background: ${barData.bar_role === employeeData.bar_role ? '#d4edda' : '#f8d7da'}; padding: 2px 5px; border-radius: 3px;">${barData.bar_role || 'ERRO'}</span></p>
+                        <p><strong>Ativo:</strong> ${barData.is_active ? 'Sim' : 'Não'}</p>
+                    </div>
+                `;
+
+                // Resultado final
+                const cpfOk = !!finalCheck.cpf;
+                const funcaoOk = barData.bar_role === employeeData.bar_role;
+                const credenciaisOk = !!usuarioEmpresaData.id;
+
+                if (cpfOk && funcaoOk && credenciaisOk) {
+                    html += `
+                        <div class="success">
+                            🎉 <strong>TESTE COMPLETO - SUCESSO!</strong><br>
+                            ✅ CPF salvo corretamente<br>
+                            ✅ Função salva corretamente (${barData.bar_role})<br>
+                            ✅ Credenciais criadas sem erro<br>
+                            ✅ Todas as correções funcionaram!
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="error">
+                            ❌ <strong>PROBLEMAS ENCONTRADOS:</strong><br>
+                            ${!cpfOk ? '❌ CPF não foi salvo<br>' : ''}
+                            ${!funcaoOk ? '❌ Função não foi salva corretamente<br>' : ''}
+                            ${!credenciaisOk ? '❌ Credenciais não foram criadas<br>' : ''}
+                        </div>
+                    `;
+                }
+
+                document.getElementById('resultado-teste').innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('resultado-teste').innerHTML = `
+                    <div class="error">❌ Erro no teste: ${error.message}</div>
+                `;
+                console.error('❌ Erro no teste:', error);
+            }
+        }
+    </script>
+</body>
+</html>

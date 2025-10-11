@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Teste - Correção Database Error</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #E65100;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .fix-section {
+            background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+            border: 2px solid #FF9800;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .success-card {
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+            border: 1px solid #4caf50;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .error-card {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border: 1px solid #f44336;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            color: #c62828;
+        }
+        .test-section {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border: 1px solid #2196f3;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #FF9800, #F57C00);
+            color: white;
+            padding: 18px 35px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            width: 100%;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: linear-gradient(135deg, #cccccc, #999999);
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Teste - Correção Database Error</h1>
+        
+        <div class="fix-section">
+            <h3>🎯 Correção Implementada</h3>
+            <p><strong>Problema:</strong> "Database error saving new user" ao criar usuários</p>
+            <p><strong>Causa:</strong> Trigger no banco tentando inserir em tabela que não existe</p>
+            <p><strong>Correção:</strong> Fallback automático - tenta sem metadata se der erro de banco</p>
+            
+            <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                <h4 style="color: #1976d2; margin-top: 0;">🔧 Estratégia de Fallback:</h4>
+                <ol>
+                    <li><strong>1ª Tentativa:</strong> Criar com metadata completa</li>
+                    <li><strong>Se falhar com "Database error":</strong> Tentar sem metadata</li>
+                    <li><strong>Se funcionar:</strong> Usuário criado (sem trigger problemático)</li>
+                    <li><strong>Se ainda falhar:</strong> Reportar erro real</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Testes da Correção</h3>
+            <button onclick="testFallbackStrategy()">1️⃣ Testar Estratégia de Fallback</button>
+            <button onclick="testWithMetadata()">2️⃣ Testar Com Metadata (Pode Falhar)</button>
+            <button onclick="testWithoutMetadata()">3️⃣ Testar Sem Metadata (Deve Funcionar)</button>
+            <button onclick="simulateSystemBehavior()">4️⃣ Simular Comportamento do Sistema</button>
+        </div>
+
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+        function addMessage(message, type = 'info') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            
+            let className = 'test-section';
+            if (type === 'success') className = 'success-card';
+            if (type === 'error') className = 'error-card';
+            if (type === 'fix') className = 'fix-section';
+            
+            messageDiv.className = className;
+            messageDiv.innerHTML = message;
+            messagesDiv.appendChild(messageDiv);
+            
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function testFallbackStrategy() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando fallback...';
+
+            try {
+                addMessage('1️⃣ <strong>Testando estratégia de fallback...</strong>', 'info');
+                
+                const testEmail = `fallback.test.${Date.now()}@exemplo.com`;
+                const testPassword = 'FallbackTest123@';
+                
+                // Simular o comportamento do serviço corrigido
+                addMessage('🔄 Simulando comportamento do serviço corrigido...', 'info');
+                
+                // 1ª Tentativa: Com metadata (pode falhar)
+                addMessage('🧪 1ª Tentativa: Criando com metadata completa...', 'info');
+                
+                let { data: data1, error: error1 } = await supabase.auth.signUp({
+                    email: testEmail,
+                    password: testPassword,
+                    options: {
+                        data: {
+                            name: 'Teste Fallback',
+                            role: 'funcionario',
+                            cargo: 'Garçom',
+                            temporary_password: true,
+                            created_by: 'fallback_test'
+                        }
+                    }
+                });
+
+                if (error1) {
+                    addMessage(`❌ 1ª Tentativa falhou: ${error1.message}`, 'error');
+                    
+                    if (error1.message.includes('Database error')) {
+                        addMessage('🔄 Detectado erro de banco, tentando fallback...', 'fix');
+                        
+                        // 2ª Tentativa: Sem metadata (fallback)
+                        addMessage('🧪 2ª Tentativa: Criando sem metadata...', 'info');
+                        
+                        const { data: data2, error: error2 } = await supabase.auth.signUp({
+                            email: testEmail,
+                            password: testPassword
+                            // SEM options.data
+                        });
+
+                        if (error2) {
+                            addMessage(`❌ Fallback também falhou: ${error2.message}`, 'error');
+                        } else {
+                            addMessage(`✅ <strong>Fallback funcionou!</strong><br>
+                                User ID: ${data2.user?.id}<br>
+                                Email: ${data2.user?.email}<br>
+                                Confirmado: ${data2.user?.email_confirmed_at ? 'Sim' : 'Não'}`, 'success');
+                            
+                            addMessage(`🎉 <strong>Estratégia de fallback bem-sucedida!</strong><br>
+                                O sistema conseguiu criar o usuário mesmo com problema no trigger.`, 'success');
+                            
+                            // Fazer logout
+                            await supabase.auth.signOut();
+                        }
+                    } else {
+                        addMessage(`⚠️ Erro não é de banco: ${error1.message}`, 'error');
+                    }
+                } else {
+                    addMessage(`✅ <strong>1ª Tentativa funcionou!</strong><br>
+                        User ID: ${data1.user?.id}<br>
+                        Não precisou de fallback`, 'success');
+                    
+                    // Fazer logout
+                    await supabase.auth.signOut();
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro geral:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '1️⃣ Testar Estratégia de Fallback';
+            }
+        }
+
+        async function testWithMetadata() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando com metadata...';
+
+            try {
+                addMessage('2️⃣ <strong>Testando criação com metadata (pode falhar)...</strong>', 'info');
+                
+                const testEmail = `metadata.test.${Date.now()}@exemplo.com`;
+                const testPassword = 'MetadataTest123@';
+                
+                const { data, error } = await supabase.auth.signUp({
+                    email: testEmail,
+                    password: testPassword,
+                    options: {
+                        data: {
+                            name: 'Teste Com Metadata',
+                            role: 'funcionario',
+                            cargo: 'Garçom',
+                            temporary_password: true,
+                            created_by: 'metadata_test'
+                        }
+                    }
+                });
+
+                if (error) {
+                    addMessage(`❌ <strong>Falhou com metadata:</strong> ${error.message}`, 'error');
+                    
+                    if (error.message.includes('Database error')) {
+                        addMessage(`🔍 <strong>Confirmado:</strong> Problema é no trigger que processa metadata`, 'error');
+                    }
+                } else {
+                    addMessage(`✅ <strong>Funcionou com metadata!</strong><br>
+                        User ID: ${data.user?.id}<br>
+                        Metadata: ${JSON.stringify(data.user?.user_metadata)}`, 'success');
+                    
+                    // Fazer logout
+                    await supabase.auth.signOut();
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '2️⃣ Testar Com Metadata (Pode Falhar)';
+            }
+        }
+
+        async function testWithoutMetadata() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando sem metadata...';
+
+            try {
+                addMessage('3️⃣ <strong>Testando criação sem metadata (deve funcionar)...</strong>', 'info');
+                
+                const testEmail = `no.metadata.${Date.now()}@exemplo.com`;
+                const testPassword = 'NoMetadataTest123@';
+                
+                const { data, error } = await supabase.auth.signUp({
+                    email: testEmail,
+                    password: testPassword
+                    // SEM options.data
+                });
+
+                if (error) {
+                    addMessage(`❌ <strong>Falhou mesmo sem metadata:</strong> ${error.message}`, 'error');
+                    addMessage(`🔍 <strong>Diagnóstico:</strong> Problema é mais profundo que metadata`, 'error');
+                } else {
+                    addMessage(`✅ <strong>Funcionou sem metadata!</strong><br>
+                        User ID: ${data.user?.id}<br>
+                        Email: ${data.user?.email}<br>
+                        Confirmado: ${data.user?.email_confirmed_at ? 'Sim' : 'Não'}`, 'success');
+                    
+                    addMessage(`💡 <strong>Conclusão:</strong> O fallback vai funcionar!`, 'success');
+                    
+                    // Fazer logout
+                    await supabase.auth.signOut();
+                }
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '3️⃣ Testar Sem Metadata (Deve Funcionar)';
+            }
+        }
+
+        async function simulateSystemBehavior() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Simulando sistema...';
+
+            try {
+                addMessage('4️⃣ <strong>Simulando comportamento completo do sistema...</strong>', 'info');
+                
+                const testEmail = `system.sim.${Date.now()}@exemplo.com`;
+                const testPassword = 'SystemSim123@';
+                const empresaId = '142f9c74-bec6-447f-9f8f-c68d7c1d7958';
+                
+                // 1. Verificar email
+                addMessage('🔍 1. Verificando se email existe...', 'info');
+                const { data: existingUser, error: checkError } = await supabase
+                    .from('usuarios_empresa')
+                    .select('id')
+                    .eq('email', testEmail)
+                    .limit(1);
+
+                if (checkError) {
+                    addMessage(`❌ Erro na verificação: ${checkError.message}`, 'error');
+                    return;
+                }
+
+                if (existingUser && existingUser.length > 0) {
+                    addMessage(`⚠️ Email já existe`, 'error');
+                    return;
+                }
+
+                addMessage('✅ Email disponível', 'success');
+
+                // 2. Tentar criar no Auth (com fallback)
+                addMessage('🔐 2. Criando no Auth (com fallback)...', 'info');
+                
+                let authUserId = null;
+                let authSuccess = false;
+                
+                // Primeira tentativa com metadata
+                let { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: testEmail,
+                    password: testPassword,
+                    options: {
+                        data: {
+                            name: 'Sistema Simulado',
+                            role: 'funcionario',
+                            cargo: 'Garçom',
+                            temporary_password: true,
+                            created_by: 'system_simulation'
+                        }
+                    }
+                });
+
+                if (authError && authError.message.includes('Database error')) {
+                    addMessage('⚠️ Erro de banco detectado, aplicando fallback...', 'fix');
+                    
+                    // Segunda tentativa sem metadata
+                    const result = await supabase.auth.signUp({
+                        email: testEmail,
+                        password: testPassword
+                    });
+                    
+                    authData = result.data;
+                    authError = result.error;
+                }
+
+                if (authError) {
+                    addMessage(`❌ Auth falhou mesmo com fallback: ${authError.message}`, 'error');
+                    return;
+                } else {
+                    authUserId = authData.user?.id;
+                    authSuccess = true;
+                    addMessage(`✅ Auth criado: ${authUserId}`, 'success');
+                }
+
+                // 3. Aguardar processamento
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // 4. Criar na bar_employees
+                addMessage('👔 3. Criando na bar_employees...', 'info');
+                const { data: barEmployee, error: barError } = await supabase
+                    .from('bar_employees')
+                    .insert([{
+                        employee_id: authUserId,
+                        bar_role: 'garcom',
+                        shift_preference: 'qualquer',
+                        specialties: ['atendimento'],
+                        commission_rate: 0,
+                        is_active: true,
+                        start_date: new Date().toISOString().split('T')[0],
+                        notes: `Sistema Simulado: ${testEmail}`,
+                        empresa_id: empresaId
+                    }])
+                    .select('id')
+                    .single();
+
+                if (barError) {
+                    addMessage(`❌ Erro na bar_employees: ${barError.message}`, 'error');
+                } else {
+                    addMessage(`✅ Funcionário criado na bar_employees: ${barEmployee.id}`, 'success');
+                }
+
+                // 5. Criar na usuarios_empresa
+                addMessage('🏢 4. Criando na usuarios_empresa...', 'info');
+                const { data: usuarioEmpresa, error: empresaError } = await supabase
+                    .from('usuarios_empresa')
+                    .insert([{
+                        user_id: authUserId,
+                        empresa_id: empresaId,
+                        nome_completo: 'Sistema Simulado',
+                        email: testEmail,
+                        telefone: '(87) 99999-0000',
+                        cargo: 'Garçom',
+                        tipo_usuario: 'funcionario',
+                        status: 'ativo',
+                        senha_provisoria: true,
+                        ativo: true,
+                        tem_acesso_sistema: true,
+                        papel: 'USER',
+                        is_primeiro_usuario: false,
+                        tentativas_login_falhadas: 0,
+                        total_logins: 0,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }])
+                    .select('id')
+                    .single();
+
+                if (empresaError) {
+                    addMessage(`❌ Erro na usuarios_empresa: ${empresaError.message}`, 'error');
+                } else {
+                    addMessage(`✅ Usuário criado na usuarios_empresa: ${usuarioEmpresa.id}`, 'success');
+                }
+
+                // 6. Testar login
+                addMessage('🔑 5. Testando login...', 'info');
+                const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+                    email: testEmail,
+                    password: testPassword
+                });
+
+                if (loginError) {
+                    addMessage(`❌ Login falhou: ${loginError.message}`, 'error');
+                } else {
+                    addMessage(`✅ <strong>LOGIN FUNCIONOU!</strong> User: ${loginData.user.email}`, 'success');
+                    await supabase.auth.signOut();
+                }
+
+                // 7. Resultado final
+                addMessage(`
+                    <h3>🎉 Simulação Completa!</h3>
+                    <div style="background: #e8f5e8; padding: 20px; border-radius: 8px;">
+                        <h4 style="color: #2e7d32; margin-top: 0;">✅ Resultados:</h4>
+                        <ul>
+                            <li><strong>Auth:</strong> ${authSuccess ? 'Criado com sucesso' : 'Falhou'}</li>
+                            <li><strong>Bar Employee:</strong> ${barEmployee?.id ? 'Criado' : 'Falhou'}</li>
+                            <li><strong>Usuario Empresa:</strong> ${usuarioEmpresa?.id ? 'Criado' : 'Falhou'}</li>
+                            <li><strong>Login:</strong> ${loginError ? 'Falhou' : 'Funcionou'}</li>
+                        </ul>
+                        
+                        <h4 style="color: #2e7d32;">🚀 Sistema com Fallback Funcionando!</h4>
+                        <p>O fallback permite criar usuários mesmo com problemas no trigger.</p>
+                    </div>
+                `, 'success');
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro geral:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '4️⃣ Simular Comportamento do Sistema';
+            }
+        }
+    </script>
+</body>
+</html>

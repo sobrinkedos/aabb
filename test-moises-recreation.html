@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔄 Recriar Moises - Debug Completo</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .debug-section {
+            background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+            border: 1px solid #ff9800;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .success-card {
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+            border: 1px solid #4caf50;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .error-card {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border: 1px solid #f44336;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            color: #c62828;
+        }
+        .step-card {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border: 1px solid #2196f3;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            padding: 18px 35px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            width: 100%;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: linear-gradient(135deg, #cccccc, #999999);
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .credentials-card {
+            background: linear-gradient(135deg, #fff, #f5f5f5);
+            border: 3px solid #ff9800;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Recriar Moises - Debug Completo</h1>
+        
+        <div class="debug-section">
+            <h3>🎯 Objetivo</h3>
+            <p>Vamos recriar o funcionário Moises passo a passo, com logs detalhados para identificar onde está falhando.</p>
+            
+            <div class="step-card">
+                <strong>Dados do Moises:</strong><br>
+                Nome: Moises<br>
+                Email: moises@teste.com<br>
+                Cargo: Garçom<br>
+                Empresa: AABB Garanhuns
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h3>🔍 Etapas de Debug</h3>
+            <button onclick="step1_checkEmailExists()">1️⃣ Verificar se Email Já Existe</button>
+            <button onclick="step2_createAuthUser()">2️⃣ Criar Usuário no Auth</button>
+            <button onclick="step3_createProfile()">3️⃣ Criar Perfil</button>
+            <button onclick="step4_createBarEmployee()">4️⃣ Criar na bar_employees</button>
+            <button onclick="step5_createUsuarioEmpresa()">5️⃣ Criar na usuarios_empresa</button>
+            <button onclick="step6_createPermissions()">6️⃣ Criar Permissões</button>
+            <button onclick="step7_testLogin()">7️⃣ Testar Login</button>
+        </div>
+
+        <div class="debug-section">
+            <h3>🚀 Criação Completa</h3>
+            <button onclick="createMoisesComplete()">🎯 Criar Moises Completo (Todos os Passos)</button>
+        </div>
+
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        const empresaId = '142f9c74-bec6-447f-9f8f-c68d7c1d7958'; // AABB Garanhuns
+
+        // Dados globais para os testes
+        let globalData = {
+            email: 'moises@teste.com',
+            password: 'MoisesTemp123@',
+            nome: 'Moises',
+            authUserId: null,
+            barEmployeeId: null,
+            usuarioEmpresaId: null
+        };
+
+        function addMessage(message, type = 'info') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            
+            let className = 'debug-section';
+            if (type === 'success') className = 'success-card';
+            if (type === 'error') className = 'error-card';
+            if (type === 'step') className = 'step-card';
+            if (type === 'credentials') className = 'credentials-card';
+            
+            messageDiv.className = className;
+            messageDiv.innerHTML = message;
+            messagesDiv.appendChild(messageDiv);
+            
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function step1_checkEmailExists() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Verificando email...';
+
+            try {
+                addMessage('1️⃣ <strong>Verificando se email já existe...</strong>', 'step');
+                
+                const { data, error } = await supabase
+                    .from('usuarios_empresa')
+                    .select('id, nome_completo, email')
+                    .eq('email', globalData.email)
+                    .limit(1);
+
+                if (error) {
+                    addMessage(`❌ Erro ao verificar email: ${error.message}`, 'error');
+                } else if (data && data.length > 0) {
+                    addMessage(`⚠️ Email ${globalData.email} JÁ EXISTE no sistema!<br>Dados: ${JSON.stringify(data[0])}`, 'error');
+                } else {
+                    addMessage(`✅ Email ${globalData.email} está disponível para uso`, 'success');
+                }
+
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '1️⃣ Verificar se Email Já Existe';
+            }
+        }
+
+        async function step2_createAuthUser() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Criando usuário...';
+
+            try {
+                addMessage('2️⃣ <strong>Criando usuário no Supabase Auth...</strong>', 'step');
+                
+                const { data, error } = await supabase.auth.signUp({
+                    email: globalData.email,
+                    password: globalData.password,
+                    options: {
+                        data: {
+                            name: globalData.nome,
+                            role: 'funcionario',
+                            cargo: 'Garçom',
+                            temporary_password: true,
+                            created_by: 'debug_test'
+                        }
+                    }
+                });
+
+                if (error) {
+                    addMessage(`❌ Erro ao criar usuário no Auth: ${error.message}`, 'error');
+                } else if (!data.user) {
+                    addMessage('❌ Usuário não foi criado no Auth (data.user é null)', 'error');
+                } else {
+                    globalData.authUserId = data.user.id;
+                    addMessage(`✅ Usuário criado no Auth com sucesso!<br><strong>User ID:</strong> ${data.user.id}<br><strong>Email:</strong> ${data.user.email}`, 'success');
+                    
+                    if (data.user.email_confirmed_at) {
+                        addMessage('✅ Email confirmado automaticamente', 'success');
+                    } else {
+                        addMessage('⚠️ Email não confirmado - pode precisar de confirmação', 'error');
+                    }
+                }
+
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '2️⃣ Criar Usuário no Auth';
+            }
+        }
+
+        async function step3_createProfile() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Criando perfil...';
+
+            try {
+                if (!globalData.authUserId) {
+                    addMessage('❌ Precisa criar o usuário no Auth primeiro!', 'error');
+                    return;
+                }
+
+                addMessage('3️⃣ <strong>Criando perfil do usuário...</strong>', 'step');
+                
+                const { error } = await supabase
+                    .from('profiles')
+                    .insert([{
+                        id: globalData.authUserId,
+                        name: globalData.nome,
+                        role: 'employee',
+                        avatar_url: `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(globalData.nome)}`,
+                        updated_at: new Date().toISOString()
+                    }]);
+
+                if (error) {
+                    addMessage(`❌ Erro ao criar perfil: ${error.message}`, 'error');
+                } else {
+                    addMessage(`✅ Perfil criado com sucesso para User ID: ${globalData.authUserId}`, 'success');
+                }
+
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '3️⃣ Criar Perfil';
+            }
+        }
+
+        async function step4_createBarEmployee() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Criando funcionário do bar...';
+
+            try {
+                if (!globalData.authUserId) {
+                    addMessage('❌ Precisa criar o usuário no Auth primeiro!', 'error');
+                    return;
+                }
+
+                addMessage('4️⃣ <strong>Criando funcionário na tabela bar_employees...</strong>', 'step');
+                
+                const { data, error } = await supabase
+                    .from('bar_employees')
+                    .insert([{
+                        employee_id: globalData.authUserId,
+                        bar_role: 'garcom',
+                        shift_preference: 'qualquer',
+                        specialties: ['atendimento'],
+                        commission_rate: 0,
+                        is_active: true,
+                        start_date: new Date().toISOString().split('T')[0],
+                        notes: `Nome: ${globalData.nome}, Email: ${globalData.email}, Teste de debug`,
+                        empresa_id: empresaId
+                    }])
+                    .select('id')
+                    .single();
+
+                if (error) {
+                    addMessage(`❌ Erro ao criar funcionário do bar: ${error.message}`, 'error');
+                } else {
+                    globalData.barEmployeeId = data.id;
+                    addMessage(`✅ Funcionário do bar criado com sucesso!<br><strong>Bar Employee ID:</strong> ${data.id}`, 'success');
+                }
+
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '4️⃣ Criar na bar_employees';
+            }
+        }
+
+        async function step5_createUsuarioEmpresa() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Criando usuário da empresa...';
+
+            try {
+                if (!globalData.authUserId) {
+                    addMessage('❌ Precisa criar o usuário no Auth primeiro!', 'error');
+                    return;
+                }
+
+                addMessage('5️⃣ <strong>Criando usuário na tabela usuarios_empresa...</strong>', 'step');
+                
+                const { data, error } = await supabase
+                    .from('usuarios_empresa')
+                    .insert([{
+                        user_id: globalData.authUserId,
+                        empresa_id: empresaId,
+                        nome_completo: globalData.nome,
+                        email: globalData.email,
+                        telefone: '(87) 99999-0000',
+                        cargo: 'Garçom',
+                        tipo_usuario: 'funcionario',
+                        status: 'ativo',
+                        senha_provisoria: true,
+                        ativo: true,
+                        tem_acesso_sistema: true,
+                        papel: 'USER',
+                        is_primeiro_usuario: false,
+                        tentativas_login_falhadas: 0,
+                        total_logins: 0,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }])
+                    .select('id')
+                    .single();
+
+                if (error) {
+                    addMessage(`❌ Erro ao criar usuário da empresa: ${error.message}`, 'error');
+                } else {
+                    globalData.usuarioEmpresaId = data.id;
+                    addMessage(`✅ Usuário da empresa criado com sucesso!<br><strong>Usuario Empresa ID:</strong> ${data.id}`, 'success');
+                }
+
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '5️⃣ Criar na usuarios_empresa';
+            }
+        }
+
+        async function step6_createPermissions() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Criando permissões...';
+
+            try {
+                if (!globalData.usuarioEmpresaId) {
+                    addMessage('❌ Precisa criar o usuário da empresa primeiro!', 'error');
+                    return;
+                }
+
+                addMessage('6️⃣ <strong>Criando permissões do usuário...</strong>', 'step');
+                
+                const permissoes = [
+                    {
+                        usuario_empresa_id: globalData.usuarioEmpresaId,
+                        modulo: 'dashboard',
+                        permissoes: {
+                            visualizar: true,
+                            criar: false,
+                            editar: false,
+                            excluir: false,
+                            administrar: false
+                        },
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    },
+                    {
+                        usuario_empresa_id: globalData.usuarioEmpresaId,
+                        modulo: 'atendimento_bar',
+                        permissoes: {
+                            visualizar: true,
+                            criar: true,
+                            editar: true,
+                            excluir: false,
+                            administrar: false
+                        },
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    },
+                    {
+                        usuario_empresa_id: globalData.usuarioEmpresaId,
+                        modulo: 'clientes',
+                        permissoes: {
+                            visualizar: true,
+                            criar: true,
+                            editar: false,
+                            excluir: false,
+                            administrar: false
+                        },
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }
+                ];
+
+                const { error } = await supabase
+                    .from('permissoes_usuario')
+                    .insert(permissoes);
+
+                if (error) {
+                    addMessage(`❌ Erro ao criar permissões: ${error.message}`, 'error');
+                } else {
+                    addMessage(`✅ Permissões criadas com sucesso! (${permissoes.length} módulos)`, 'success');
+                }
+
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '6️⃣ Criar Permissões';
+            }
+        }
+
+        async function step7_testLogin() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando login...';
+
+            try {
+                addMessage('7️⃣ <strong>Testando login com as credenciais...</strong>', 'step');
+                
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: globalData.email,
+                    password: globalData.password
+                });
+
+                if (error) {
+                    addMessage(`❌ Erro no login: ${error.message}`, 'error');
+                    
+                    // Tentar diagnosticar o problema
+                    if (error.message.includes('Invalid login credentials')) {
+                        addMessage('🔍 Possíveis causas: Email não confirmado, senha incorreta, ou usuário não existe', 'error');
+                    } else if (error.message.includes('Email not confirmed')) {
+                        addMessage('🔍 Causa: Email não foi confirmado', 'error');
+                    }
+                } else {
+                    addMessage(`✅ Login realizado com sucesso!<br><strong>User ID:</strong> ${data.user.id}<br><strong>Email:</strong> ${data.user.email}`, 'success');
+                    
+                    // Fazer logout
+                    await supabase.auth.signOut();
+                    addMessage('✅ Logout realizado', 'success');
+                }
+
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '7️⃣ Testar Login';
+            }
+        }
+
+        async function createMoisesComplete() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Criando Moises completo...';
+
+            try {
+                // Limpar dados globais
+                globalData.authUserId = null;
+                globalData.barEmployeeId = null;
+                globalData.usuarioEmpresaId = null;
+
+                addMessage('🚀 <strong>Iniciando criação completa do Moises...</strong>', 'step');
+
+                // Executar todos os passos em sequência
+                await step1_checkEmailExists();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                await step2_createAuthUser();
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Aguardar processamento
+                
+                await step3_createProfile();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                await step4_createBarEmployee();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                await step5_createUsuarioEmpresa();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                await step6_createPermissions();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                await step7_testLogin();
+
+                // Resultado final
+                if (globalData.authUserId && globalData.barEmployeeId && globalData.usuarioEmpresaId) {
+                    addMessage(`
+                        <h3>🎉 Moises criado com sucesso!</h3>
+                        
+                        <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                            <h4 style="color: #2e7d32; margin-top: 0;">✅ Dados Criados:</h4>
+                            <ul style="margin: 10px 0;">
+                                <li><strong>Auth User ID:</strong> ${globalData.authUserId}</li>
+                                <li><strong>Bar Employee ID:</strong> ${globalData.barEmployeeId}</li>
+                                <li><strong>Usuario Empresa ID:</strong> ${globalData.usuarioEmpresaId}</li>
+                            </ul>
+                        </div>
+                    `, 'credentials');
+
+                    addMessage(`
+                        <h4>🔑 Credenciais do Moises:</h4>
+                        <div><strong>Email:</strong> ${globalData.email}</div>
+                        <div><strong>Senha:</strong> ${globalData.password}</div>
+                        <div><strong>Tipo:</strong> Senha temporária</div>
+                    `, 'credentials');
+                } else {
+                    addMessage('❌ Criação incompleta - alguns registros falharam', 'error');
+                }
+
+            } catch (error) {
+                addMessage(`❌ Erro geral: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🎯 Criar Moises Completo (Todos os Passos)';
+            }
+        }
+    </script>
+</body>
+</html>

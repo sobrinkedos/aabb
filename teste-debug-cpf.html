@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Debug CPF - Teste Direto</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug CPF - Teste Direto</h1>
+        <p>Teste específico para verificar por que o CPF não está sendo salvo</p>
+        
+        <button onclick="testarCPF()">🧪 Testar Inserção com CPF</button>
+        
+        <div id="resultado"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function testarCPF() {
+            try {
+                document.getElementById('resultado').innerHTML = `
+                    <div style="background: #d1ecf1; padding: 15px; border-radius: 8px;">
+                        🔄 Testando inserção com CPF...
+                    </div>
+                `;
+
+                // Fazer login primeiro
+                const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+                    email: 'riltons@gmail.com',
+                    password: '000000'
+                });
+
+                if (loginError) {
+                    document.getElementById('resultado').innerHTML = `
+                        <div class="error">❌ Erro no login: ${loginError.message}</div>
+                    `;
+                    return;
+                }
+
+                // Buscar departamentos e posições
+                const { data: departments } = await supabase
+                    .from('departments')
+                    .select('id, name')
+                    .limit(1);
+
+                const { data: positions } = await supabase
+                    .from('positions')
+                    .select('id, name')
+                    .limit(1);
+
+                if (!departments || departments.length === 0 || !positions || positions.length === 0) {
+                    document.getElementById('resultado').innerHTML = `
+                        <div class="error">❌ Departamentos ou posições não encontrados</div>
+                    `;
+                    return;
+                }
+
+                // Dados para teste
+                const timestamp = Date.now();
+                const dadosParaInserir = {
+                    employee_code: `DEBUG${timestamp.toString().slice(-6)}`,
+                    name: `Debug CPF ${timestamp.toString().slice(-4)}`,
+                    email: `debug${timestamp}@teste.com`,
+                    phone: '(11) 99999-9999',
+                    cpf: `${timestamp.toString().slice(-11, -8)}.${timestamp.toString().slice(-8, -5)}.${timestamp.toString().slice(-5, -2)}-${timestamp.toString().slice(-2)}`,
+                    position_id: positions[0].id,
+                    department_id: departments[0].id,
+                    empresa_id: '9e445c5a-a382-444d-94f8-9d126ed6414e',
+                    status: 'active',
+                    tem_acesso_sistema: false,
+                    auth_user_id: null,
+                    hire_date: new Date().toISOString().split('T')[0]
+                };
+
+                console.log('🔍 Dados para inserir:', dadosParaInserir);
+
+                // Tentar inserir
+                const { data: employee, error: insertError } = await supabase
+                    .from('employees')
+                    .insert(dadosParaInserir)
+                    .select('id, name, email, cpf, employee_code, created_at')
+                    .single();
+
+                if (insertError) {
+                    document.getElementById('resultado').innerHTML = `
+                        <div class="error">
+                            ❌ <strong>Erro na inserção:</strong><br>
+                            <strong>Mensagem:</strong> ${insertError.message}<br>
+                            <strong>Código:</strong> ${insertError.code || 'N/A'}<br>
+                            <strong>Detalhes:</strong> ${insertError.details || 'N/A'}<br>
+                            <pre>${JSON.stringify(insertError, null, 2)}</pre>
+                        </div>
+                    `;
+                    return;
+                }
+
+                console.log('✅ Funcionário inserido:', employee);
+
+                // Verificar se foi salvo corretamente
+                const { data: verificacao, error: verifyError } = await supabase
+                    .from('employees')
+                    .select('id, name, email, cpf, employee_code')
+                    .eq('id', employee.id)
+                    .single();
+
+                if (verifyError) {
+                    document.getElementById('resultado').innerHTML = `
+                        <div class="error">❌ Erro na verificação: ${verifyError.message}</div>
+                    `;
+                    return;
+                }
+
+                console.log('🔍 Dados verificados:', verificacao);
+
+                document.getElementById('resultado').innerHTML = `
+                    <div class="success">
+                        ✅ <strong>Teste de CPF Concluído!</strong><br><br>
+                        
+                        <strong>📋 Dados Enviados:</strong><br>
+                        <pre>${JSON.stringify(dadosParaInserir, null, 2)}</pre>
+                        
+                        <strong>📊 Dados Retornados na Inserção:</strong><br>
+                        <pre>${JSON.stringify(employee, null, 2)}</pre>
+                        
+                        <strong>🔍 Dados Verificados no Banco:</strong><br>
+                        <pre>${JSON.stringify(verificacao, null, 2)}</pre>
+                        
+                        <strong>🎯 Resultado:</strong><br>
+                        ${verificacao.cpf ? 
+                            `✅ <strong>CPF SALVO CORRETAMENTE:</strong> ${verificacao.cpf}` : 
+                            `❌ <strong>CPF NÃO FOI SALVO</strong> (valor: ${verificacao.cpf})`
+                        }
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Erro no teste:', error);
+                document.getElementById('resultado').innerHTML = `
+                    <div class="error">
+                        ❌ <strong>Erro inesperado:</strong><br>
+                        ${error.message}<br>
+                        <pre>${JSON.stringify(error, null, 2)}</pre>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

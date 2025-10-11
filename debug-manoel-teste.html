@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Debug - Funcionário manoel@teste.com</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+            background: #f8f9fa;
+            border-radius: 0 5px 5px 0;
+        }
+        .info { border-left-color: #3498db; background: #e3f2fd; }
+        .success { border-left-color: #27ae60; background: #e8f5e9; }
+        .warning { border-left-color: #f39c12; background: #fff3cd; }
+        .error { border-left-color: #e74c3c; background: #f8d7da; }
+        .button {
+            padding: 12px 24px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+        }
+        .button:hover { background: #2980b9; }
+        .button.success { background: #27ae60; }
+        .button.warning { background: #f39c12; }
+        .button.error { background: #e74c3c; }
+        .code {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        .table th, .table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        .table th {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Debug - Funcionário manoel@teste.com</h1>
+            <p>Investigando problemas de permissões e SenhaProvisionariaGuard</p>
+        </div>
+
+        <div class="step info">
+            <h3>🎯 Problemas Relatados</h3>
+            <ol>
+                <li><strong>Permissões:</strong> Funcionário tem acesso a todos os módulos (deveria ter acesso restrito)</li>
+                <li><strong>SenhaProvisionariaGuard:</strong> Não redirecionou para alteração de senha</li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <button class="button" onclick="verificarDadosFuncionario()">
+                🔍 Verificar Dados do Funcionário
+            </button>
+            <button class="button warning" onclick="verificarPermissoes()">
+                🛡️ Verificar Permissões
+            </button>
+            <button class="button success" onclick="simularSenhaGuard()">
+                🔒 Simular SenhaProvisionariaGuard
+            </button>
+        </div>
+
+        <div id="resultados"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjcyMDA5NjEsImV4cCI6MjA0Mjc3Njk2MX0.tVqbLxPjmHtip8SCgd61iZFBBKY_EqmlnSz2aHaJaLg';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('resultados');
+            const div = document.createElement('div');
+            div.className = `step ${type}`;
+            div.innerHTML = message;
+            resultsDiv.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('resultados').innerHTML = '';
+        }
+
+        async function verificarDadosFuncionario() {
+            clearResults();
+            addResult('🔍 Verificando dados do funcionário manoel@teste.com...', 'info');
+
+            try {
+                // 1. Buscar na tabela usuarios_empresa
+                const { data: usuarioEmpresa, error: userError } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .eq('email', 'manoel@teste.com')
+                    .single();
+
+                if (userError) {
+                    addResult(`❌ Erro ao buscar na usuarios_empresa: ${userError.message}`, 'error');
+                    return;
+                }
+
+                if (!usuarioEmpresa) {
+                    addResult('❌ Funcionário não encontrado na tabela usuarios_empresa', 'error');
+                    return;
+                }
+
+                addResult(`
+                    <h4>✅ Dados em usuarios_empresa:</h4>
+                    <table class="table">
+                        <tr><th>Campo</th><th>Valor</th></tr>
+                        <tr><td>ID</td><td>${usuarioEmpresa.id}</td></tr>
+                        <tr><td>User ID</td><td>${usuarioEmpresa.user_id || 'NULL'}</td></tr>
+                        <tr><td>Email</td><td>${usuarioEmpresa.email}</td></tr>
+                        <tr><td>Nome</td><td>${usuarioEmpresa.nome_completo}</td></tr>
+                        <tr><td><span class="highlight">senha_provisoria</span></td><td><strong>${usuarioEmpresa.senha_provisoria}</strong></td></tr>
+                        <tr><td>Status</td><td>${usuarioEmpresa.status}</td></tr>
+                        <tr><td>Tem Acesso Sistema</td><td>${usuarioEmpresa.tem_acesso_sistema}</td></tr>
+                        <tr><td>Papel</td><td>${usuarioEmpresa.papel}</td></tr>
+                        <tr><td>Tipo Usuário</td><td>${usuarioEmpresa.tipo_usuario}</td></tr>
+                        <tr><td>Ativo</td><td>${usuarioEmpresa.ativo}</td></tr>
+                    </table>
+                `, 'success');
+
+                // 2. Se tem user_id, buscar na tabela profiles
+                if (usuarioEmpresa.user_id) {
+                    const { data: profile, error: profileError } = await supabaseClient
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', usuarioEmpresa.user_id)
+                        .single();
+
+                    if (profile) {
+                        addResult(`
+                            <h4>✅ Dados em profiles:</h4>
+                            <table class="table">
+                                <tr><th>Campo</th><th>Valor</th></tr>
+                                <tr><td>ID</td><td>${profile.id}</td></tr>
+                                <tr><td>Email</td><td>${profile.email}</td></tr>
+                                <tr><td><span class="highlight">Role</span></td><td><strong>${profile.role}</strong></td></tr>
+                                <tr><td>Nome</td><td>${profile.name}</td></tr>
+                                <tr><td>Created At</td><td>${profile.created_at}</td></tr>
+                                <tr><td>Updated At</td><td>${profile.updated_at}</td></tr>
+                            </table>
+                        `, 'success');
+
+                        // Verificar se o role é employee como esperado
+                        if (profile.role !== 'employee') {
+                            addResult(`⚠️ <strong>PROBLEMA:</strong> Role é "${profile.role}" quando deveria ser "employee"`, 'warning');
+                        } else {
+                            addResult(`✅ Role está correto: "employee"`, 'success');
+                        }
+                    } else {
+                        addResult(`❌ Perfil não encontrado na tabela profiles para user_id: ${usuarioEmpresa.user_id}`, 'error');
+                    }
+                }
+
+                // 3. Verificar permissões
+                const { data: permissoes, error: permError } = await supabaseClient
+                    .from('permissoes_usuario')
+                    .select('*')
+                    .eq('usuario_empresa_id', usuarioEmpresa.id);
+
+                if (permissoes && permissoes.length > 0) {
+                    addResult(`
+                        <h4>📋 Permissões (${permissoes.length} registros):</h4>
+                        <table class="table">
+                            <tr><th>Módulo</th><th>Permissões</th></tr>
+                            ${permissoes.map(p => `
+                                <tr>
+                                    <td>${p.modulo}</td>
+                                    <td><pre>${JSON.stringify(p.permissoes, null, 2)}</pre></td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                    `, 'info');
+                } else {
+                    addResult(`❌ <strong>PROBLEMA:</strong> Nenhuma permissão encontrada para o funcionário!`, 'error');
+                }
+
+            } catch (error) {
+                addResult(`❌ Erro geral: ${error.message}`, 'error');
+            }
+        }
+
+        async function verificarPermissoes() {
+            addResult('🛡️ Verificando sistema de permissões...', 'info');
+
+            try {
+                // Buscar o funcionário
+                const { data: funcionario, error } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .select('id, user_id, tipo_usuario, papel')
+                    .eq('email', 'manoel@teste.com')
+                    .single();
+
+                if (!funcionario) {
+                    addResult('❌ Funcionário não encontrado', 'error');
+                    return;
+                }
+
+                // Verificar se as permissões existem
+                const { data: permissoes, error: permError } = await supabaseClient
+                    .from('permissoes_usuario')
+                    .select('*')
+                    .eq('usuario_empresa_id', funcionario.id);
+
+                addResult(`
+                    <h4>🔍 Diagnóstico do Sistema de Permissões:</h4>
+                    
+                    <h5>📊 Dados do Funcionário:</h5>
+                    <ul>
+                        <li><strong>Tipo Usuário:</strong> ${funcionario.tipo_usuario}</li>
+                        <li><strong>Papel:</strong> ${funcionario.papel}</li>
+                        <li><strong>Tem User ID:</strong> ${funcionario.user_id ? 'Sim' : 'Não'}</li>
+                    </ul>
+
+                    <h5>🛡️ Permissões Encontradas:</h5>
+                    <p><strong>Quantidade:</strong> ${permissoes ? permissoes.length : 0} registros</p>
+                    
+                    ${permissoes && permissoes.length > 0 ? `
+                        <h5>📋 Detalhes das Permissões:</h5>
+                        ${permissoes.map((p, index) => `
+                            <div style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                                <strong>Módulo ${index + 1}:</strong> ${p.modulo}<br>
+                                <div class="code">${JSON.stringify(p.permissoes, null, 2)}</div>
+                            </div>
+                        `).join('')}
+                    ` : `
+                        <div class="error">
+                            <h5>❌ PROBLEMA IDENTIFICADO!</h5>
+                            <p><strong>O funcionário não tem permissões definidas!</strong></p>
+                            <p>Isso explica por que ele tem acesso a todos os módulos - sem permissões específicas, o sistema pode estar usando permissões padrão ou fallback.</p>
+                        </div>
+                    `}
+                `, permissoes && permissoes.length > 0 ? 'success' : 'error');
+
+                // Sugerir correção se não tem permissões
+                if (!permissoes || permissoes.length === 0) {
+                    addResult(`
+                        <h4>💡 Solução Sugerida:</h4>
+                        <p>O funcionário precisa ter permissões específicas criadas na tabela <code>permissoes_usuario</code>.</p>
+                        <p>Sem permissões definidas, o sistema pode estar permitindo acesso total por padrão.</p>
+                        
+                        <h5>🔧 Ações Necessárias:</h5>
+                        <ol>
+                            <li>Criar permissões específicas para este funcionário</li>
+                            <li>Definir apenas os módulos que ele deve acessar</li>
+                            <li>Configurar ações (visualizar, criar, editar, etc.) apropriadas</li>
+                        </ol>
+                    `, 'warning');
+                }
+
+            } catch (error) {
+                addResult(`❌ Erro ao verificar permissões: ${error.message}`, 'error');
+            }
+        }
+
+        async function simularSenhaGuard() {
+            addResult('🔒 Simulando SenhaProvisionariaGuard...', 'info');
+
+            try {
+                // Buscar os dados que o Guard verifica
+                const { data: usuarioEmpresa, error } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .select('senha_provisoria, status, nome_completo, email, user_id')
+                    .eq('email', 'manoel@teste.com')
+                    .single();
+
+                if (error) {
+                    addResult(`❌ Erro na consulta (igual ao que o Guard faria): ${error.message}`, 'error');
+                    return;
+                }
+
+                if (!usuarioEmpresa) {
+                    addResult('❌ Usuário não encontrado (Guard não funcionaria)', 'error');
+                    return;
+                }
+
+                // Simular a lógica do Guard
+                addResult(`
+                    <h4>🔍 Simulação do SenhaProvisionariaGuard:</h4>
+                    
+                    <h5>📊 Dados Consultados:</h5>
+                    <table class="table">
+                        <tr><th>Campo</th><th>Valor</th><th>Resultado</th></tr>
+                        <tr>
+                            <td>user_id</td>
+                            <td>${usuarioEmpresa.user_id || 'NULL'}</td>
+                            <td>${usuarioEmpresa.user_id ? '✅ Tem user_id' : '❌ Sem user_id'}</td>
+                        </tr>
+                        <tr>
+                            <td>senha_provisoria</td>
+                            <td><strong>${usuarioEmpresa.senha_provisoria}</strong></td>
+                            <td>${usuarioEmpresa.senha_provisoria === true ? '✅ Deve redirecionar' : '❌ Não redirecionará'}</td>
+                        </tr>
+                        <tr>
+                            <td>status</td>
+                            <td>${usuarioEmpresa.status}</td>
+                            <td>${usuarioEmpresa.status === 'ativo' ? '✅ Usuário ativo' : '⚠️ Status diferente'}</td>
+                        </tr>
+                    </table>
+
+                    <h5>🤖 Lógica do Guard:</h5>
+                    <div class="code">
+if (usuarioEmpresa?.senha_provisoria === true) {
+    console.log('🚨 SENHA PROVISÓRIA DETECTADA! Redirecionando...');
+    // Redirecionar para /alterar-senha-provisoria
+} else {
+    console.log('✅ Senha não é provisória, continuar normalmente');
+}
+                    </div>
+
+                    <h5>🎯 Resultado da Simulação:</h5>
+                    ${usuarioEmpresa.senha_provisoria === true ? `
+                        <div class="success">
+                            <strong>✅ O Guard DEVERIA redirecionar!</strong><br>
+                            Se não está redirecionando, pode haver um problema na implementação do Guard.
+                        </div>
+                    ` : `
+                        <div class="warning">
+                            <strong>⚠️ O Guard NÃO redirecionará!</strong><br>
+                            senha_provisoria é <code>${usuarioEmpresa.senha_provisoria}</code>, mas deveria ser <code>true</code> para funcionários recém-criados.
+                        </div>
+                    `}
+                `, usuarioEmpresa.senha_provisoria === true ? 'success' : 'warning');
+
+                // Se senha_provisoria não é true, investigar por quê
+                if (usuarioEmpresa.senha_provisoria !== true) {
+                    addResult(`
+                        <h4>🔍 Investigação - Por que senha_provisoria não é true?</h4>
+                        
+                        <h5>Possíveis Causas:</h5>
+                        <ol>
+                            <li><strong>Funcionário já alterou a senha:</strong> Se ele já passou pela tela de alteração, a flag foi definida como false</li>
+                            <li><strong>Criação manual:</strong> Se foi criado manualmente, a flag pode não ter sido definida corretamente</li>
+                            <li><strong>Erro na criação:</strong> Bug no processo de criação de funcionários</li>
+                        </ol>
+
+                        <h5>💡 Para Testar:</h5>
+                        <p>Podemos alterar manualmente para <code>true</code> e testar novamente:</p>
+                        <div class="code">
+UPDATE usuarios_empresa 
+SET senha_provisoria = true 
+WHERE email = 'manoel@teste.com';
+                        </div>
+                    `, 'info');
+                }
+
+            } catch (error) {
+                addResult(`❌ Erro na simulação: ${error.message}`, 'error');
+            }
+        }
+
+        // Executar verificação inicial ao carregar a página
+        window.addEventListener('load', () => {
+            addResult('🔍 Página carregada. Clique nos botões para investigar os problemas.', 'info');
+        });
+    </script>
+</body>
+</html>

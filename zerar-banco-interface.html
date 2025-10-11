@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗑️ Zerar Banco de Dados - Sistema AABB</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 { 
+            color: #c0392b; 
+            text-align: center; 
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+        .warning-box {
+            background: #fff5f5;
+            border: 2px solid #e53e3e;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .warning-box h3 {
+            color: #c53030;
+            margin-top: 0;
+        }
+        .section {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 5px solid #3498db;
+        }
+        .success-section {
+            background: #f0fff4;
+            border-left-color: #38a169;
+        }
+        .error-section {
+            background: #fff5f5;
+            border-left-color: #e53e3e;
+        }
+        button {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .danger-button {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            border: 3px solid #fca5a5;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .config-section {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #cbd5e0;
+        }
+        .config-section input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .confirmation-section {
+            background: #fef2f2;
+            border: 2px solid #fca5a5;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .confirmation-section h4 {
+            color: #dc2626;
+            margin-top: 0;
+        }
+        .checkbox-container {
+            margin: 10px 0;
+        }
+        .checkbox-container input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+        .checkbox-container label {
+            font-weight: bold;
+            color: #dc2626;
+        }
+        pre {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗑️ Zerar Banco de Dados</h1>
+        
+        <div class="warning-box">
+            <h3>⚠️ ATENÇÃO - OPERAÇÃO PERIGOSA!</h3>
+            <p><strong>Este script irá deletar TODOS os dados do sistema:</strong></p>
+            <ul>
+                <li>❌ Todos os funcionários e suas credenciais</li>
+                <li>❌ Todas as empresas cadastradas</li>
+                <li>❌ Todos os usuários e administradores</li>
+                <li>❌ Todas as permissões e configurações</li>
+                <li>❌ Todos os logs de auditoria</li>
+                <li>❌ <strong>USUÁRIOS DA TABELA AUTH</strong></li>
+            </ul>
+            <p><strong style="color: #dc2626;">Execute apenas em ambiente de desenvolvimento/teste!</strong></p>
+        </div>
+
+        <div class="config-section">
+            <h3>⚙️ Configuração do Supabase</h3>
+            <input type="text" id="supabaseUrl" placeholder="URL do Supabase" value="">
+            <input type="password" id="serviceKey" placeholder="Service Role Key (OBRIGATÓRIO)" value="">
+            <button onclick="initializeSupabase()">🔧 Configurar Supabase</button>
+        </div>
+
+        <div class="confirmation-section" id="confirmationSection" style="display: none;">
+            <h4>🚨 Confirmações Obrigatórias</h4>
+            <div class="checkbox-container">
+                <input type="checkbox" id="confirm1">
+                <label for="confirm1">Entendo que TODOS os dados serão perdidos permanentemente</label>
+            </div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="confirm2">
+                <label for="confirm2">Confirmo que este é um ambiente de DESENVOLVIMENTO/TESTE</label>
+            </div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="confirm3">
+                <label for="confirm3">Tenho backup dos dados importantes (se necessário)</label>
+            </div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="confirm4">
+                <label for="confirm4">Entendo que preciso recriar empresas e usuários após esta operação</label>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🗑️ Operações de Limpeza</h2>
+            <button onclick="checkDatabaseStatus()" disabled id="checkBtn">📊 1. Verificar Status do Banco</button>
+            <button onclick="executeCleanup()" disabled id="cleanupBtn" class="danger-button">🗑️ 2. ZERAR BANCO COMPLETO</button>
+            <button onclick="verifyCleanup()" disabled id="verifyBtn">✅ 3. Verificar Limpeza</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        let supabase = null;
+        let isConfigured = false;
+
+        function addMessage(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const messageDiv = document.createElement('div');
+            
+            let className = 'section';
+            if (type === 'success') className = 'section success-section';
+            if (type === 'error') className = 'section error-section';
+            
+            messageDiv.className = className;
+            messageDiv.innerHTML = message;
+            resultsDiv.appendChild(messageDiv);
+            
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function initializeSupabase() {
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('serviceKey').value;
+
+            if (!url || !key) {
+                addMessage('❌ <strong>Erro:</strong> Preencha URL e Service Role Key', 'error');
+                return;
+            }
+
+            try {
+                supabase = window.supabase.createClient(url, key);
+                isConfigured = true;
+                
+                addMessage('✅ <strong>Supabase configurado com sucesso!</strong>', 'success');
+                
+                // Habilitar botões
+                document.querySelectorAll('button[disabled]').forEach(btn => {
+                    btn.disabled = false;
+                });
+                
+                // Mostrar seção de confirmação
+                document.getElementById('confirmationSection').style.display = 'block';
+                
+            } catch (error) {
+                addMessage(`❌ <strong>Erro ao configurar Supabase:</strong> ${error.message}`, 'error');
+            }
+        }
+
+        function checkAllConfirmations() {
+            const checkboxes = ['confirm1', 'confirm2', 'confirm3', 'confirm4'];
+            return checkboxes.every(id => document.getElementById(id).checked);
+        }
+
+        async function checkDatabaseStatus() {
+            if (!isConfigured) {
+                addMessage('❌ Configure o Supabase primeiro', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('checkBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Verificando...';
+
+            try {
+                addMessage('📊 <strong>Verificando status atual do banco de dados...</strong>', 'info');
+                
+                // Verificar tabelas principais
+                const tables = [
+                    { name: 'empresas', display: 'Empresas' },
+                    { name: 'usuarios_empresa', display: 'Usuários de Empresa' },
+                    { name: 'bar_employees', display: 'Funcionários' },
+                    { name: 'profiles', display: 'Perfis' },
+                    { name: 'permissoes_usuario', display: 'Permissões' }
+                ];
+
+                let totalRecords = 0;
+                let statusHtml = '<h3>📊 Status Atual do Banco</h3><ul>';
+
+                for (const table of tables) {
+                    try {
+                        const { data, error, count } = await supabase
+                            .from(table.name)
+                            .select('*', { count: 'exact', head: true });
+
+                        if (error) {
+                            statusHtml += `<li>❌ ${table.display}: Erro - ${error.message}</li>`;
+                        } else {
+                            totalRecords += count || 0;
+                            statusHtml += `<li>📋 ${table.display}: ${count || 0} registros</li>`;
+                        }
+                    } catch (e) {
+                        statusHtml += `<li>❌ ${table.display}: Erro de acesso</li>`;
+                    }
+                }
+
+                // Verificar usuários Auth (aproximado)
+                try {
+                    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+                    if (!authError && authUsers?.users) {
+                        totalRecords += authUsers.users.length;
+                        statusHtml += `<li>👤 Usuários Auth: ${authUsers.users.length} usuários</li>`;
+                    } else {
+                        statusHtml += `<li>❌ Usuários Auth: Erro de acesso</li>`;
+                    }
+                } catch (e) {
+                    statusHtml += `<li>⚠️ Usuários Auth: Não foi possível verificar</li>`;
+                }
+
+                statusHtml += '</ul>';
+                statusHtml += `<p><strong>📊 Total estimado de registros: ${totalRecords}</strong></p>`;
+
+                if (totalRecords === 0) {
+                    statusHtml += '<p style="color: green;"><strong>✅ Banco parece estar vazio!</strong></p>';
+                } else {
+                    statusHtml += '<p style="color: red;"><strong>⚠️ Banco contém dados que serão perdidos!</strong></p>';
+                }
+
+                addMessage(statusHtml, totalRecords === 0 ? 'success' : 'error');
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro inesperado:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '📊 1. Verificar Status do Banco';
+            }
+        }
+
+        async function executeCleanup() {
+            if (!isConfigured) {
+                addMessage('❌ Configure o Supabase primeiro', 'error');
+                return;
+            }
+
+            if (!checkAllConfirmations()) {
+                addMessage('❌ <strong>Você deve marcar todas as confirmações antes de prosseguir!</strong>', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('cleanupBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> EXECUTANDO LIMPEZA...';
+
+            try {
+                addMessage('🗑️ <strong>INICIANDO LIMPEZA COMPLETA DO BANCO DE DADOS...</strong>', 'error');
+                
+                // Array de comandos SQL para execução sequencial
+                const cleanupCommands = [
+                    "DELETE FROM public.bar_employees",
+                    "DELETE FROM public.usuarios_empresa", 
+                    "DELETE FROM public.permissoes_usuario",
+                    "DELETE FROM public.configuracoes_empresa",
+                    "DELETE FROM public.logs_auditoria",
+                    "DELETE FROM public.profiles",
+                    "DELETE FROM public.empresas"
+                ];
+
+                // Executar comandos sequencialmente
+                for (const command of cleanupCommands) {
+                    try {
+                        const { error } = await supabase.rpc('exec_sql', { query: command });
+                        if (error) {
+                            addMessage(`⚠️ Comando "${command}": ${error.message}`, 'error');
+                        } else {
+                            addMessage(`✅ Executado: ${command}`, 'success');
+                        }
+                    } catch (e) {
+                        addMessage(`⚠️ Erro no comando "${command}": ${e.message}`, 'error');
+                    }
+                }
+
+                addMessage('🗑️ <strong>Limpando usuários Auth...</strong>', 'info');
+                
+                // Limpar usuários Auth
+                try {
+                    const { data: users, error: listError } = await supabase.auth.admin.listUsers();
+                    
+                    if (listError) {
+                        addMessage(`❌ Erro ao listar usuários Auth: ${listError.message}`, 'error');
+                    } else if (users?.users && users.users.length > 0) {
+                        addMessage(`🔍 Encontrados ${users.users.length} usuários Auth para deletar...`, 'info');
+                        
+                        for (const user of users.users) {
+                            try {
+                                const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id);
+                                if (deleteError) {
+                                    addMessage(`⚠️ Erro ao deletar usuário ${user.email}: ${deleteError.message}`, 'error');
+                                } else {
+                                    addMessage(`✅ Usuário deletado: ${user.email}`, 'success');
+                                }
+                            } catch (e) {
+                                addMessage(`⚠️ Erro ao deletar usuário ${user.email}: ${e.message}`, 'error');
+                            }
+                        }
+                    } else {
+                        addMessage('✅ Nenhum usuário Auth encontrado', 'success');
+                    }
+                } catch (e) {
+                    addMessage(`❌ Erro ao limpar usuários Auth: ${e.message}`, 'error');
+                }
+
+                addMessage(`
+                    <h3>🎉 LIMPEZA CONCLUÍDA!</h3>
+                    <p><strong>✅ Operações executadas:</strong></p>
+                    <ul>
+                        <li>🗑️ Funcionários deletados</li>
+                        <li>🗑️ Usuários de empresa deletados</li>
+                        <li>🗑️ Permissões deletadas</li>
+                        <li>🗑️ Empresas deletadas</li>
+                        <li>🗑️ Perfis deletados</li>
+                        <li>🗑️ Usuários Auth deletados</li>
+                        <li>🗑️ Configurações deletadas</li>
+                        <li>🗑️ Logs deletados</li>
+                    </ul>
+                    <p><strong>🚀 Próximos passos:</strong></p>
+                    <ol>
+                        <li>Execute "Verificar Limpeza" para confirmar</li>
+                        <li>Registre novas empresas no sistema</li>
+                        <li>Crie novos administradores</li>
+                        <li>Teste o isolamento entre empresas</li>
+                    </ol>
+                `, 'success');
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro durante limpeza:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🗑️ 2. ZERAR BANCO COMPLETO';
+            }
+        }
+
+        async function verifyCleanup() {
+            if (!isConfigured) {
+                addMessage('❌ Configure o Supabase primeiro', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('verifyBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Verificando...';
+
+            try {
+                addMessage('✅ <strong>Verificando se a limpeza foi bem sucedida...</strong>', 'info');
+                
+                const tables = [
+                    { name: 'empresas', display: 'Empresas' },
+                    { name: 'usuarios_empresa', display: 'Usuários de Empresa' },
+                    { name: 'bar_employees', display: 'Funcionários' },
+                    { name: 'profiles', display: 'Perfis' },
+                    { name: 'permissoes_usuario', display: 'Permissões' },
+                    { name: 'configuracoes_empresa', display: 'Configurações' },
+                    { name: 'logs_auditoria', display: 'Logs' }
+                ];
+
+                let totalRecords = 0;
+                let verificationHtml = '<h3>✅ Verificação da Limpeza</h3><ul>';
+
+                for (const table of tables) {
+                    try {
+                        const { data, error, count } = await supabase
+                            .from(table.name)
+                            .select('*', { count: 'exact', head: true });
+
+                        if (error) {
+                            verificationHtml += `<li>❌ ${table.display}: Erro - ${error.message}</li>`;
+                        } else {
+                            totalRecords += count || 0;
+                            if (count === 0) {
+                                verificationHtml += `<li>✅ ${table.display}: Vazia (0 registros)</li>`;
+                            } else {
+                                verificationHtml += `<li>⚠️ ${table.display}: Ainda tem ${count} registros</li>`;
+                            }
+                        }
+                    } catch (e) {
+                        verificationHtml += `<li>❌ ${table.display}: Erro de acesso</li>`;
+                    }
+                }
+
+                // Verificar usuários Auth
+                try {
+                    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+                    if (!authError && authUsers?.users) {
+                        totalRecords += authUsers.users.length;
+                        if (authUsers.users.length === 0) {
+                            verificationHtml += `<li>✅ Usuários Auth: Vazia (0 usuários)</li>`;
+                        } else {
+                            verificationHtml += `<li>⚠️ Usuários Auth: Ainda tem ${authUsers.users.length} usuários</li>`;
+                        }
+                    } else {
+                        verificationHtml += `<li>❌ Usuários Auth: Erro de acesso</li>`;
+                    }
+                } catch (e) {
+                    verificationHtml += `<li>⚠️ Usuários Auth: Não foi possível verificar</li>`;
+                }
+
+                verificationHtml += '</ul>';
+
+                if (totalRecords === 0) {
+                    verificationHtml += `
+                        <div style="background: #f0fff4; padding: 15px; border-radius: 8px; margin: 10px 0; border: 2px solid #38a169;">
+                            <h4 style="color: #2f855a; margin-top: 0;">🎉 LIMPEZA 100% CONCLUÍDA!</h4>
+                            <p><strong>✅ Banco de dados completamente zerado!</strong></p>
+                            <p>🚀 Agora você pode começar os testes com um ambiente limpo.</p>
+                        </div>
+                    `;
+                } else {
+                    verificationHtml += `
+                        <div style="background: #fff5f5; padding: 15px; border-radius: 8px; margin: 10px 0; border: 2px solid #e53e3e;">
+                            <h4 style="color: #c53030; margin-top: 0;">⚠️ LIMPEZA PARCIAL</h4>
+                            <p><strong>Ainda existem ${totalRecords} registros no banco.</strong></p>
+                            <p>Pode ser necessário executar a limpeza novamente ou verificar permissões.</p>
+                        </div>
+                    `;
+                }
+
+                addMessage(verificationHtml, totalRecords === 0 ? 'success' : 'error');
+
+            } catch (error) {
+                addMessage(`❌ <strong>Erro na verificação:</strong> ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '✅ 3. Verificar Limpeza';
+            }
+        }
+
+        // Carregar configurações salvas
+        window.addEventListener('load', () => {
+            const savedUrl = localStorage.getItem('supabase_url');
+            const savedKey = localStorage.getItem('supabase_service_key');
+            
+            if (savedUrl) document.getElementById('supabaseUrl').value = savedUrl;
+            if (savedKey) document.getElementById('serviceKey').value = savedKey;
+        });
+
+        // Salvar configurações
+        document.getElementById('supabaseUrl').addEventListener('change', (e) => {
+            localStorage.setItem('supabase_url', e.target.value);
+        });
+        
+        document.getElementById('serviceKey').addEventListener('change', (e) => {
+            localStorage.setItem('supabase_service_key', e.target.value);
+        });
+    </script>
+</body>
+</html>

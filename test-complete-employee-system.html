@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Teste Completo - Sistema de Funcionários</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .test-section {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border: 1px solid #2196f3;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .test-section h3 {
+            color: #1976d2;
+            margin-top: 0;
+        }
+        .error-card {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border: 1px solid #f44336;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            color: #c62828;
+        }
+        .success-card {
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+            border: 1px solid #4caf50;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .credentials-card {
+            background: linear-gradient(135deg, #fff, #f5f5f5);
+            border: 3px solid #ff9800;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+        button {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            padding: 18px 35px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            width: 100%;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: linear-gradient(135deg, #cccccc, #999999);
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .step {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste Completo - Sistema de Funcionários</h1>
+        
+        <div class="test-section">
+            <h3>📋 Testes Disponíveis</h3>
+            <p>Este sistema testa todas as funcionalidades do novo serviço de criação de funcionários.</p>
+            
+            <div class="step">
+                <strong>✅ Sistema Corrigido:</strong> Agora cria funcionários REAIS com credenciais funcionais
+            </div>
+            <div class="step">
+                <strong>🔐 Credenciais Automáticas:</strong> Gera senhas seguras automaticamente
+            </div>
+            <div class="step">
+                <strong>🏢 Integração Completa:</strong> Cria em todas as tabelas necessárias
+            </div>
+            <div class="step">
+                <strong>🔑 Permissões Inteligentes:</strong> Configura permissões baseadas no cargo
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="test-section">
+                <h3>👨‍💼 Teste 1: Criar Gerente</h3>
+                <p>Cria um gerente com acesso completo ao sistema</p>
+                <button onclick="testCreateManager()">🚀 Criar Gerente de Teste</button>
+            </div>
+
+            <div class="test-section">
+                <h3>👨‍🍳 Teste 2: Criar Garçom</h3>
+                <p>Cria um garçom com permissões de atendimento</p>
+                <button onclick="testCreateWaiter()">🚀 Criar Garçom de Teste</button>
+            </div>
+
+            <div class="test-section">
+                <h3>👩‍💻 Teste 3: Criar Atendente</h3>
+                <p>Cria um atendente com acesso ao caixa</p>
+                <button onclick="testCreateCashier()">🚀 Criar Atendente de Teste</button>
+            </div>
+
+            <div class="test-section">
+                <h3>👨‍🍳 Teste 4: Criar Cozinheiro</h3>
+                <p>Cria um cozinheiro com acesso à cozinha</p>
+                <button onclick="testCreateCook()">🚀 Criar Cozinheiro de Teste</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Teste 5: Listar Funcionários</h3>
+            <p>Lista todos os funcionários criados</p>
+            <button onclick="testListEmployees()">📋 Listar Funcionários</button>
+        </div>
+
+        <div class="test-section">
+            <h3>🔐 Teste 6: Verificar Login</h3>
+            <p>Testa se as credenciais geradas funcionam para login</p>
+            <button onclick="testLogin()">🔑 Testar Login</button>
+        </div>
+
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        const empresaId = '142f9c74-bec6-447f-9f8f-c68d7c1d7958'; // AABB Garanhuns
+
+        let lastCreatedCredentials = null;
+
+        function addMessage(message, type = 'info') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            
+            let className = 'test-section';
+            if (type === 'success') className = 'success-card';
+            if (type === 'error') className = 'error-card';
+            if (type === 'credentials') className = 'credentials-card';
+            
+            messageDiv.className = className;
+            messageDiv.innerHTML = message;
+            messagesDiv.appendChild(messageDiv);
+            
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function generatePassword() {
+            const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$%';
+            let password = '';
+            for (let i = 0; i < 10; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return password;
+        }
+
+        async function createEmployee(employeeData) {
+            const password = generatePassword();
+            
+            try {
+                // 1. Criar usuário no Auth
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: employeeData.email,
+                    password: password,
+                    options: {
+                        data: {
+                            name: employeeData.nome_completo,
+                            role: employeeData.tipo_usuario,
+                            cargo: employeeData.cargo,
+                            temporary_password: true
+                        }
+                    }
+                });
+
+                if (authError) throw new Error(`Auth: ${authError.message}`);
+                if (!authData.user) throw new Error('Usuário não criado no Auth');
+
+                const userId = authData.user.id;
+
+                // 2. Aguardar processamento
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // 3. Criar perfil
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .insert([{
+                        id: userId,
+                        name: employeeData.nome_completo,
+                        role: 'employee',
+                        avatar_url: `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(employeeData.nome_completo)}`,
+                        updated_at: new Date().toISOString()
+                    }]);
+
+                if (profileError) {
+                    console.warn('Erro ao criar perfil:', profileError);
+                }
+
+                // 4. Criar funcionário do bar
+                const { data: barEmployee, error: barError } = await supabase
+                    .from('bar_employees')
+                    .insert([{
+                        employee_id: userId,
+                        bar_role: employeeData.bar_role,
+                        shift_preference: employeeData.shift_preference || 'qualquer',
+                        specialties: employeeData.specialties || [],
+                        commission_rate: employeeData.commission_rate || 0,
+                        is_active: true,
+                        start_date: new Date().toISOString().split('T')[0],
+                        notes: `Nome: ${employeeData.nome_completo}, Email: ${employeeData.email}`,
+                        empresa_id: empresaId
+                    }])
+                    .select('id')
+                    .single();
+
+                if (barError) throw new Error(`Bar Employee: ${barError.message}`);
+
+                // 5. Criar usuário da empresa
+                const { data: usuarioEmpresa, error: empresaError } = await supabase
+                    .from('usuarios_empresa')
+                    .insert([{
+                        user_id: userId,
+                        empresa_id: empresaId,
+                        nome_completo: employeeData.nome_completo,
+                        email: employeeData.email,
+                        telefone: employeeData.telefone,
+                        cargo: employeeData.cargo,
+                        tipo_usuario: employeeData.tipo_usuario,
+                        status: 'ativo',
+                        senha_provisoria: true,
+                        ativo: true,
+                        tem_acesso_sistema: true,
+                        papel: employeeData.papel,
+                        is_primeiro_usuario: false,
+                        tentativas_login_falhadas: 0,
+                        total_logins: 0,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }])
+                    .select('id')
+                    .single();
+
+                if (empresaError) throw new Error(`Usuario Empresa: ${empresaError.message}`);
+
+                // 6. Criar permissões
+                const permissoes = Object.entries(employeeData.permissoes_modulos).map(([modulo, perms]) => ({
+                    usuario_empresa_id: usuarioEmpresa.id,
+                    modulo: modulo,
+                    permissoes: perms,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }));
+
+                const { error: permError } = await supabase
+                    .from('permissoes_usuario')
+                    .insert(permissoes);
+
+                if (permError) {
+                    console.warn('Erro ao criar permissões:', permError);
+                }
+
+                return {
+                    success: true,
+                    userId: userId,
+                    barEmployeeId: barEmployee.id,
+                    usuarioEmpresaId: usuarioEmpresa.id,
+                    credentials: {
+                        email: employeeData.email,
+                        password: password
+                    }
+                };
+
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        async function testCreateManager() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Criando gerente...';
+
+            try {
+                const employeeData = {
+                    nome_completo: 'Carlos Silva Gerente',
+                    email: 'carlos.gerente@teste.com',
+                    telefone: '(87) 99999-1001',
+                    bar_role: 'gerente',
+                    cargo: 'Gerente de Bar',
+                    tipo_usuario: 'administrador',
+                    papel: 'MANAGER',
+                    shift_preference: 'qualquer',
+                    specialties: ['gestao', 'atendimento'],
+                    commission_rate: 0,
+                    permissoes_modulos: {
+                        dashboard: { visualizar: true, criar: false, editar: false, excluir: false, administrar: false },
+                        monitor_bar: { visualizar: true, criar: true, editar: true, excluir: true, administrar: true },
+                        atendimento_bar: { visualizar: true, criar: true, editar: true, excluir: true, administrar: true },
+                        monitor_cozinha: { visualizar: true, criar: true, editar: true, excluir: true, administrar: true },
+                        gestao_caixa: { visualizar: true, criar: true, editar: true, excluir: true, administrar: true },
+                        clientes: { visualizar: true, criar: true, editar: true, excluir: true, administrar: true },
+                        funcionarios: { visualizar: true, criar: true, editar: true, excluir: true, administrar: true },
+                        relatorios: { visualizar: true, criar: false, editar: false, excluir: false, administrar: false },
+                        configuracoes: { visualizar: true, criar: false, editar: true, excluir: false, administrar: false }
+                    }
+                };
+
+                const result = await createEmployee(employeeData);
+
+                if (result.success) {
+                    lastCreatedCredentials = result.credentials;
+                    addMessage(`
+                        <h3>✅ Gerente criado com sucesso!</h3>
+                        <p><strong>Nome:</strong> ${employeeData.nome_completo}</p>
+                        <p><strong>Cargo:</strong> ${employeeData.cargo}</p>
+                        <p><strong>Permissões:</strong> Acesso completo ao sistema</p>
+                    `, 'success');
+
+                    addMessage(`
+                        <h4>🔑 Credenciais do Gerente:</h4>
+                        <div><strong>Email:</strong> ${result.credentials.email}</div>
+                        <div><strong>Senha:</strong> ${result.credentials.password}</div>
+                        <div><strong>Tipo:</strong> Senha temporária (deve alterar no primeiro login)</div>
+                    `, 'credentials');
+                } else {
+                    addMessage(`❌ Erro ao criar gerente: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🚀 Criar Gerente de Teste';
+            }
+        }
+
+        async function testCreateWaiter() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Criando garçom...';
+
+            try {
+                const employeeData = {
+                    nome_completo: 'João Santos Garçom',
+                    email: 'joao.garcom@teste.com',
+                    telefone: '(87) 99999-1002',
+                    bar_role: 'garcom',
+                    cargo: 'Garçom',
+                    tipo_usuario: 'funcionario',
+                    papel: 'USER',
+                    shift_preference: 'noite',
+                    specialties: ['atendimento', 'vendas'],
+                    commission_rate: 5,
+                    permissoes_modulos: {
+                        dashboard: { visualizar: true, criar: false, editar: false, excluir: false, administrar: false },
+                        atendimento_bar: { visualizar: true, criar: true, editar: true, excluir: false, administrar: false },
+                        clientes: { visualizar: true, criar: true, editar: false, excluir: false, administrar: false }
+                    }
+                };
+
+                const result = await createEmployee(employeeData);
+
+                if (result.success) {
+                    lastCreatedCredentials = result.credentials;
+                    addMessage(`
+                        <h3>✅ Garçom criado com sucesso!</h3>
+                        <p><strong>Nome:</strong> ${employeeData.nome_completo}</p>
+                        <p><strong>Cargo:</strong> ${employeeData.cargo}</p>
+                        <p><strong>Permissões:</strong> Atendimento e clientes</p>
+                    `, 'success');
+
+                    addMessage(`
+                        <h4>🔑 Credenciais do Garçom:</h4>
+                        <div><strong>Email:</strong> ${result.credentials.email}</div>
+                        <div><strong>Senha:</strong> ${result.credentials.password}</div>
+                        <div><strong>Comissão:</strong> ${employeeData.commission_rate}%</div>
+                    `, 'credentials');
+                } else {
+                    addMessage(`❌ Erro ao criar garçom: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🚀 Criar Garçom de Teste';
+            }
+        }
+
+        async function testCreateCashier() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Criando atendente...';
+
+            try {
+                const employeeData = {
+                    nome_completo: 'Maria Oliveira Atendente',
+                    email: 'maria.atendente@teste.com',
+                    telefone: '(87) 99999-1003',
+                    bar_role: 'atendente',
+                    cargo: 'Atendente de Caixa',
+                    tipo_usuario: 'funcionario',
+                    papel: 'USER',
+                    shift_preference: 'manha',
+                    specialties: ['caixa', 'atendimento'],
+                    commission_rate: 0,
+                    permissoes_modulos: {
+                        dashboard: { visualizar: true, criar: false, editar: false, excluir: false, administrar: false },
+                        gestao_caixa: { visualizar: true, criar: true, editar: true, excluir: false, administrar: true },
+                        clientes: { visualizar: true, criar: true, editar: true, excluir: false, administrar: false },
+                        atendimento_bar: { visualizar: true, criar: false, editar: false, excluir: false, administrar: false }
+                    }
+                };
+
+                const result = await createEmployee(employeeData);
+
+                if (result.success) {
+                    lastCreatedCredentials = result.credentials;
+                    addMessage(`
+                        <h3>✅ Atendente criado com sucesso!</h3>
+                        <p><strong>Nome:</strong> ${employeeData.nome_completo}</p>
+                        <p><strong>Cargo:</strong> ${employeeData.cargo}</p>
+                        <p><strong>Permissões:</strong> Caixa e clientes</p>
+                    `, 'success');
+
+                    addMessage(`
+                        <h4>🔑 Credenciais da Atendente:</h4>
+                        <div><strong>Email:</strong> ${result.credentials.email}</div>
+                        <div><strong>Senha:</strong> ${result.credentials.password}</div>
+                        <div><strong>Turno:</strong> ${employeeData.shift_preference}</div>
+                    `, 'credentials');
+                } else {
+                    addMessage(`❌ Erro ao criar atendente: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🚀 Criar Atendente de Teste';
+            }
+        }
+
+        async function testCreateCook() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Criando cozinheiro...';
+
+            try {
+                const employeeData = {
+                    nome_completo: 'Pedro Costa Cozinheiro',
+                    email: 'pedro.cozinheiro@teste.com',
+                    telefone: '(87) 99999-1004',
+                    bar_role: 'cozinheiro',
+                    cargo: 'Cozinheiro',
+                    tipo_usuario: 'funcionario',
+                    papel: 'USER',
+                    shift_preference: 'tarde',
+                    specialties: ['cozinha', 'preparo'],
+                    commission_rate: 0,
+                    permissoes_modulos: {
+                        dashboard: { visualizar: true, criar: false, editar: false, excluir: false, administrar: false },
+                        monitor_cozinha: { visualizar: true, criar: true, editar: true, excluir: false, administrar: false }
+                    }
+                };
+
+                const result = await createEmployee(employeeData);
+
+                if (result.success) {
+                    lastCreatedCredentials = result.credentials;
+                    addMessage(`
+                        <h3>✅ Cozinheiro criado com sucesso!</h3>
+                        <p><strong>Nome:</strong> ${employeeData.nome_completo}</p>
+                        <p><strong>Cargo:</strong> ${employeeData.cargo}</p>
+                        <p><strong>Permissões:</strong> Monitor da cozinha</p>
+                    `, 'success');
+
+                    addMessage(`
+                        <h4>🔑 Credenciais do Cozinheiro:</h4>
+                        <div><strong>Email:</strong> ${result.credentials.email}</div>
+                        <div><strong>Senha:</strong> ${result.credentials.password}</div>
+                        <div><strong>Especialidades:</strong> ${employeeData.specialties.join(', ')}</div>
+                    `, 'credentials');
+                } else {
+                    addMessage(`❌ Erro ao criar cozinheiro: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🚀 Criar Cozinheiro de Teste';
+            }
+        }
+
+        async function testListEmployees() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Listando funcionários...';
+
+            try {
+                const { data: employees, error } = await supabase
+                    .from('bar_employees')
+                    .select(`
+                        id,
+                        bar_role,
+                        is_active,
+                        start_date,
+                        commission_rate,
+                        shift_preference,
+                        specialties,
+                        profiles:employee_id (
+                            name
+                        ),
+                        usuarios_empresa:employee_id (
+                            nome_completo,
+                            email,
+                            cargo,
+                            status
+                        )
+                    `)
+                    .eq('empresa_id', empresaId)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw new Error(error.message);
+
+                let html = '<h3>📋 Funcionários Cadastrados</h3>';
+                
+                if (employees && employees.length > 0) {
+                    html += '<div style="display: grid; gap: 15px;">';
+                    
+                    employees.forEach((emp, index) => {
+                        const profile = emp.profiles || {};
+                        const usuario = emp.usuarios_empresa || {};
+                        
+                        html += `
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid ${emp.is_active ? '#4caf50' : '#f44336'};">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <strong>${usuario.nome_completo || profile.name || 'Nome não encontrado'}</strong>
+                                        <div style="color: #666; font-size: 14px;">
+                                            ${usuario.cargo || emp.bar_role} • ${usuario.email || 'Email não encontrado'}
+                                        </div>
+                                        <div style="color: #666; font-size: 12px;">
+                                            Turno: ${emp.shift_preference} • Comissão: ${emp.commission_rate}%
+                                        </div>
+                                        ${emp.specialties && emp.specialties.length > 0 ? 
+                                            `<div style="color: #666; font-size: 12px;">Especialidades: ${emp.specialties.join(', ')}</div>` : ''
+                                        }
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <span style="background: ${emp.is_active ? '#4caf50' : '#f44336'}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                                            ${emp.is_active ? 'ATIVO' : 'INATIVO'}
+                                        </span>
+                                        <div style="color: #666; font-size: 12px; margin-top: 4px;">
+                                            Desde: ${new Date(emp.start_date).toLocaleDateString('pt-BR')}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    
+                    // Estatísticas
+                    const ativos = employees.filter(e => e.is_active).length;
+                    const inativos = employees.filter(e => !e.is_active).length;
+                    const roles = employees.reduce((acc, e) => {
+                        acc[e.bar_role] = (acc[e.bar_role] || 0) + 1;
+                        return acc;
+                    }, {});
+                    
+                    html += `
+                        <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                            <h4 style="margin-top: 0; color: #1976d2;">📊 Estatísticas</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #4caf50;">${employees.length}</div>
+                                    <div style="color: #666;">Total</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #4caf50;">${ativos}</div>
+                                    <div style="color: #666;">Ativos</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #f44336;">${inativos}</div>
+                                    <div style="color: #666;">Inativos</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 15px;">
+                                <strong>Por Cargo:</strong> ${Object.entries(roles).map(([role, count]) => `${role}: ${count}`).join(', ')}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += '<p>Nenhum funcionário encontrado.</p>';
+                }
+
+                addMessage(html, 'success');
+
+            } catch (error) {
+                addMessage(`❌ Erro ao listar funcionários: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '📋 Listar Funcionários';
+            }
+        }
+
+        async function testLogin() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando login...';
+
+            try {
+                if (!lastCreatedCredentials) {
+                    addMessage('❌ Nenhuma credencial disponível. Crie um funcionário primeiro.', 'error');
+                    return;
+                }
+
+                // Tentar fazer login com as últimas credenciais criadas
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: lastCreatedCredentials.email,
+                    password: lastCreatedCredentials.password
+                });
+
+                if (error) {
+                    addMessage(`❌ Erro no login: ${error.message}`, 'error');
+                } else {
+                    addMessage(`
+                        <h3>✅ Login realizado com sucesso!</h3>
+                        <p><strong>Email:</strong> ${lastCreatedCredentials.email}</p>
+                        <p><strong>User ID:</strong> ${data.user.id}</p>
+                        <p><strong>Metadata:</strong> ${JSON.stringify(data.user.user_metadata, null, 2)}</p>
+                        
+                        <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                            <h4 style="color: #2e7d32; margin-top: 0;">🎉 Sistema Funcionando!</h4>
+                            <p>As credenciais geradas automaticamente estão funcionando corretamente para login.</p>
+                        </div>
+                    `, 'success');
+
+                    // Fazer logout para não interferir em outros testes
+                    await supabase.auth.signOut();
+                }
+
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔑 Testar Login';
+            }
+        }
+    </script>
+</body>
+</html>

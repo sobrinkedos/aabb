@@ -1,0 +1,165 @@
+═══════════════════════════════════════════════════════════════
+  VARIÁVEIS PARA COPIAR E COLAR NA VERCEL
+═══════════════════════════════════════════════════════════════
+
+INSTRUÇÕES:
+1. Acesse: https://vercel.com/dashboard
+2. Selecione seu projeto: aabb-system
+3. Vá em: Settings → Environment Variables
+4. Para CADA variável abaixo, clique em "Add New"
+5. Configure:
+   - Environment: Preview
+   - Branch: test/vercel-aabb-test
+6. Cole o valor correspondente
+
+═══════════════════════════════════════════════════════════════
+
+VARIÁVEL 1 de 5:
+─────────────────────────────────────────────────────────────
+Key:
+VITE_SUPABASE_URL
+
+Value:
+https://wznycskqsavpmejwpksp.supabase.co
+
+Environment: Preview
+Branch: test/vercel-aabb-test
+─────────────────────────────────────────────────────────────
+
+VARIÁVEL 2 de 5:
+─────────────────────────────────────────────────────────────
+Key:
+VITE_SUPABASE_ANON_KEY
+
+Value:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8
+
+Environment: Preview
+Branch: test/vercel-aabb-test
+─────────────────────────────────────────────────────────────
+
+VARIÁVEL 3 de 5:
+─────────────────────────────────────────────────────────────
+Key:
+VITE_DATABASE_NAME
+
+Value:
+wznycskqsavpmejwpksp
+
+Environment: Preview
+Branch: test/vercel-aabb-test
+─────────────────────────────────────────────────────────────
+
+VARIÁVEL 4 de 5:
+─────────────────────────────────────────────────────────────
+Key:
+VITE_ENVIRONMENT
+
+Value:
+test
+
+Environment: Preview
+Branch: test/vercel-aabb-test
+─────────────────────────────────────────────────────────────
+
+VARIÁVEL 5 de 5:
+─────────────────────────────────────────────────────────────
+Key:
+VITE_APP_ENV
+
+Value:
+test
+
+Environment: Preview
+Branch: test/vercel-aabb-test
+─────────────────────────────────────────────────────────────
+
+═══════════════════════════════════════════════════════════════
+  VARIÁVEIS OPCIONAIS (RECOMENDADAS)
+═══════════════════════════════════════════════════════════════
+
+VARIÁVEL OPCIONAL 1:
+─────────────────────────────────────────────────────────────
+Key: VITE_DEBUG_MODE
+Value: true
+Environment: Preview
+Branch: test/vercel-aabb-test
+─────────────────────────────────────────────────────────────
+
+VARIÁVEL OPCIONAL 2:
+─────────────────────────────────────────────────────────────
+Key: VITE_LOG_LEVEL
+Value: debug
+Environment: Preview
+Branch: test/vercel-aabb-test
+─────────────────────────────────────────────────────────────
+
+VARIÁVEL OPCIONAL 3:
+─────────────────────────────────────────────────────────────
+Key: VITE_GIT_BRANCH
+Value: test/vercel-aabb-test
+Environment: Preview
+Branch: test/vercel-aabb-test
+─────────────────────────────────────────────────────────────
+
+VARIÁVEL OPCIONAL 4:
+─────────────────────────────────────────────────────────────
+Key: VITE_FORCE_REAL_SUPABASE
+Value: true
+Environment: Preview
+Branch: test/vercel-aabb-test
+─────────────────────────────────────────────────────────────
+
+VARIÁVEL OPCIONAL 5:
+─────────────────────────────────────────────────────────────
+Key: VITE_SUPER_USER_EMAIL
+Value: riltons@gmail.com
+Environment: Preview
+Branch: test/vercel-aabb-test
+─────────────────────────────────────────────────────────────
+
+═══════════════════════════════════════════════════════════════
+  APÓS ADICIONAR TODAS AS VARIÁVEIS
+═══════════════════════════════════════════════════════════════
+
+1. Clique em "Save" para cada variável
+2. Aguarde o deploy automático (2-3 minutos)
+3. Acesse a URL de preview que a Vercel fornecerá
+4. Teste a aplicação
+
+═══════════════════════════════════════════════════════════════
+  VERIFICAÇÃO NO CONSOLE DO NAVEGADOR
+═══════════════════════════════════════════════════════════════
+
+Após acessar a URL de preview, abra o console (F12) e execute:
+
+console.log('URL:', import.meta.env.VITE_SUPABASE_URL);
+console.log('Env:', import.meta.env.VITE_ENVIRONMENT);
+
+Resultado esperado:
+URL: https://wznycskqsavpmejwpksp.supabase.co
+Env: test
+
+═══════════════════════════════════════════════════════════════
+  LINKS ÚTEIS
+═══════════════════════════════════════════════════════════════
+
+Vercel Dashboard:
+https://vercel.com/dashboard
+
+Supabase Dashboard (aabb-test):
+https://supabase.com/dashboard/project/wznycskqsavpmejwpksp
+
+GitHub Branch:
+https://github.com/sobrinkedos/aabb/tree/test/vercel-aabb-test
+
+═══════════════════════════════════════════════════════════════
+  PRECISA DE AJUDA?
+═══════════════════════════════════════════════════════════════
+
+Consulte os guias:
+- VARIAVEIS_VERCEL_TESTE.md (lista completa)
+- STATUS_DEPLOY_TESTE.md (status atual)
+- CHECKLIST_DEPLOY_TESTE.md (checklist passo a passo)
+
+═══════════════════════════════════════════════════════════════

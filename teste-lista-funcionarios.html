@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Teste Lista Funcionários</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .success { background-color: #d4edda; border: 2px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .error { background-color: #f8d7da; border: 2px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .info { background-color: #d1ecf1; border: 2px solid #bee5eb; color: #0c5460; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 8px; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        .employee-item { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <div class="test-section">
+        <h1>🧪 Teste Lista Funcionários</h1>
+        <p>Teste simples para verificar se a lista de funcionários carrega</p>
+        
+        <button onclick="testarListaFuncionarios()" id="btn-teste">🧪 Testar Lista</button>
+        
+        <div id="resultado-teste"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function testarListaFuncionarios() {
+            try {
+                document.getElementById('resultado-teste').innerHTML = `
+                    <div class="info">🔄 Testando carregamento da lista...</div>
+                `;
+
+                // Passo 1: Login
+                console.log('🔐 Fazendo login...');
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                    email: 'riltons@gmail.com',
+                    password: '000000'
+                });
+
+                if (authError) {
+                    throw new Error(`Erro no login: ${authError.message}`);
+                }
+
+                const empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e';
+                console.log('✅ Login realizado');
+
+                // Passo 2: Buscar funcionários (simulando o hook)
+                console.log('📊 Buscando funcionários...');
+                const { data: employeesData, error: employeesError } = await supabase
+                    .from('employees')
+                    .select(`
+                        id, name, email, phone, cpf, status, employee_code,
+                        tem_acesso_sistema, auth_user_id, created_at, updated_at,
+                        position_id, department_id
+                    `)
+                    .eq('empresa_id', empresaId)
+                    .eq('status', 'active')
+                    .order('created_at', { ascending: false });
+
+                if (employeesError) {
+                    throw new Error(`Erro ao buscar funcionários: ${employeesError.message}`);
+                }
+
+                console.log('✅ Funcionários encontrados:', employeesData.length);
+
+                // Passo 3: Mapear dados (simulando o hook)
+                const mappedEmployees = (employeesData || []).map((emp) => {
+                    return {
+                        id: emp.id,
+                        employee_id: emp.id,
+                        bar_role: 'atendente',
+                        shift_preference: 'qualquer',
+                        specialties: [],
+                        commission_rate: 0,
+                        status: emp.status,
+                        start_date: emp.created_at,
+                        end_date: null,
+                        notes: `Código: ${emp.employee_code}`,
+                        created_at: emp.created_at,
+                        updated_at: emp.updated_at,
+                        is_active: emp.status === 'active',
+                        employee: {
+                            id: emp.id,
+                            name: emp.name || 'Nome não informado',
+                            cpf: emp.cpf,
+                            email: emp.email,
+                            phone: emp.phone,
+                            hire_date: emp.created_at,
+                            status: emp.status
+                        }
+                    };
+                });
+
+                console.log('✅ Mapeamento concluído:', mappedEmployees.length);
+
+                // Mostrar resultado
+                let html = `
+                    <div class="success">
+                        ✅ <strong>Teste Concluído com Sucesso!</strong><br>
+                        📊 Total de funcionários: ${employeesData.length}<br>
+                        🔄 Funcionários mapeados: ${mappedEmployees.length}
+                    </div>
+                `;
+
+                html += `<h3>👥 Lista de Funcionários (primeiros 10):</h3>`;
+                
+                mappedEmployees.slice(0, 10).forEach((barEmployee, index) => {
+                    const employee = barEmployee.employee;
+                    if (!employee) return;
+                    
+                    const cpfDisplay = employee.cpf || 'CPF não informado';
+                    
+                    html += `
+                        <div class="employee-item">
+                            <strong>${index + 1}. ${employee.name}</strong><br>
+                            🆔 CPF: ${cpfDisplay}<br>
+                            📧 Email: ${employee.email || 'N/A'}<br>
+                            📱 Telefone: ${employee.phone || 'N/A'}
+                        </div>
+                    `;
+                });
+
+                if (mappedEmployees.length > 10) {
+                    html += `<p><em>... e mais ${mappedEmployees.length - 10} funcionários</em></p>`;
+                }
+
+                document.getElementById('resultado-teste').innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('resultado-teste').innerHTML = `
+                    <div class="error">❌ Erro no teste: ${error.message}</div>
+                `;
+                console.error('❌ Erro no teste:', error);
+            }
+        }
+    </script>
+</body>
+</html>

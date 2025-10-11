@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Teste Função - Funcionários</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .success { background-color: #d4edda; border: 2px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .error { background-color: #f8d7da; border: 2px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .info { background-color: #d1ecf1; border: 2px solid #bee5eb; color: #0c5460; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 8px; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        .employee-card { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin: 10px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .role-badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .role-atendente { background: #e3f2fd; color: #1976d2; }
+        .role-garcom { background: #e8f5e8; color: #388e3c; }
+        .role-cozinheiro { background: #fff3e0; color: #f57c00; }
+        .role-barman { background: #f3e5f5; color: #7b1fa2; }
+        .role-gerente { background: #ffebee; color: #d32f2f; }
+    </style>
+</head>
+<body>
+    <div class="test-section">
+        <h1>🧪 Teste Função - Funcionários</h1>
+        <p>Teste para verificar se as funções dos funcionários estão sendo exibidas corretamente</p>
+        
+        <div class="info">
+            <strong>✅ Correção Aplicada:</strong> JOIN entre tabelas <code>employees</code> e <code>bar_employees</code> para buscar a função real
+        </div>
+        
+        <button onclick="testarFuncoesFuncionarios()" id="btn-teste">🧪 Testar Funções dos Funcionários</button>
+        
+        <div id="resultado-teste"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        function getRoleIcon(role) {
+            switch (role) {
+                case 'atendente': return '👥';
+                case 'garcom': return '🍽️';
+                case 'cozinheiro': return '👨‍🍳';
+                case 'barman': return '🍹';
+                case 'gerente': return '👔';
+                default: return '👤';
+            }
+        }
+
+        function getRoleName(role) {
+            switch (role) {
+                case 'atendente': return 'Atendente';
+                case 'garcom': return 'Garçom';
+                case 'cozinheiro': return 'Cozinheiro';
+                case 'barman': return 'Barman';
+                case 'gerente': return 'Gerente';
+                default: return role || 'Não definido';
+            }
+        }
+
+        function getRoleClass(role) {
+            return `role-${role || 'atendente'}`;
+        }
+
+        async function testarFuncoesFuncionarios() {
+            try {
+                document.getElementById('resultado-teste').innerHTML = `
+                    <div class="info">🔄 Testando funções dos funcionários...</div>
+                `;
+
+                // Passo 1: Login
+                console.log('🔐 Fazendo login...');
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                    email: 'riltons@gmail.com',
+                    password: '000000'
+                });
+
+                if (authError) {
+                    throw new Error(`Erro no login: ${authError.message}`);
+                }
+
+                const empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e';
+                console.log('✅ Login realizado');
+
+                // Passo 2: Buscar funcionários com JOIN (versão corrigida)
+                console.log('📊 Buscando funcionários com JOIN...');
+                const { data: employeesData, error: employeesError } = await supabase
+                    .from('employees')
+                    .select(`
+                        id, name, email, phone, cpf, status, employee_code,
+                        tem_acesso_sistema, auth_user_id, created_at, updated_at,
+                        position_id, department_id,
+                        bar_employees!inner(
+                            bar_role, shift_preference, specialties, commission_rate,
+                            is_active, start_date, end_date, notes
+                        )
+                    `)
+                    .eq('empresa_id', empresaId)
+                    .eq('status', 'active')
+                    .order('created_at', { ascending: false });
+
+                if (employeesError) {
+                    throw new Error(`Erro ao buscar funcionários: ${employeesError.message}`);
+                }
+
+                console.log('✅ Funcionários encontrados:', employeesData.length);
+
+                // Passo 3: Mapear dados (simulando o hook corrigido)
+                const mappedEmployees = (employeesData || []).map((emp) => {
+                    const barEmployeeData = emp.bar_employees?.[0] || {};
+                    
+                    return {
+                        id: emp.id,
+                        employee_id: emp.id,
+                        bar_role: barEmployeeData.bar_role || 'atendente',
+                        shift_preference: barEmployeeData.shift_preference || 'qualquer',
+                        specialties: barEmployeeData.specialties || [],
+                        commission_rate: barEmployeeData.commission_rate || 0,
+                        status: emp.status,
+                        start_date: barEmployeeData.start_date || emp.created_at,
+                        end_date: barEmployeeData.end_date || null,
+                        notes: barEmployeeData.notes || `Código: ${emp.employee_code}`,
+                        created_at: emp.created_at,
+                        updated_at: emp.updated_at,
+                        is_active: barEmployeeData.is_active !== undefined ? barEmployeeData.is_active : (emp.status === 'active'),
+                        employee: {
+                            id: emp.id,
+                            name: emp.name || 'Nome não informado',
+                            cpf: emp.cpf,
+                            email: emp.email,
+                            phone: emp.phone,
+                            hire_date: emp.created_at,
+                            status: emp.status
+                        }
+                    };
+                });
+
+                console.log('✅ Mapeamento concluído:', mappedEmployees.length);
+
+                // Análise das funções
+                const roleStats = {};
+                mappedEmployees.forEach(emp => {
+                    const role = emp.bar_role || 'não definido';
+                    roleStats[role] = (roleStats[role] || 0) + 1;
+                });
+
+                // Mostrar resultado
+                let html = `
+                    <div class="success">
+                        ✅ <strong>Teste Concluído!</strong><br>
+                        📊 Total de funcionários: ${employeesData.length}<br>
+                        🔄 Funcionários mapeados: ${mappedEmployees.length}
+                    </div>
+                `;
+
+                // Estatísticas por função
+                html += `<h3>📊 Estatísticas por Função:</h3>`;
+                html += `<div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">`;
+                Object.entries(roleStats).forEach(([role, count]) => {
+                    html += `
+                        <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 10px; text-align: center;">
+                            <div style="font-size: 24px;">${getRoleIcon(role)}</div>
+                            <div style="font-weight: bold; font-size: 18px;">${count}</div>
+                            <div style="font-size: 12px; color: #666;">${getRoleName(role)}</div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+
+                // Tabela de funcionários
+                html += `<h3>👥 Lista de Funcionários com Funções:</h3>`;
+                html += `<table>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Função</th>
+                        <th>Email</th>
+                        <th>CPF</th>
+                        <th>Status</th>
+                    </tr>`;
+                
+                mappedEmployees.slice(0, 15).forEach(barEmployee => {
+                    const employee = barEmployee.employee;
+                    if (!employee) return;
+                    
+                    html += `
+                        <tr>
+                            <td>${employee.name}</td>
+                            <td>
+                                <span class="role-badge ${getRoleClass(barEmployee.bar_role)}">
+                                    ${getRoleIcon(barEmployee.bar_role)} ${getRoleName(barEmployee.bar_role)}
+                                </span>
+                            </td>
+                            <td>${employee.email || 'N/A'}</td>
+                            <td>${employee.cpf || 'N/A'}</td>
+                            <td>${barEmployee.status}</td>
+                        </tr>
+                    `;
+                });
+                html += `</table>`;
+
+                if (mappedEmployees.length > 15) {
+                    html += `<p><em>... e mais ${mappedEmployees.length - 15} funcionários</em></p>`;
+                }
+
+                // Verificação se a correção funcionou
+                const diverseFunctions = Object.keys(roleStats).length > 1;
+                const hasNonAttendant = Object.keys(roleStats).some(role => role !== 'atendente');
+
+                if (diverseFunctions && hasNonAttendant) {
+                    html += `
+                        <div class="success">
+                            🎉 <strong>CORREÇÃO FUNCIONOU!</strong><br>
+                            ✅ Encontradas ${Object.keys(roleStats).length} funções diferentes<br>
+                            ✅ Não são todos "Atendente" como antes
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="error">
+                            ❌ <strong>PROBLEMA PERSISTE!</strong><br>
+                            ${!diverseFunctions ? '❌ Todos ainda têm a mesma função' : ''}
+                            ${!hasNonAttendant ? '❌ Todos ainda são "Atendente"' : ''}
+                        </div>
+                    `;
+                }
+
+                document.getElementById('resultado-teste').innerHTML = html;
+
+                // Logs detalhados
+                console.log('🔍 Estatísticas por função:', roleStats);
+                console.log('🔍 Primeiro funcionário mapeado:', mappedEmployees[0]);
+
+            } catch (error) {
+                document.getElementById('resultado-teste').innerHTML = `
+                    <div class="error">❌ Erro no teste: ${error.message}</div>
+                `;
+                console.error('❌ Erro no teste:', error);
+            }
+        }
+    </script>
+</body>
+</html>

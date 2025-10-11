@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Teste de Conectividade Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Teste de Conectividade Supabase</h1>
+        <p>Verificando se as credenciais e conexão estão funcionando</p>
+        
+        <div id="status" class="info">
+            <p>Clique nos botões abaixo para testar a conectividade</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🔧 Configuração</h2>
+        <button onclick="testarConfiguracao()">🔍 Testar Configuração</button>
+        <div id="config-result"></div>
+    </div>
+
+    <div class="container">
+        <h2>🔐 Autenticação</h2>
+        <button onclick="testarLogin()">🔐 Testar Login (riltons@gmail.com)</button>
+        <div id="auth-result"></div>
+    </div>
+
+    <div class="container">
+        <h2>📊 Consulta Básica</h2>
+        <button onclick="testarConsulta()">📋 Testar Consulta (Tabela Employees)</button>
+        <div id="query-result"></div>
+    </div>
+
+    <div class="container">
+        <h2>🏢 Departamentos</h2>
+        <button onclick="testarDepartamentos()">🏢 Testar Departamentos</button>
+        <div id="dept-result"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase com chave corrigida
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        
+        console.log('🔧 Configuração Supabase:');
+        console.log('URL:', supabaseUrl);
+        console.log('Key:', supabaseKey.substring(0, 20) + '...');
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Testar configuração
+        async function testarConfiguracao() {
+            try {
+                document.getElementById('config-result').innerHTML = `
+                    <div class="info">🔄 Testando configuração...</div>
+                `;
+
+                // Verificar se o cliente foi criado
+                if (!supabase) {
+                    throw new Error('Cliente Supabase não foi criado');
+                }
+
+                // Testar URL
+                const urlTest = supabaseUrl.includes('wznycskqsavpmejwpksp.supabase.co');
+                const keyTest = supabaseKey.length > 100;
+
+                document.getElementById('config-result').innerHTML = `
+                    <div class="success">
+                        <h4>✅ Configuração OK</h4>
+                        <p><strong>URL:</strong> ${supabaseUrl}</p>
+                        <p><strong>URL Válida:</strong> ${urlTest ? '✅ Sim' : '❌ Não'}</p>
+                        <p><strong>Key Length:</strong> ${supabaseKey.length} caracteres</p>
+                        <p><strong>Key Válida:</strong> ${keyTest ? '✅ Sim' : '❌ Não'}</p>
+                        <p><strong>Cliente Criado:</strong> ✅ Sim</p>
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('config-result').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro na Configuração</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Testar login
+        async function testarLogin() {
+            try {
+                document.getElementById('auth-result').innerHTML = `
+                    <div class="info">🔄 Testando login...</div>
+                `;
+
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: 'riltons@gmail.com',
+                    password: '000000'
+                });
+
+                if (error) {
+                    document.getElementById('auth-result').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro no Login</h4>
+                            <p><strong>Mensagem:</strong> ${error.message}</p>
+                            <p><strong>Código:</strong> ${error.status || 'N/A'}</p>
+                            <pre>${JSON.stringify(error, null, 2)}</pre>
+                        </div>
+                    `;
+                    return;
+                }
+
+                document.getElementById('auth-result').innerHTML = `
+                    <div class="success">
+                        <h4>✅ Login Realizado com Sucesso</h4>
+                        <p><strong>Email:</strong> ${data.user.email}</p>
+                        <p><strong>User ID:</strong> ${data.user.id}</p>
+                        <p><strong>Empresa ID:</strong> ${data.user.user_metadata?.empresa_id || 'Não encontrado'}</p>
+                        <p><strong>Session:</strong> ✅ Ativa</p>
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('auth-result').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro Inesperado no Login</h4>
+                        <p>${error.message}</p>
+                        <pre>${JSON.stringify(error, null, 2)}</pre>
+                    </div>
+                `;
+            }
+        }
+
+        // Testar consulta básica
+        async function testarConsulta() {
+            try {
+                document.getElementById('query-result').innerHTML = `
+                    <div class="info">🔄 Testando consulta na tabela employees...</div>
+                `;
+
+                const { data, error, count } = await supabase
+                    .from('employees')
+                    .select('id, name, email, status', { count: 'exact' })
+                    .limit(5);
+
+                if (error) {
+                    document.getElementById('query-result').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro na Consulta</h4>
+                            <p><strong>Mensagem:</strong> ${error.message}</p>
+                            <p><strong>Código:</strong> ${error.code || 'N/A'}</p>
+                            <p><strong>Detalhes:</strong> ${error.details || 'N/A'}</p>
+                            <pre>${JSON.stringify(error, null, 2)}</pre>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = `
+                    <div class="success">
+                        <h4>✅ Consulta Realizada com Sucesso</h4>
+                        <p><strong>Total de Funcionários:</strong> ${count}</p>
+                        <p><strong>Registros Retornados:</strong> ${data.length}</p>
+                    </div>
+                `;
+
+                if (data.length > 0) {
+                    html += `<h5>📋 Primeiros Funcionários:</h5>`;
+                    data.forEach(emp => {
+                        html += `
+                            <div style="background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 5px;">
+                                <strong>${emp.name}</strong><br>
+                                Email: ${emp.email}<br>
+                                Status: ${emp.status}<br>
+                                ID: <code>${emp.id}</code>
+                            </div>
+                        `;
+                    });
+                }
+
+                document.getElementById('query-result').innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('query-result').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro Inesperado na Consulta</h4>
+                        <p>${error.message}</p>
+                        <pre>${JSON.stringify(error, null, 2)}</pre>
+                    </div>
+                `;
+            }
+        }
+
+        // Testar departamentos
+        async function testarDepartamentos() {
+            try {
+                document.getElementById('dept-result').innerHTML = `
+                    <div class="info">🔄 Testando consulta de departamentos...</div>
+                `;
+
+                const { data, error } = await supabase
+                    .from('departments')
+                    .select('id, name')
+                    .order('name');
+
+                if (error) {
+                    document.getElementById('dept-result').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro na Consulta de Departamentos</h4>
+                            <p><strong>Mensagem:</strong> ${error.message}</p>
+                            <p><strong>Código:</strong> ${error.code || 'N/A'}</p>
+                            <pre>${JSON.stringify(error, null, 2)}</pre>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = `
+                    <div class="success">
+                        <h4>✅ Departamentos Carregados</h4>
+                        <p><strong>Total:</strong> ${data.length}</p>
+                    </div>
+                `;
+
+                if (data.length > 0) {
+                    html += `<h5>🏢 Departamentos Disponíveis:</h5>`;
+                    data.forEach(dept => {
+                        html += `
+                            <div style="background: #e3f2fd; padding: 8px; margin: 3px 0; border-radius: 5px;">
+                                <strong>${dept.name}</strong> (ID: ${dept.id})
+                            </div>
+                        `;
+                    });
+                }
+
+                document.getElementById('dept-result').innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('dept-result').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro Inesperado nos Departamentos</h4>
+                        <p>${error.message}</p>
+                        <pre>${JSON.stringify(error, null, 2)}</pre>
+                    </div>
+                `;
+            }
+        }
+
+        // Executar teste inicial
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('status').innerHTML = `
+                <div class="info">
+                    <h4>🔧 Sistema de Teste Carregado</h4>
+                    <p>Use os botões acima para testar cada funcionalidade</p>
+                    <p><strong>URL:</strong> ${supabaseUrl}</p>
+                    <p><strong>Key:</strong> ${supabaseKey.substring(0, 30)}...</p>
+                </div>
+            `;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Teste Empresa ID</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Teste Empresa ID</h1>
+        <p>Verificando se conseguimos encontrar a empresa_id do usuário riltons@gmail.com</p>
+        
+        <button onclick="testarEmpresaId()">🔍 Testar Busca de Empresa ID</button>
+        
+        <div id="resultado"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function testarEmpresaId() {
+            try {
+                document.getElementById('resultado').innerHTML = `
+                    <div style="background: #d1ecf1; padding: 15px; border-radius: 8px;">
+                        🔄 Fazendo login e buscando empresa_id...
+                    </div>
+                `;
+
+                // Fazer login
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: 'riltons@gmail.com',
+                    password: '000000'
+                });
+
+                if (error) {
+                    document.getElementById('resultado').innerHTML = `
+                        <div class="error">❌ Erro no login: ${error.message}</div>
+                    `;
+                    return;
+                }
+
+                const currentUser = data.user;
+                let empresaId = data.user.user_metadata?.empresa_id;
+
+                let html = `
+                    <div class="success">
+                        ✅ <strong>Login realizado com sucesso!</strong><br>
+                        👤 Email: ${data.user.email}<br>
+                        🆔 User ID: ${data.user.id}<br>
+                        🏢 Empresa ID (metadata): ${empresaId || 'Não encontrado nos metadados'}
+                    </div>
+                `;
+
+                // Buscar empresa_id na tabela usuarios_empresa
+                const { data: userEmpresas, error: empresaError } = await supabase
+                    .from('usuarios_empresa')
+                    .select(`
+                        empresa_id, 
+                        nome_completo, 
+                        tipo_usuario,
+                        empresas(nome)
+                    `)
+                    .eq('user_id', currentUser.id);
+
+                if (empresaError) {
+                    html += `
+                        <div class="error">❌ Erro ao buscar empresas: ${empresaError.message}</div>
+                    `;
+                } else {
+                    html += `
+                        <div class="success">
+                            ✅ <strong>Empresas encontradas: ${userEmpresas.length}</strong>
+                        </div>
+                    `;
+
+                    userEmpresas.forEach((ue, index) => {
+                        html += `
+                            <div style="background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 5px;">
+                                <strong>Empresa ${index + 1}:</strong><br>
+                                🆔 ID: ${ue.empresa_id}<br>
+                                🏢 Nome: ${ue.empresas?.nome || 'N/A'}<br>
+                                👤 Nome do usuário: ${ue.nome_completo}<br>
+                                🔰 Tipo: ${ue.tipo_usuario}
+                            </div>
+                        `;
+                    });
+
+                    if (userEmpresas.length > 0) {
+                        // Usar empresa específica AABB Garanhuns
+                        empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e';
+                        html += `
+                            <div class="success">
+                                ✅ <strong>Empresa ID selecionada:</strong> ${empresaId}<br>
+                                🏢 <strong>Nome da empresa:</strong> ${userEmpresas[0].empresas?.nome || 'N/A'}
+                            </div>
+                        `;
+
+                        // Testar consulta na tabela employees
+                        const { data: employees, error: empError, count } = await supabase
+                            .from('employees')
+                            .select('id, name, email', { count: 'exact' })
+                            .eq('empresa_id', empresaId)
+                            .limit(3);
+
+                        if (empError) {
+                            html += `
+                                <div class="error">❌ Erro ao consultar employees: ${empError.message}</div>
+                            `;
+                        } else {
+                            html += `
+                                <div class="success">
+                                    ✅ <strong>Teste de consulta employees:</strong><br>
+                                    📊 Total de funcionários: ${count}<br>
+                                    📋 Primeiros 3 registros: ${employees.length}
+                                </div>
+                            `;
+
+                            if (employees.length > 0) {
+                                html += `<h4>👥 Funcionários encontrados:</h4>`;
+                                employees.forEach(emp => {
+                                    html += `
+                                        <div style="background: #e3f2fd; padding: 8px; margin: 3px 0; border-radius: 5px;">
+                                            <strong>${emp.name}</strong> - ${emp.email}
+                                        </div>
+                                    `;
+                                });
+                            }
+                        }
+                    }
+                }
+
+                document.getElementById('resultado').innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('resultado').innerHTML = `
+                    <div class="error">❌ Erro inesperado: ${error.message}</div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

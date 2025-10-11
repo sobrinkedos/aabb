@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Usuário Stela</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        .message {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Criar Usuário Stela Silva</h1>
+        
+        <div class="info message">
+            <strong>📋 Informações do usuário que será criado:</strong><br>
+            • Email: stela@gmail.com<br>
+            • Senha: stela123456<br>
+            • Nome: Stela Silva<br>
+            • Empresa: AABB Garanhuns<br>
+            • Perfil: Funcionário
+        </div>
+
+        <button id="createUserBtn" onclick="createUser()">
+            🚀 Criar Usuário Stela
+        </button>
+
+        <div id="messages"></div>
+
+        <div class="info message">
+            <strong>💡 Instruções:</strong><br>
+            1. Clique no botão acima para criar o usuário<br>
+            2. Aguarde a confirmação<br>
+            3. Volte para a tela de login<br>
+            4. Use: stela@gmail.com / stela123456
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+        function addMessage(message, type = 'info') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = message;
+            messagesDiv.appendChild(messageDiv);
+            
+            // Scroll para a mensagem
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+        }
+
+        async function createUser() {
+            const btn = document.getElementById('createUserBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Criando usuário...';
+            
+            clearMessages();
+            
+            try {
+                addMessage('🔧 Iniciando criação do usuário stela@gmail.com...', 'info');
+
+                // 1. Registrar usuário
+                addMessage('📝 Registrando usuário no Supabase Auth...', 'info');
+                
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: 'stela@gmail.com',
+                    password: 'stela123456',
+                    options: {
+                        data: {
+                            name: 'Stela Silva',
+                            role: 'employee'
+                        }
+                    }
+                });
+
+                if (authError) {
+                    throw new Error(`Erro no Auth: ${authError.message}`);
+                }
+
+                if (!authData.user) {
+                    throw new Error('Usuário não foi criado no Auth');
+                }
+
+                addMessage(`✅ Usuário criado no Auth com ID: ${authData.user.id}`, 'success');
+
+                // 2. Aguardar processamento
+                addMessage('⏳ Aguardando processamento...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // 3. Criar perfil
+                addMessage('👤 Criando perfil do usuário...', 'info');
+                
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .insert([{
+                        id: authData.user.id,
+                        name: 'Stela Silva',
+                        role: 'employee',
+                        avatar_url: 'https://api.dicebear.com/8.x/initials/svg?seed=Stela Silva',
+                        updated_at: new Date().toISOString()
+                    }]);
+
+                if (profileError) {
+                    addMessage(`⚠️ Aviso - Erro ao criar perfil: ${profileError.message}`, 'error');
+                } else {
+                    addMessage('✅ Perfil criado com sucesso', 'success');
+                }
+
+                // 4. Criar vínculo com empresa
+                addMessage('🏢 Criando vínculo com empresa...', 'info');
+                
+                const { error: empresaError } = await supabase
+                    .from('usuarios_empresa')
+                    .insert([{
+                        user_id: authData.user.id,
+                        empresa_id: '00000000-0000-0000-0000-000000000001', // AABB Garanhuns
+                        nome_completo: 'Stela Silva',
+                        email: 'stela@gmail.com',
+                        cargo: 'Funcionária',
+                        tipo_usuario: 'funcionario',
+                        status: 'ativo',
+                        ativo: true,
+                        tem_acesso_sistema: true,
+                        papel: 'USER',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }]);
+
+                if (empresaError) {
+                    addMessage(`⚠️ Aviso - Erro ao criar vínculo com empresa: ${empresaError.message}`, 'error');
+                } else {
+                    addMessage('✅ Vínculo com empresa criado com sucesso', 'success');
+                }
+
+                // 5. Sucesso final
+                addMessage(`
+                    🎉 <strong>Usuário criado com sucesso!</strong><br><br>
+                    <strong>Credenciais de login:</strong><br>
+                    📧 Email: stela@gmail.com<br>
+                    🔑 Senha: stela123456<br>
+                    🏢 Empresa: AABB Garanhuns<br><br>
+                    <strong>✅ Agora você pode fazer login!</strong>
+                `, 'success');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                addMessage(`❌ Erro ao criar usuário: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 Criar Usuário Stela';
+            }
+        }
+    </script>
+</body>
+</html>

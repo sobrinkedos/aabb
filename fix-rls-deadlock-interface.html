@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚨 Correção Urgente - Deadlock RLS</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .section {
+            padding: 30px;
+            margin: 20px;
+            border-radius: 10px;
+            border-left: 5px solid;
+        }
+        
+        .critical-section {
+            border-left-color: #dc2626;
+            background: #fef2f2;
+        }
+        
+        .success-section {
+            border-left-color: #16a34a;
+            background: #f0fdf4;
+        }
+        
+        .warning-section {
+            border-left-color: #ea580c;
+            background: #fff7ed;
+        }
+        
+        .info-section {
+            border-left-color: #2563eb;
+            background: #eff6ff;
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-critical {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+        }
+        
+        .btn-critical:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(220, 38, 38, 0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(22, 163, 74, 0.3);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(234, 88, 12, 0.3);
+        }
+        
+        .output {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 1px solid #e5e7eb;
+        }
+        
+        .status-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .code-block {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 Correção Urgente - Deadlock RLS</h1>
+            <p>Sistema de correção para problema de acesso bloqueado por políticas RLS</p>
+        </div>
+
+        <!-- Diagnóstico do Problema -->
+        <div class="critical-section section">
+            <h2>❌ Problema Identificado</h2>
+            <p><strong>DEADLOCK RLS:</strong> A função <code>get_user_empresa_id()</code> não consegue acessar a tabela <code>usuarios_empresa</code> porque ela está protegida por políticas RLS que dependem da própria função.</p>
+            
+            <h3>🔄 Ciclo Vicioso:</h3>
+            <ol>
+                <li>Políticas RLS precisam de <code>get_user_empresa_id()</code></li>
+                <li>Função <code>get_user_empresa_id()</code> precisa acessar <code>usuarios_empresa</code></li>
+                <li>Tabela <code>usuarios_empresa</code> está protegida por RLS</li>
+                <li>RLS bloqueia a função = DEADLOCK</li>
+            </ol>
+            
+            <h3>💥 Resultado:</h3>
+            <p><strong>TODOS os usuários ficam sem acesso</strong> porque o sistema não consegue carregar suas permissões.</p>
+        </div>
+
+        <!-- Ações de Correção -->
+        <div class="grid">
+            <div class="card">
+                <span class="status-icon">🔧</span>
+                <h3>1. Diagnóstico Completo</h3>
+                <p>Verificar estado atual do sistema e confirmar o problema</p>
+                <button class="btn btn-warning" onclick="executarDiagnostico()">
+                    🔍 Executar Diagnóstico
+                </button>
+            </div>
+
+            <div class="card">
+                <span class="status-icon">⚡</span>
+                <h3>2. Correção Automática</h3>
+                <p>Aplicar correção das políticas RLS e função get_user_empresa_id</p>
+                <button class="btn btn-critical" onclick="aplicarCorrecaoUrgente()">
+                    🚨 Corrigir Agora
+                </button>
+            </div>
+
+            <div class="card">
+                <span class="status-icon">✅</span>
+                <h3>3. Validação da Correção</h3>
+                <p>Testar se a correção resolveu o problema de acesso</p>
+                <button class="btn btn-success" onclick="validarCorrecao()">
+                    ✅ Validar Fix
+                </button>
+            </div>
+
+            <div class="card">
+                <span class="status-icon">🔒</span>
+                <h3>4. Rollback de Emergência</h3>
+                <p>Desabilitar RLS temporariamente se necessário</p>
+                <button class="btn btn-warning" onclick="rollbackEmergencia()">
+                    ⚠️ Rollback
+                </button>
+            </div>
+        </div>
+
+        <!-- Script SQL para Aplicação Manual -->
+        <div class="info-section section">
+            <h2>📋 Script SQL para Aplicação Manual</h2>
+            <p>Se preferir aplicar manualmente, copie e execute este script no SQL Editor do Supabase:</p>
+            <div class="code-block">
+-- CORREÇÃO URGENTE DO DEADLOCK RLS
+-- Corrigir função get_user_empresa_id com SECURITY DEFINER
+
+CREATE OR REPLACE FUNCTION public.get_user_empresa_id()
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  empresa_uuid UUID;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT empresa_id INTO empresa_uuid
+  FROM usuarios_empresa 
+  WHERE user_id = auth.uid()
+    AND status = 'ativo'
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  RETURN empresa_uuid;
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN NULL;
+END;
+$$;
+
+-- Políticas RLS simplificadas
+DROP POLICY IF EXISTS "usuarios_empresa_select_simple" ON usuarios_empresa;
+CREATE POLICY "usuarios_empresa_select_simple" ON usuarios_empresa
+  FOR SELECT USING (
+    auth.uid() IS NOT NULL AND (
+      user_id = auth.uid() OR
+      empresa_id = get_user_empresa_id() OR
+      current_setting('role') = 'service_role'
+    )
+  );
+            </div>
+            <button class="btn btn-critical" onclick="copiarScript()">📋 Copiar Script</button>
+        </div>
+
+        <!-- Área de Output -->
+        <div class="section">
+            <h2>📊 Logs de Execução</h2>
+            <div id="output" class="output">
+Aguardando execução...
+Clique em uma das opções acima para começar o diagnóstico ou correção.
+            </div>
+        </div>
+
+        <!-- Status Final -->
+        <div id="statusFinal" class="section" style="display: none;">
+            <h2>📊 Status Final da Correção</h2>
+            <div id="statusContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://jtfdzjmravketpkwjkvp.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0ZmR6am1yYXZrZXRwa3dqa3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNjM1NjIsImV4cCI6MjA3MzkzOTU2Mn0.AOFSlSLFVw-pU1-lpUzxJ2fov3kR95eBlz_92mtSMgs';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function log(message) {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            output.textContent += `[${timestamp}] ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('output').textContent = '';
+        }
+
+        async function executarDiagnostico() {
+            clearLog();
+            log('🔍 INICIANDO DIAGNÓSTICO COMPLETO...');
+            log('==========================================');
+
+            try {
+                // 1. Testar autenticação
+                log('\n1️⃣ Testando autenticação...');
+                const { data: { session }, error: authError } = await supabase.auth.getSession();
+                
+                if (authError || !session) {
+                    log('❌ ERRO: Usuário não autenticado');
+                    log('   Execute o login primeiro');
+                    return;
+                }
+                
+                log(`✅ Usuário autenticado: ${session.user.email}`);
+
+                // 2. Testar acesso à tabela usuarios_empresa
+                log('\n2️⃣ Testando acesso à tabela usuarios_empresa...');
+                try {
+                    const { data, error } = await supabase
+                        .from('usuarios_empresa')
+                        .select('id, user_id, nome_completo')
+                        .limit(1);
+                    
+                    if (error) {
+                        log(`❌ ERRO RLS CONFIRMADO: ${error.message}`);
+                        log('   Código: ' + (error.code || 'N/A'));
+                        log('   Hint: ' + (error.hint || 'N/A'));
+                    } else {
+                        log(`✅ Acesso OK: ${data.length} registros encontrados`);
+                    }
+                } catch (err) {
+                    log(`❌ ERRO DE CONEXÃO: ${err.message}`);
+                }
+
+                // 3. Testar função get_user_empresa_id
+                log('\n3️⃣ Testando função get_user_empresa_id...');
+                try {
+                    const { data, error } = await supabase.rpc('get_user_empresa_id');
+                    
+                    if (error) {
+                        log(`❌ FUNÇÃO COM ERRO: ${error.message}`);
+                    } else {
+                        log(`✅ Função retornou: ${data || 'NULL'}`);
+                    }
+                } catch (err) {
+                    log(`❌ ERRO AO CHAMAR FUNÇÃO: ${err.message}`);
+                }
+
+                // 4. Testar permissões
+                log('\n4️⃣ Testando acesso à tabela permissoes_usuario...');
+                try {
+                    const { data, error } = await supabase
+                        .from('permissoes_usuario')
+                        .select('modulo')
+                        .limit(1);
+                    
+                    if (error) {
+                        log(`❌ ERRO PERMISSÕES: ${error.message}`);
+                    } else {
+                        log(`✅ Permissões OK: ${data.length} registros`);
+                    }
+                } catch (err) {
+                    log(`❌ ERRO PERMISSÕES: ${err.message}`);
+                }
+
+                log('\n🔍 DIAGNÓSTICO CONCLUÍDO');
+                log('==========================================');
+                
+            } catch (error) {
+                log(`❌ ERRO FATAL NO DIAGNÓSTICO: ${error.message}`);
+            }
+        }
+
+        async function aplicarCorrecaoUrgente() {
+            clearLog();
+            log('🚨 APLICANDO CORREÇÃO URGENTE...');
+            log('==========================================');
+
+            const scriptSQL = `
+-- CORREÇÃO URGENTE DO DEADLOCK RLS
+CREATE OR REPLACE FUNCTION public.get_user_empresa_id()
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  empresa_uuid UUID;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT empresa_id INTO empresa_uuid
+  FROM usuarios_empresa 
+  WHERE user_id = auth.uid()
+    AND status = 'ativo'
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  RETURN empresa_uuid;
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN NULL;
+END;
+$$;
+
+-- Remover políticas conflitantes
+DROP POLICY IF EXISTS "Usuários podem ver colegas da mesma empresa" ON usuarios_empresa;
+DROP POLICY IF EXISTS "Administradores podem gerenciar usuários da empresa" ON usuarios_empresa;
+DROP POLICY IF EXISTS "usuarios_empresa_select_policy" ON usuarios_empresa;
+
+-- Política simples para SELECT
+CREATE POLICY "usuarios_empresa_select_simple" ON usuarios_empresa
+  FOR SELECT USING (
+    auth.uid() IS NOT NULL AND (
+      user_id = auth.uid() OR
+      empresa_id = get_user_empresa_id() OR
+      current_setting('role') = 'service_role'
+    )
+  );
+
+-- Política para permissões
+DROP POLICY IF EXISTS "Usuários podem ver permissões da mesma empresa" ON permissoes_usuario;
+DROP POLICY IF EXISTS "Administradores podem gerenciar permissões da empresa" ON permissoes_usuario;
+
+CREATE POLICY "permissoes_usuario_simple" ON permissoes_usuario
+  FOR ALL USING (
+    auth.uid() IS NOT NULL AND (
+      EXISTS (SELECT 1 FROM usuarios_empresa WHERE id = permissoes_usuario.usuario_empresa_id AND user_id = auth.uid()) OR
+      EXISTS (
+        SELECT 1 FROM usuarios_empresa ue1, usuarios_empresa ue2 
+        WHERE ue1.user_id = auth.uid() 
+        AND ue1.papel IN ('SUPER_ADMIN', 'ADMIN')
+        AND ue2.id = permissoes_usuario.usuario_empresa_id
+        AND ue1.empresa_id = ue2.empresa_id
+      ) OR
+      current_setting('role') = 'service_role'
+    )
+  );
+
+-- Função de teste
+CREATE OR REPLACE FUNCTION test_rls_fix()
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  user_count INTEGER;
+  empresa_id UUID;
+  test_result TEXT;
+BEGIN
+  SELECT COUNT(*) INTO user_count FROM usuarios_empresa;
+  SELECT get_user_empresa_id() INTO empresa_id;
+  
+  test_result := format(
+    'RLS FIX TEST: Users=%s, EmpresaId=%s, Working=%s',
+    COALESCE(user_count::text, 'ERROR'),
+    COALESCE(empresa_id::text, 'NULL'),
+    CASE WHEN empresa_id IS NOT NULL THEN 'YES' ELSE 'NO' END
+  );
+  
+  RETURN test_result;
+END;
+$$;
+            `;
+
+            log('📝 EXECUTANDO CORREÇÃO...');
+            log('⚠️ IMPORTANTE: Execute este script no SQL Editor do Supabase:');
+            log('');
+            log(scriptSQL);
+            log('');
+            log('❗ APÓS EXECUTAR O SCRIPT, CLIQUE EM "VALIDAR FIX"');
+        }
+
+        async function validarCorrecao() {
+            clearLog();
+            log('✅ VALIDANDO CORREÇÃO...');
+            log('==========================================');
+
+            try {
+                // 1. Testar função de teste
+                log('1️⃣ Testando função test_rls_fix...');
+                try {
+                    const { data, error } = await supabase.rpc('test_rls_fix');
+                    
+                    if (error) {
+                        log(`❌ ERRO NA FUNÇÃO DE TESTE: ${error.message}`);
+                    } else {
+                        log(`📊 RESULTADO DO TESTE: ${data}`);
+                        
+                        if (data.includes('Working=YES')) {
+                            log('🎉 CORREÇÃO BEM-SUCEDIDA!');
+                        } else {
+                            log('⚠️ Correção parcial - requer ajustes');
+                        }
+                    }
+                } catch (err) {
+                    log(`❌ ERRO: ${err.message}`);
+                }
+
+                // 2. Testar acesso normal
+                log('\n2️⃣ Testando acesso normal às tabelas...');
+                
+                const { data: usuarios, error: userError } = await supabase
+                    .from('usuarios_empresa')
+                    .select('id, nome_completo')
+                    .limit(3);
+                
+                if (userError) {
+                    log(`❌ AINDA COM ERRO: ${userError.message}`);
+                } else {
+                    log(`✅ USUÁRIOS ACESSÍVEIS: ${usuarios.length} registros`);
+                    usuarios.forEach(u => log(`   - ${u.nome_completo} (${u.id})`));
+                }
+
+                // 3. Testar permissões
+                const { data: permissoes, error: permError } = await supabase
+                    .from('permissoes_usuario')
+                    .select('modulo')
+                    .limit(3);
+                
+                if (permError) {
+                    log(`❌ PERMISSÕES COM ERRO: ${permError.message}`);
+                } else {
+                    log(`✅ PERMISSÕES ACESSÍVEIS: ${permissoes.length} registros`);
+                }
+
+                // 4. Status final
+                if (!userError && !permError) {
+                    log('\n🎉 CORREÇÃO COMPLETA - SISTEMA FUNCIONANDO!');
+                    mostrarStatusFinal(true);
+                } else {
+                    log('\n⚠️ CORREÇÃO PARCIAL - AJUSTES NECESSÁRIOS');
+                    mostrarStatusFinal(false);
+                }
+
+            } catch (error) {
+                log(`❌ ERRO NA VALIDAÇÃO: ${error.message}`);
+            }
+        }
+
+        async function rollbackEmergencia() {
+            clearLog();
+            log('⚠️ EXECUTANDO ROLLBACK DE EMERGÊNCIA...');
+            log('==========================================');
+
+            const rollbackSQL = `
+-- ROLLBACK DE EMERGÊNCIA - DESABILITAR RLS
+ALTER TABLE usuarios_empresa DISABLE ROW LEVEL SECURITY;
+ALTER TABLE permissoes_usuario DISABLE ROW LEVEL SECURITY;
+ALTER TABLE empresas DISABLE ROW LEVEL SECURITY;
+
+-- Log do rollback
+INSERT INTO logs_auditoria (empresa_id, acao, recurso, detalhes)
+VALUES (
+  '00000000-0000-0000-0000-000000000000',
+  'EMERGENCY_RLS_DISABLE',
+  'system',
+  '{"reason": "deadlock_fix", "timestamp": "' || NOW() || '"}'
+);
+            `;
+
+            log('🚨 SCRIPT DE ROLLBACK GERADO:');
+            log('');
+            log(rollbackSQL);
+            log('');
+            log('⚠️ CUIDADO: Isso remove TODA a proteção RLS!');
+            log('⚠️ Use apenas em emergência!');
+            log('⚠️ Reabilite o RLS após resolver o problema!');
+            log('');
+            log('📋 Para reabilitar depois:');
+            log('ALTER TABLE usuarios_empresa ENABLE ROW LEVEL SECURITY;');
+            log('ALTER TABLE permissoes_usuario ENABLE ROW LEVEL SECURITY;');
+            log('ALTER TABLE empresas ENABLE ROW LEVEL SECURITY;');
+        }
+
+        function copiarScript() {
+            const script = document.querySelector('.code-block').textContent;
+            navigator.clipboard.writeText(script).then(() => {
+                log('📋 Script copiado para a área de transferência!');
+            }).catch(err => {
+                log('❌ Erro ao copiar: ' + err.message);
+            });
+        }
+
+        function mostrarStatusFinal(sucesso) {
+            const statusDiv = document.getElementById('statusFinal');
+            const contentDiv = document.getElementById('statusContent');
+            
+            if (sucesso) {
+                statusDiv.className = 'section success-section';
+                contentDiv.innerHTML = `
+                    <h3>🎉 CORREÇÃO BEM-SUCEDIDA!</h3>
+                    <p><strong>✅ Sistema totalmente funcional</strong></p>
+                    <ul>
+                        <li>✅ Função get_user_empresa_id() corrigida</li>
+                        <li>✅ Políticas RLS simplificadas</li>
+                        <li>✅ Acesso às tabelas restaurado</li>
+                        <li>✅ Permissões funcionando</li>
+                    </ul>
+                    <p><strong>Todos os usuários devem ter acesso normal novamente!</strong></p>
+                `;
+            } else {
+                statusDiv.className = 'section warning-section';
+                contentDiv.innerHTML = `
+                    <h3>⚠️ CORREÇÃO PARCIAL</h3>
+                    <p><strong>Alguns problemas ainda persistem</strong></p>
+                    <p>Considere:</p>
+                    <ul>
+                        <li>🔄 Executar novamente a correção</li>
+                        <li>🔧 Verificar logs do Supabase</li>
+                        <li>⚠️ Usar rollback de emergência se necessário</li>
+                    </ul>
+                `;
+            }
+            
+            statusDiv.style.display = 'block';
+        }
+
+        // Inicialização
+        window.addEventListener('load', () => {
+            log('🚨 Sistema de Correção RLS carregado');
+            log('💡 Execute o diagnóstico primeiro para confirmar o problema');
+        });
+    </script>
+</body>
+</html>

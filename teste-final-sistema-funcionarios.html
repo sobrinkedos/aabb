@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Teste Final - Sistema Funcionários</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        .success {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            border: 2px solid #28a745;
+            color: #155724;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        .error {
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            border: 2px solid #dc3545;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        .info {
+            background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+            border: 2px solid #17a2b8;
+            color: #0c5460;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        .warning {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 2px solid #ffc107;
+            color: #856404;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 8px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.3);
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+        }
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107, #e0a800);
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #495057;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        .employee-card {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 2px solid #dee2e6;
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.3s ease;
+        }
+        .employee-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .status {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status.basic {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            color: #856404;
+        }
+        .status.with-credentials {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            color: #155724;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #6f42c1, #5a32a3);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        .progress-bar {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 20px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 Teste Final - Sistema de Funcionários</h1>
+        <p><strong>Validação Completa do Fluxo de Duas Etapas</strong></p>
+        <p>✅ Etapa 1: Funcionário Básico → 🔑 Etapa 2: Credenciais de Acesso</p>
+    </div>
+
+    <div class="container">
+        <h2>🔐 Autenticação Administrativa</h2>
+        
+        <div class="form-group">
+            <label>Email do Administrador:</label>
+            <input type="email" id="admin-email" value="admin@aabb.com">
+        </div>
+        
+        <div class="form-group">
+            <label>Senha:</label>
+            <input type="password" id="admin-password" value="123456">
+        </div>
+        
+        <button onclick="fazerLoginAdmin()" class="btn-success">🔐 Fazer Login Administrativo</button>
+        
+        <div id="login-status"></div>
+    </div>
+
+    <div class="container">
+        <h2>📊 Dashboard do Sistema</h2>
+        <div id="dashboard"></div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 Teste Completo do Fluxo</h2>
+        
+        <div class="grid">
+            <div>
+                <h3>📋 Etapa 1: Criar Funcionário Básico</h3>
+                
+                <div class="form-group">
+                    <label>Nome Completo:</label>
+                    <input type="text" id="nome-funcionario" value="">
+                </div>
+                
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="email-funcionario" value="">
+                </div>
+                
+                <div class="form-group">
+                    <label>Telefone:</label>
+                    <input type="tel" id="telefone-funcionario" value="(11) 99999-9999">
+                </div>
+                
+                <div class="form-group">
+                    <label>Cargo:</label>
+                    <select id="cargo-funcionario">
+                        <option value="atendente">Atendente</option>
+                        <option value="garcom">Garçom</option>
+                        <option value="cozinheiro">Cozinheiro</option>
+                        <option value="barman">Barman</option>
+                        <option value="gerente">Gerente</option>
+                    </select>
+                </div>
+                
+                <button onclick="executarEtapa1()" class="btn-success">➕ Executar Etapa 1</button>
+                
+                <div id="resultado-etapa1"></div>
+            </div>
+            
+            <div>
+                <h3>🔑 Etapa 2: Atribuir Credenciais</h3>
+                
+                <div class="form-group">
+                    <label>Funcionário Selecionado:</label>
+                    <input type="text" id="funcionario-selecionado" readonly placeholder="Será preenchido automaticamente">
+                </div>
+                
+                <button onclick="executarEtapa2()" id="btn-etapa2" disabled class="btn-warning">🔑 Executar Etapa 2</button>
+                
+                <div id="resultado-etapa2"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>👥 Funcionários Cadastrados</h2>
+        <button onclick="atualizarListagens()" class="btn-success">🔄 Atualizar Listagens</button>
+        <div id="listagens"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjUwOTI2NjUsImV4cCI6MjA0MDY2ODY2NX0.lAOmVJmBgLHGVJhqvQqIgzJdKAhHHkWqxpKdlJ8Q_qI';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let adminUser = null;
+        let empresaId = null;
+        let funcionarioTesteId = null;
+        let funcionarioTesteDados = null;
+
+        // Gerar dados aleatórios para teste
+        function gerarDadosAleatorios() {
+            const nomes = ['Ana Silva', 'Carlos Santos', 'Maria Oliveira', 'João Pereira', 'Lucia Costa', 'Pedro Almeida', 'Sofia Rodrigues', 'Miguel Ferreira'];
+            const nome = nomes[Math.floor(Math.random() * nomes.length)];
+            const timestamp = Date.now();
+            const email = `teste${timestamp}@exemplo.com`;
+            
+            document.getElementById('nome-funcionario').value = nome;
+            document.getElementById('email-funcionario').value = email;
+        }
+
+        // Login administrativo
+        async function fazerLoginAdmin() {
+            try {
+                const email = document.getElementById('admin-email').value.trim();
+                const password = document.getElementById('admin-password').value.trim();
+                
+                document.getElementById('login-status').innerHTML = `
+                    <div class="info">🔄 Fazendo login...</div>
+                `;
+
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) {
+                    document.getElementById('login-status').innerHTML = `
+                        <div class="error">❌ Erro no Login: ${error.message}</div>
+                    `;
+                    return;
+                }
+
+                adminUser = data.user;
+                empresaId = data.user.user_metadata?.empresa_id;
+
+                document.getElementById('login-status').innerHTML = `
+                    <div class="success">
+                        ✅ <strong>Login Administrativo Realizado!</strong><br>
+                        👤 <strong>Admin:</strong> ${data.user.email}<br>
+                        🏢 <strong>Empresa ID:</strong> ${empresaId || 'Buscando...'}
+                    </div>
+                `;
+
+                // Buscar empresa_id se não estiver nos metadados
+                if (!empresaId) {
+                    await buscarEmpresaId();
+                }
+
+                // Gerar dados aleatórios para teste
+                gerarDadosAleatorios();
+
+                // Atualizar dashboard
+                await atualizarDashboard();
+                await atualizarListagens();
+
+            } catch (error) {
+                document.getElementById('login-status').innerHTML = `
+                    <div class="error">❌ Erro inesperado: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Buscar empresa_id do usuário
+        async function buscarEmpresaId() {
+            try {
+                const { data, error } = await supabase
+                    .from('usuarios_empresa')
+                    .select('empresa_id')
+                    .eq('user_id', adminUser.id)
+                    .eq('ativo', true)
+                    .single();
+
+                if (data) {
+                    empresaId = data.empresa_id;
+                    document.getElementById('login-status').innerHTML += `
+                        <div class="info">🏢 Empresa ID encontrada: ${empresaId}</div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Erro ao buscar empresa_id:', error);
+            }
+        }
+
+        // Atualizar dashboard
+        async function atualizarDashboard() {
+            if (!empresaId) return;
+
+            try {
+                // Buscar estatísticas
+                const { data: basicos } = await supabase
+                    .from('usuarios_empresa')
+                    .select('id')
+                    .eq('empresa_id', empresaId)
+                    .eq('tem_acesso_sistema', false)
+                    .eq('ativo', true);
+
+                const { data: comCredenciais } = await supabase
+                    .from('usuarios_empresa')
+                    .select('id')
+                    .eq('empresa_id', empresaId)
+                    .eq('tem_acesso_sistema', true)
+                    .eq('ativo', true)
+                    .not('user_id', 'is', null);
+
+                const totalBasicos = basicos?.length || 0;
+                const totalComCredenciais = comCredenciais?.length || 0;
+                const totalFuncionarios = totalBasicos + totalComCredenciais;
+                const percentualComCredenciais = totalFuncionarios > 0 ? Math.round((totalComCredenciais / totalFuncionarios) * 100) : 0;
+
+                document.getElementById('dashboard').innerHTML = `
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div class="stat-number">${totalFuncionarios}</div>
+                            <div class="stat-label">Total de Funcionários</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${totalBasicos}</div>
+                            <div class="stat-label">Etapa 1 (Básicos)</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${totalComCredenciais}</div>
+                            <div class="stat-label">Etapa 2 (Com Credenciais)</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${percentualComCredenciais}%</div>
+                            <div class="stat-label">Com Acesso ao Sistema</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info">
+                        <h4>📊 Progresso do Sistema</h4>
+                        <p>Funcionários com credenciais de acesso:</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${percentualComCredenciais}%"></div>
+                        </div>
+                        <p><strong>${percentualComCredenciais}%</strong> dos funcionários possuem acesso ao sistema</p>
+                    </div>
+                `;
+
+            } catch (error) {
+                document.getElementById('dashboard').innerHTML = `
+                    <div class="error">❌ Erro ao carregar dashboard: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Executar Etapa 1
+        async function executarEtapa1() {
+            if (!adminUser || !empresaId) {
+                document.getElementById('resultado-etapa1').innerHTML = `
+                    <div class="error">❌ Faça login administrativo primeiro</div>
+                `;
+                return;
+            }
+
+            try {
+                const nome = document.getElementById('nome-funcionario').value.trim();
+                const email = document.getElementById('email-funcionario').value.trim();
+                const telefone = document.getElementById('telefone-funcionario').value.trim();
+                const cargo = document.getElementById('cargo-funcionario').value;
+
+                if (!nome || !email || !cargo) {
+                    document.getElementById('resultado-etapa1').innerHTML = `
+                        <div class="error">❌ Preencha todos os campos obrigatórios</div>
+                    `;
+                    return;
+                }
+
+                document.getElementById('resultado-etapa1').innerHTML = `
+                    <div class="info">🔄 Executando Etapa 1...</div>
+                `;
+
+                // Verificar se email já existe
+                const { data: existing } = await supabase
+                    .from('usuarios_empresa')
+                    .select('id')
+                    .eq('empresa_id', empresaId)
+                    .eq('email', email)
+                    .single();
+
+                if (existing) {
+                    document.getElementById('resultado-etapa1').innerHTML = `
+                        <div class="error">❌ Email já existe nesta empresa</div>
+                    `;
+                    return;
+                }
+
+                // Criar funcionário básico
+                const { data: funcionario, error } = await supabase
+                    .from('usuarios_empresa')
+                    .insert({
+                        nome_completo: nome,
+                        email: email,
+                        telefone: telefone || null,
+                        cargo: cargo,
+                        empresa_id: empresaId,
+                        tipo_usuario: 'funcionario',
+                        status: 'ativo',
+                        ativo: true,
+                        tem_acesso_sistema: false,  // ETAPA 1: SEM ACESSO
+                        user_id: null,              // SEM USUÁRIO AUTH
+                        senha_provisoria: false,
+                        papel: 'USER'
+                    })
+                    .select()
+                    .single();
+
+                if (error) {
+                    document.getElementById('resultado-etapa1').innerHTML = `
+                        <div class="error">❌ Erro ao criar funcionário: ${error.message}</div>
+                    `;
+                    return;
+                }
+
+                funcionarioTesteId = funcionario.id;
+                funcionarioTesteDados = funcionario;
+                
+                document.getElementById('funcionario-selecionado').value = `${funcionario.nome_completo} (${funcionario.email})`;
+                document.getElementById('btn-etapa2').disabled = false;
+
+                document.getElementById('resultado-etapa1').innerHTML = `
+                    <div class="success">
+                        ✅ <strong>ETAPA 1 CONCLUÍDA COM SUCESSO!</strong><br><br>
+                        
+                        <strong>📋 Funcionário Básico Criado:</strong><br>
+                        🆔 <strong>ID:</strong> ${funcionario.id}<br>
+                        👤 <strong>Nome:</strong> ${funcionario.nome_completo}<br>
+                        📧 <strong>Email:</strong> ${funcionario.email}<br>
+                        💼 <strong>Cargo:</strong> ${funcionario.cargo}<br>
+                        📱 <strong>Telefone:</strong> ${funcionario.telefone || 'N/A'}<br><br>
+                        
+                        <strong>🔍 Validações:</strong><br>
+                        ✅ Tem Acesso Sistema: ${funcionario.tem_acesso_sistema ? 'Sim' : 'Não (Correto)'}<br>
+                        ✅ User ID: ${funcionario.user_id || 'Nenhum (Correto para Etapa 1)'}<br>
+                        ✅ Status: ${funcionario.status}<br>
+                        ✅ Ativo: ${funcionario.ativo ? 'Sim' : 'Não'}<br><br>
+                        
+                        <strong>🎯 Próximo Passo:</strong><br>
+                        Clique em "Executar Etapa 2" para criar as credenciais de acesso!
+                    </div>
+                `;
+
+                // Atualizar dashboard e listagens
+                await atualizarDashboard();
+                await atualizarListagens();
+
+            } catch (error) {
+                document.getElementById('resultado-etapa1').innerHTML = `
+                    <div class="error">❌ Erro inesperado: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Executar Etapa 2
+        async function executarEtapa2() {
+            if (!funcionarioTesteId || !funcionarioTesteDados) {
+                document.getElementById('resultado-etapa2').innerHTML = `
+                    <div class="error">❌ Execute a Etapa 1 primeiro</div>
+                `;
+                return;
+            }
+
+            try {
+                document.getElementById('resultado-etapa2').innerHTML = `
+                    <div class="info">🔄 Executando Etapa 2...</div>
+                `;
+
+                // Verificar se funcionário ainda existe e não tem credenciais
+                const { data: funcionario, error: fetchError } = await supabase
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .eq('id', funcionarioTesteId)
+                    .eq('empresa_id', empresaId)
+                    .single();
+
+                if (fetchError || !funcionario) {
+                    document.getElementById('resultado-etapa2').innerHTML = `
+                        <div class="error">❌ Funcionário não encontrado</div>
+                    `;
+                    return;
+                }
+
+                if (funcionario.tem_acesso_sistema) {
+                    document.getElementById('resultado-etapa2').innerHTML = `
+                        <div class="warning">⚠️ Funcionário já possui credenciais</div>
+                    `;
+                    return;
+                }
+
+                // Gerar senha temporária
+                const senhaTemporaria = '123456';
+
+                // Criar usuário no Auth
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: funcionario.email,
+                    password: senhaTemporaria,
+                    options: {
+                        data: {
+                            nome_completo: funcionario.nome_completo,
+                            cargo: funcionario.cargo,
+                            empresa_id: empresaId,
+                            tipo_usuario: 'funcionario'
+                        }
+                    }
+                });
+
+                if (authError) {
+                    document.getElementById('resultado-etapa2').innerHTML = `
+                        <div class="error">❌ Erro ao criar usuário Auth: ${authError.message}</div>
+                    `;
+                    return;
+                }
+
+                // Aguardar processamento
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // Atualizar funcionário com credenciais
+                const { error: updateError } = await supabase
+                    .from('usuarios_empresa')
+                    .update({
+                        user_id: authData.user.id,
+                        tem_acesso_sistema: true,
+                        senha_provisoria: true,
+                        senha_provisoria_texto: senhaTemporaria,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', funcionarioTesteId);
+
+                if (updateError) {
+                    document.getElementById('resultado-etapa2').innerHTML = `
+                        <div class="error">❌ Erro ao atualizar funcionário: ${updateError.message}</div>
+                    `;
+                    return;
+                }
+
+                document.getElementById('resultado-etapa2').innerHTML = `
+                    <div class="success">
+                        ✅ <strong>ETAPA 2 CONCLUÍDA COM SUCESSO!</strong><br><br>
+                        
+                        <strong>🔑 Credenciais de Acesso Criadas:</strong><br>
+                        👤 <strong>Funcionário:</strong> ${funcionario.nome_completo}<br>
+                        📧 <strong>Email de Login:</strong> ${funcionario.email}<br>
+                        🔐 <strong>Senha Temporária:</strong> ${senhaTemporaria}<br>
+                        🆔 <strong>User ID:</strong> ${authData.user.id}<br><br>
+                        
+                        <strong>🔍 Validações:</strong><br>
+                        ✅ Usuário Auth criado com sucesso<br>
+                        ✅ User ID vinculado ao funcionário<br>
+                        ✅ tem_acesso_sistema = true<br>
+                        ✅ Senha temporária definida<br><br>
+                        
+                        <strong>📋 Informações para o Funcionário:</strong><br>
+                        🌐 <strong>Email:</strong> ${funcionario.email}<br>
+                        🔑 <strong>Senha:</strong> ${senhaTemporaria}<br>
+                        ⚠️ <strong>Observação:</strong> Deve alterar a senha no primeiro acesso<br><br>
+                        
+                        <strong>🎉 SISTEMA DE DUAS ETAPAS FUNCIONANDO PERFEITAMENTE!</strong>
+                    </div>
+                `;
+
+                // Resetar para próximo teste
+                funcionarioTesteId = null;
+                funcionarioTesteDados = null;
+                document.getElementById('funcionario-selecionado').value = '';
+                document.getElementById('btn-etapa2').disabled = true;
+                
+                // Gerar novos dados para próximo teste
+                gerarDadosAleatorios();
+
+                // Atualizar dashboard e listagens
+                await atualizarDashboard();
+                await atualizarListagens();
+
+            } catch (error) {
+                document.getElementById('resultado-etapa2').innerHTML = `
+                    <div class="error">❌ Erro inesperado: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Atualizar listagens
+        async function atualizarListagens() {
+            if (!empresaId) return;
+
+            try {
+                // Buscar funcionários básicos
+                const { data: basicos, error: errorBasicos } = await supabase
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .eq('empresa_id', empresaId)
+                    .eq('tem_acesso_sistema', false)
+                    .eq('ativo', true)
+                    .order('created_at', { ascending: false });
+
+                // Buscar funcionários com credenciais
+                const { data: comCredenciais, error: errorCredenciais } = await supabase
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .eq('empresa_id', empresaId)
+                    .eq('tem_acesso_sistema', true)
+                    .eq('ativo', true)
+                    .not('user_id', 'is', null)
+                    .order('updated_at', { ascending: false });
+
+                if (errorBasicos || errorCredenciais) {
+                    document.getElementById('listagens').innerHTML = `
+                        <div class="error">❌ Erro ao buscar funcionários</div>
+                    `;
+                    return;
+                }
+
+                let html = `<div class="grid">`;
+
+                // Funcionários básicos
+                html += `
+                    <div>
+                        <h3>📋 Funcionários Básicos (Etapa 1)</h3>
+                        <p><strong>Total:</strong> ${basicos.length}</p>
+                `;
+
+                if (basicos.length > 0) {
+                    basicos.forEach(emp => {
+                        html += `
+                            <div class="employee-card">
+                                <h4>${emp.nome_completo}</h4>
+                                <p><strong>Email:</strong> ${emp.email}</p>
+                                <p><strong>Cargo:</strong> ${emp.cargo}</p>
+                                <p><strong>Telefone:</strong> ${emp.telefone || 'N/A'}</p>
+                                <p><strong>Criado:</strong> ${new Date(emp.created_at).toLocaleString('pt-BR')}</p>
+                                <span class="status basic">Sem credenciais</span>
+                            </div>
+                        `;
+                    });
+                } else {
+                    html += `<p>Nenhum funcionário básico encontrado.</p>`;
+                }
+
+                html += `</div>`;
+
+                // Funcionários com credenciais
+                html += `
+                    <div>
+                        <h3>🔑 Funcionários com Credenciais (Etapa 2)</h3>
+                        <p><strong>Total:</strong> ${comCredenciais.length}</p>
+                `;
+
+                if (comCredenciais.length > 0) {
+                    comCredenciais.forEach(emp => {
+                        html += `
+                            <div class="employee-card">
+                                <h4>${emp.nome_completo}</h4>
+                                <p><strong>Email:</strong> ${emp.email}</p>
+                                <p><strong>Cargo:</strong> ${emp.cargo}</p>
+                                <p><strong>User ID:</strong> ${emp.user_id}</p>
+                                <p><strong>Credenciais criadas:</strong> ${new Date(emp.updated_at).toLocaleString('pt-BR')}</p>
+                                <span class="status with-credentials">✅ Com acesso</span>
+                            </div>
+                        `;
+                    });
+                } else {
+                    html += `<p>Nenhum funcionário com credenciais encontrado.</p>`;
+                }
+
+                html += `</div></div>`;
+
+                document.getElementById('listagens').innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('listagens').innerHTML = `
+                    <div class="error">❌ Erro inesperado: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            gerarDadosAleatorios();
+        });
+    </script>
+</body>
+</html>
