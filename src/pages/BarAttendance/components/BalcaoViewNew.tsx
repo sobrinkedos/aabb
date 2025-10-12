@@ -401,28 +401,34 @@ const BalcaoViewNew: React.FC = () => {
                     whileHover={{ scale: isOutOfStock ? 1 : 1.02 }}
                     whileTap={{ scale: isOutOfStock ? 1 : 0.98 }}
                     onClick={() => !isOutOfStock && addToCart(item)}
-                    className={`bg-white rounded-lg p-4 shadow-sm border transition-all duration-200 relative ${isOutOfStock
+                    className={`bg-white rounded-lg shadow-sm border transition-all duration-200 ${isOutOfStock
                       ? 'cursor-not-allowed opacity-50 border-red-300'
                       : isLowStock
                         ? 'cursor-pointer hover:shadow-lg hover:border-yellow-400 hover:bg-yellow-50 border-yellow-300'
                         : 'cursor-pointer hover:shadow-lg hover:border-blue-400 hover:bg-blue-50 border-gray-200'
                       }`}
                   >
-                    {/* Indicador de estoque */}
-                    {isOutOfStock && (
-                      <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1">
-                        <ExclamationTriangleIcon className="h-3 w-3" />
-                        <span>Esgotado</span>
+                    {/* Área dedicada para badges - sempre presente para manter layout consistente */}
+                    <div className="p-2 pb-0 min-h-[32px] flex justify-end">
+                      <div className="flex flex-col space-y-1 items-end">
+                        {isOutOfStock && (
+                          <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1 shadow-md">
+                            <ExclamationTriangleIcon className="h-3 w-3" />
+                            <span>Esgotado</span>
+                          </div>
+                        )}
+                        {isLowStock && (
+                          <div className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1 shadow-md">
+                            <ExclamationTriangleIcon className="h-3 w-3" />
+                            <span>Baixo</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {isLowStock && (
-                      <div className="absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1">
-                        <ExclamationTriangleIcon className="h-3 w-3" />
-                        <span>Baixo</span>
-                      </div>
-                    )}
+                    </div>
 
-                    <div className="text-center">
+                    {/* Conteúdo principal do card */}
+                    <div className="px-4 pb-4">
+                      <div className="text-center">
                       <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">{item.name}</h3>
                       <p className="text-sm text-gray-600 mb-2">{item.category}</p>
 
@@ -434,10 +440,11 @@ const BalcaoViewNew: React.FC = () => {
                         </p>
                       )}
 
-                      <p className={`text-lg font-bold ${isOutOfStock ? 'text-gray-400' : 'text-blue-600'
-                        }`}>
-                        {formatCurrency(item.price)}
-                      </p>
+                        <p className={`text-lg font-bold ${isOutOfStock ? 'text-gray-400' : 'text-blue-600'
+                          }`}>
+                          {formatCurrency(item.price)}
+                        </p>
+                      </div>
                     </div>
                   </motion.div>
                 );
