@@ -137,7 +137,6 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
         customer_phone: data.customer_phone || null,
         total_amount: totalAmount,
         discount_amount: discountAmount,
-        final_amount: finalAmount,
         notes: data.notes || null,
         customer_notes: data.customer_notes || null,
         status: 'pending_payment' as const,
