@@ -948,32 +948,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             await registrarMovimentacaoCorrecao();
           }
         } else if (stockChanged) {
-          
-          // Se apenas o custo mudou (sem mudança de estoque), registrar nota informativa
-          if (costChanged && !stockChanged) {
-            console.log('💰 Registrando alteração de custo sem movimentação de estoque');
-            
-            try {
-              const { error: movementError } = await supabase.rpc('register_inventory_movement', {
-                p_inventory_item_id: updatedItem.id,
-                p_movement_type: 'entrada_ajuste',
-                p_quantity: 0,
-                p_unit_cost: custoNovo || null,
-                p_notes: `${notaCorrecao} | Custo: R$ ${custoAnterior.toFixed(2)} → R$ ${custoNovo.toFixed(2)}`,
-                p_reference_document: null,
-                p_created_by: user.id
-              });
-              
-              if (movementError) {
-                console.error('❌ Erro ao registrar ajuste de custo:', movementError);
-              } else {
-                console.log('✅ Ajuste de custo registrado com sucesso!');
-              }
-            } catch (movError) {
-              console.error('❌ Erro ao registrar ajuste de custo:', movError);
-            }
-          }
-        } else if (stockChanged) {
           // Para mudanças normais (não correções), usar lógica anterior
           console.log('📝 Processando como ajuste normal');
           
@@ -1005,6 +979,31 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             }
           } catch (movError) {
             console.error('❌ Erro ao registrar movimentação:', movError);
+          }
+        } else if (costChanged && !stockChanged) {
+          // Se apenas o custo mudou (sem mudança de estoque), registrar nota informativa
+          console.log('💰 Registrando alteração de custo sem movimentação de estoque');
+          
+          const notaCorrecao = updatedItem.correctionNotes || 'Correção de custo via edição de item';
+          
+          try {
+            const { error: movementError } = await supabase.rpc('register_inventory_movement', {
+              p_inventory_item_id: updatedItem.id,
+              p_movement_type: 'entrada_ajuste',
+              p_quantity: 0,
+              p_unit_cost: custoNovo || null,
+              p_notes: `${notaCorrecao} | Custo: R$ ${custoAnterior.toFixed(2)} → R$ ${custoNovo.toFixed(2)}`,
+              p_reference_document: null,
+              p_created_by: user.id
+            });
+            
+            if (movementError) {
+              console.error('❌ Erro ao registrar ajuste de custo:', movementError);
+            } else {
+              console.log('✅ Ajuste de custo registrado com sucesso!');
+            }
+          } catch (movError) {
+            console.error('❌ Erro ao registrar ajuste de custo:', movError);
           }
         }
       }

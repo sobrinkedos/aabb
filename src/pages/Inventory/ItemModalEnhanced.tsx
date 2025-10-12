@@ -192,6 +192,17 @@ const ItemModalEnhanced: React.FC<ItemModalEnhancedProps> = ({ isOpen, onClose, 
         const stockChanged = data.currentStock !== originalValues.currentStock;
         const costChanged = data.cost !== originalValues.cost;
         
+        console.log('🔍 Verificando mudanças:', {
+          stockChanged,
+          costChanged,
+          allowStockEdit,
+          allowCostEdit,
+          originalCost: originalValues.cost,
+          newCost: data.cost,
+          originalStock: originalValues.currentStock,
+          newStock: data.currentStock
+        });
+        
         // Preparar notas para movimentação
         let movementNotes = [];
         
