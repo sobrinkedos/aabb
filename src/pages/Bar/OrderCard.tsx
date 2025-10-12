@@ -74,7 +74,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
   // Função para imprimir o pedido
   const handlePrintOrder = () => {
     const printContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 300px; margin: 0 auto;">
+      <div style="font-family: Arial, sans-serif; max-width: 300px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px;">
           <h2 style="margin: 0; font-size: 18px;">PEDIDO #${orderNumber}</h2>
           <p style="margin: 5px 0; font-size: 14px;">${order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão'}</p>
@@ -111,31 +111,116 @@ const OrderCard: React.FC<OrderCardProps> = ({
       </div>
     `;
 
-    const printWindow = window.open('', '_blank');
+    // Criar uma nova janela com tamanho específico
+    const printWindow = window.open('', '_blank', 'width=400,height=600,scrollbars=yes,resizable=yes');
+    
     if (printWindow) {
-      printWindow.document.write(`
+      const htmlContent = `
+        <!DOCTYPE html>
         <html>
           <head>
             <title>Pedido #${orderNumber}</title>
+            <meta charset="utf-8">
             <style>
+              body { 
+                margin: 0; 
+                font-family: Arial, sans-serif;
+                background: white;
+                color: black;
+              }
               @media print {
                 body { margin: 0; }
                 @page { margin: 10mm; }
+                .no-print { display: none; }
+              }
+              @media screen {
+                body { padding: 20px; }
+              }
+              .print-buttons {
+                text-align: center;
+                margin-top: 20px;
+                padding: 10px;
+                border-top: 1px solid #ccc;
+              }
+              .btn {
+                padding: 10px 20px;
+                font-size: 14px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                margin: 0 5px;
+                transition: background-color 0.3s;
+              }
+              .btn-primary {
+                background: #007bff;
+                color: white;
+              }
+              .btn-primary:hover {
+                background: #0056b3;
+              }
+              .btn-secondary {
+                background: #6c757d;
+                color: white;
+              }
+              .btn-secondary:hover {
+                background: #545b62;
               }
             </style>
           </head>
           <body>
             ${printContent}
+            <div class="print-buttons no-print">
+              <button class="btn btn-primary" onclick="printOrder()">
+                🖨️ Imprimir
+              </button>
+              <button class="btn btn-secondary" onclick="window.close()">
+                ✕ Fechar
+              </button>
+            </div>
             <script>
-              window.onload = function() {
+              function printOrder() {
                 window.print();
-                window.close();
               }
+              
+              // Aguardar carregamento completo
+              window.addEventListener('load', function() {
+                // Focar na janela
+                window.focus();
+                
+                // Auto-print após um pequeno delay (opcional)
+                // setTimeout(function() {
+                //   window.print();
+                // }, 500);
+              });
+              
+              // Detectar quando a impressão foi concluída ou cancelada
+              window.addEventListener('afterprint', function() {
+                // Opcional: fechar automaticamente após impressão
+                // setTimeout(function() {
+                //   window.close();
+                // }, 1000);
+              });
+              
+              // Detectar tecla ESC para fechar
+              document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                  window.close();
+                }
+              });
             </script>
           </body>
         </html>
-      `);
+      `;
+      
+      // Usar innerHTML ao invés de document.write (método mais moderno)
+      printWindow.document.open();
+      printWindow.document.write(htmlContent);
       printWindow.document.close();
+      
+      // Focar na nova janela
+      printWindow.focus();
+    } else {
+      alert('Não foi possível abrir a janela de impressão. Verifique se o bloqueador de pop-ups está desabilitado.');
     }
   };
 
