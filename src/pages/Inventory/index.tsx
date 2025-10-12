@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Package, AlertTriangle, DollarSign, History } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, DollarSign, History, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import ItemModalEnhanced from './ItemModalEnhanced';
 import InventoryItemCard from './InventoryItemCard';
+import InventoryValueCard from '../../components/Inventory/InventoryValueCard';
 import { InventoryItem } from '../../types';
+import { exportInventoryReport, printInventoryReport } from '../../utils/inventoryExport';
 
 const InventoryModule: React.FC = () => {
   const navigate = useNavigate();
@@ -45,6 +47,14 @@ const InventoryModule: React.FC = () => {
     return { totalValue, lowStockCount, totalItems: inventory.length };
   }, [inventory]);
 
+  const handleExportReport = () => {
+    exportInventoryReport({ inventory, categories: inventoryCategories });
+  };
+
+  const handlePrintReport = () => {
+    printInventoryReport({ inventory, categories: inventoryCategories });
+  };
+
   return (
     <div className="space-y-6">
       <motion.div
@@ -57,6 +67,15 @@ const InventoryModule: React.FC = () => {
           <p className="text-gray-600">Controle e gestão de inventário</p>
         </div>
         <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 mt-4 sm:mt-0">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handlePrintReport}
+            className="bg-gray-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-gray-700 transition-colors flex items-center space-x-2"
+          >
+            <Printer size={18} />
+            <span>Imprimir</span>
+          </motion.button>
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -87,8 +106,14 @@ const InventoryModule: React.FC = () => {
         </div>
       </motion.div>
 
+      {/* Card de Valor Total do Estoque */}
+      <InventoryValueCard 
+        inventory={inventory} 
+        onExportReport={handleExportReport}
+      />
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard icon={DollarSign} title="Valor Total do Estoque" value={`R$ ${stats.totalValue.toFixed(2)}`} color="green" />
+        <StatCard icon={DollarSign} title="Valor Total do Estoque (Custo)" value={`R$ ${stats.totalValue.toFixed(2)}`} color="green" />
         <StatCard icon={Package} title="Itens Totais" value={stats.totalItems} color="blue" />
         <StatCard 
           icon={AlertTriangle} 
