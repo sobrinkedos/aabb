@@ -44,7 +44,46 @@ const ComandasView: React.FC = () => {
   // Hook para menu items
   const { menuItems, loading: menuLoading } = useMenuItems(true);
   const { adicionarItemComanda, fecharComanda } = useBarAttendance();
-  const { refreshBarOrders, refreshKitchenOrders } = useApp();
+  const { refreshBarOrders, refreshKitchenOrders, inventory } = useApp();
+
+  // Função para verificar estoque disponível
+  const checkStock = (menuItem: MenuItem, quantity: number): { available: boolean; currentStock?: number; warning?: string } => {
+    // Se é item direto do estoque, verificar disponibilidade
+    if (menuItem.item_type === 'direct' && menuItem.direct_inventory_item_id) {
+      const inventoryItem = inventory.find(item => item.id === menuItem.direct_inventory_item_id);
+
+      if (!inventoryItem) {
+        return {
+          available: false,
+          warning: 'Item não encontrado no estoque'
+        };
+      }
+
+      if (inventoryItem.currentStock < quantity) {
+        return {
+          available: false,
+          currentStock: inventoryItem.currentStock,
+          warning: `Estoque insuficiente. Disponível: ${inventoryItem.currentStock} ${inventoryItem.unit}`
+        };
+      }
+
+      if (inventoryItem.currentStock <= inventoryItem.minStock) {
+        return {
+          available: true,
+          currentStock: inventoryItem.currentStock,
+          warning: `Estoque baixo! Disponível: ${inventoryItem.currentStock} ${inventoryItem.unit}`
+        };
+      }
+
+      return {
+        available: true,
+        currentStock: inventoryItem.currentStock
+      };
+    }
+
+    // Se é item preparado, sempre disponível
+    return { available: true };
+  };
 
   // Atualizar comanda selecionada quando as comandas mudarem
   useEffect(() => {
@@ -75,11 +114,28 @@ const ComandasView: React.FC = () => {
   // Funções do carrinho
   const addToCart = (item: MenuItem) => {
     console.log('Adicionando item ao carrinho:', item);
+    
+    // Verificar estoque antes de adicionar
+    const stockCheck = checkStock(item, 1);
+    
+    if (!stockCheck.available) {
+      alert(`${item.name}: ${stockCheck.warning}`);
+      return;
+    }
+    
     const existingIndex = cart.findIndex(cartItem => cartItem.menu_item_id === item.id);
 
     if (existingIndex >= 0) {
+      const newQuantity = cart[existingIndex].quantity + 1;
+      const newStockCheck = checkStock(item, newQuantity);
+      
+      if (!newStockCheck.available) {
+        alert(`${item.name}: ${newStockCheck.warning}`);
+        return;
+      }
+      
       const newCart = [...cart];
-      newCart[existingIndex].quantity += 1;
+      newCart[existingIndex].quantity = newQuantity;
       setCart(newCart);
       console.log('Item já existia, quantidade atualizada:', newCart);
     } else {
@@ -100,6 +156,17 @@ const ComandasView: React.FC = () => {
     if (newQuantity <= 0) {
       setCart(cart.filter(item => item.menu_item_id !== menuItemId));
     } else {
+      // Verificar estoque antes de atualizar quantidade
+      const menuItem = menuItems.find(item => item.id === menuItemId);
+      if (menuItem) {
+        const stockCheck = checkStock(menuItem, newQuantity);
+        
+        if (!stockCheck.available) {
+          alert(`${menuItem.name}: ${stockCheck.warning}`);
+          return;
+        }
+      }
+      
       setCart(cart.map(item =>
         item.menu_item_id === menuItemId
           ? { ...item, quantity: newQuantity }
@@ -454,44 +521,85 @@ const ComandasView: React.FC = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {filteredMenuItems.map(item => (
-                    <div
-                      key={item.id}
-                      onClick={() => addToCart(item)}
-                      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200 group cursor-pointer hover:border-blue-300 hover:bg-blue-50"
-                    >
-                      <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                        {item.image_url ? (
-                          <img
-                            src={item.image_url}
-                            alt={item.name}
-                            className="max-w-full max-h-full object-contain rounded-lg"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                              e.currentTarget.nextElementSibling!.style.display = 'block';
-                            }}
-                          />
-                        ) : null}
-                        <div className="text-gray-400 text-2xl group-hover:text-blue-500 transition-colors" style={{ display: item.image_url ? 'none' : 'block' }}>
-                          🍺
+                  {filteredMenuItems.map(item => {
+                    const stockInfo = checkStock(item, 1);
+                    const isLowStock = stockInfo.warning && stockInfo.available;
+                    const isOutOfStock = !stockInfo.available;
+
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => !isOutOfStock && addToCart(item)}
+                        className={`bg-white border rounded-lg hover:shadow-md transition-all duration-200 group ${
+                          isOutOfStock
+                            ? 'cursor-not-allowed opacity-50 border-red-300'
+                            : isLowStock
+                            ? 'cursor-pointer hover:border-yellow-400 hover:bg-yellow-50 border-yellow-300'
+                            : 'cursor-pointer hover:border-blue-300 hover:bg-blue-50 border-gray-200'
+                        }`}
+                      >
+                        {/* Área dedicada para badges */}
+                        <div className="p-2 pb-0 min-h-[32px] flex justify-end">
+                          <div className="flex flex-col space-y-1 items-end">
+                            {isOutOfStock && (
+                              <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1 shadow-md">
+                                <span>Esgotado</span>
+                              </div>
+                            )}
+                            {isLowStock && (
+                              <div className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1 shadow-md">
+                                <span>Baixo</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Conteúdo principal do card */}
+                        <div className="px-4 pb-4">
+                          <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                            {item.image_url ? (
+                              <img
+                                src={item.image_url}
+                                alt={item.name}
+                                className="max-w-full max-h-full object-contain rounded-lg"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.nextElementSibling!.style.display = 'block';
+                                }}
+                              />
+                            ) : null}
+                            <div className="text-gray-400 text-2xl group-hover:text-blue-500 transition-colors" style={{ display: item.image_url ? 'none' : 'block' }}>
+                              🍺
+                            </div>
+                          </div>
+                          <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 group-hover:text-blue-900">
+                            {item.name}
+                          </h3>
+                          <p className="text-sm text-gray-500 mb-2 line-clamp-2 group-hover:text-blue-700">
+                            {item.description}
+                          </p>
+
+                          {/* Informação de estoque */}
+                          {item.item_type === 'direct' && stockInfo.currentStock !== undefined && (
+                            <p className={`text-xs mb-2 ${isOutOfStock ? 'text-red-600' : isLowStock ? 'text-yellow-600' : 'text-gray-500'}`}>
+                              Estoque: {stockInfo.currentStock}
+                            </p>
+                          )}
+
+                          <div className="flex items-center justify-between">
+                            <span className={`text-lg font-bold ${isOutOfStock ? 'text-gray-400' : 'text-green-600 group-hover:text-green-700'}`}>
+                              R$ {(typeof item.price === 'string' ? parseFloat(item.price) : item.price).toFixed(2)}
+                            </span>
+                            {!isOutOfStock && (
+                              <div className="bg-blue-600 text-white p-2 rounded-lg group-hover:bg-blue-700 transition-colors">
+                                <Plus size={16} />
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 group-hover:text-blue-900">
-                        {item.name}
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-2 line-clamp-2 group-hover:text-blue-700">
-                        {item.description}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-lg font-bold text-green-600 group-hover:text-green-700">
-                          R$ {(typeof item.price === 'string' ? parseFloat(item.price) : item.price).toFixed(2)}
-                        </span>
-                        <div className="bg-blue-600 text-white p-2 rounded-lg group-hover:bg-blue-700 transition-colors">
-                          <Plus size={16} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
