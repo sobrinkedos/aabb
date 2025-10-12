@@ -39,8 +39,8 @@ const ItemModalEnhanced: React.FC<ItemModalEnhancedProps> = ({ isOpen, onClose, 
   
   // Valores originais para comparação
   const [originalValues, setOriginalValues] = useState({
-    currentStock: item?.currentStock || 0,
-    cost: item?.cost || 0
+    currentStock: Number(item?.currentStock) || 0,
+    cost: Number(item?.cost) || 0
   });
   
   // Ref para capturar valores atuais de precificação
@@ -104,8 +104,8 @@ const ItemModalEnhanced: React.FC<ItemModalEnhancedProps> = ({ isOpen, onClose, 
         
         // Definir valores originais
         setOriginalValues({
-          currentStock: item.currentStock,
-          cost: item.cost || 0
+          currentStock: Number(item.currentStock) || 0,
+          cost: Number(item.cost) || 0
         });
         
         // Resetar estados de edição
@@ -212,7 +212,7 @@ const ItemModalEnhanced: React.FC<ItemModalEnhancedProps> = ({ isOpen, onClose, 
         }
         
         if (costChanged && allowCostEdit) {
-          movementNotes.push(`CORREÇÃO - Custo: R$ ${(originalValues.cost || 0).toFixed(2)} → R$ ${(data.cost || 0).toFixed(2)} (${costEditReason})`);
+          movementNotes.push(`CORREÇÃO - Custo: R$ ${Number(originalValues.cost || 0).toFixed(2)} → R$ ${Number(data.cost || 0).toFixed(2)} (${costEditReason})`);
         }
         
         // Se não permitiu edição mas valores mudaram, restaurar originais
