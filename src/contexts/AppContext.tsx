@@ -958,7 +958,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           let notaDetalhada = `Ajuste manual de estoque via edição de item`;
           
           if (costChanged) {
-            notaDetalhada += ` | Custo alterado: R$ ${custoAnterior.toFixed(2)} → R$ ${custoNovo.toFixed(2)}`;
+            notaDetalhada += ` | Custo alterado: R$ ${(custoAnterior || 0).toFixed(2)} → R$ ${(custoNovo || 0).toFixed(2)}`;
           }
           
           try {
@@ -992,7 +992,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
               p_movement_type: 'entrada_ajuste',
               p_quantity: 0,
               p_unit_cost: custoNovo || null,
-              p_notes: `${notaCorrecao} | Custo: R$ ${custoAnterior.toFixed(2)} → R$ ${custoNovo.toFixed(2)}`,
+              p_notes: `${notaCorrecao} | Custo: R$ ${(custoAnterior || 0).toFixed(2)} → R$ ${(custoNovo || 0).toFixed(2)}`,
               p_reference_document: null,
               p_created_by: user.id
             });

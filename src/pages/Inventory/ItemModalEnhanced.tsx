@@ -182,6 +182,7 @@ const ItemModalEnhanced: React.FC<ItemModalEnhancedProps> = ({ isOpen, onClose, 
       
       const itemDataWithPricing = {
         ...data,
+        cost: Number(data.cost) || 0,
         salePrice: currentPricing.salePrice,
         marginPercentage: currentPricing.marginPercentage,
         pricingMethod: currentPricing.pricingMethod
@@ -189,8 +190,8 @@ const ItemModalEnhanced: React.FC<ItemModalEnhancedProps> = ({ isOpen, onClose, 
 
       if (item) {
         // Verificar se houve mudanças significativas
-        const stockChanged = data.currentStock !== originalValues.currentStock;
-        const costChanged = data.cost !== originalValues.cost;
+        const stockChanged = Number(data.currentStock) !== Number(originalValues.currentStock);
+        const costChanged = Number(data.cost) !== Number(originalValues.cost);
         
         console.log('🔍 Verificando mudanças:', {
           stockChanged,
@@ -211,7 +212,7 @@ const ItemModalEnhanced: React.FC<ItemModalEnhancedProps> = ({ isOpen, onClose, 
         }
         
         if (costChanged && allowCostEdit) {
-          movementNotes.push(`CORREÇÃO - Custo: R$ ${originalValues.cost.toFixed(2)} → R$ ${data.cost?.toFixed(2) || '0.00'} (${costEditReason})`);
+          movementNotes.push(`CORREÇÃO - Custo: R$ ${(originalValues.cost || 0).toFixed(2)} → R$ ${(data.cost || 0).toFixed(2)} (${costEditReason})`);
         }
         
         // Se não permitiu edição mas valores mudaram, restaurar originais
