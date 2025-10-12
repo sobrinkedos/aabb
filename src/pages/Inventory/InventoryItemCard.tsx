@@ -27,6 +27,21 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, categories,
           : 'border-gray-200'
       }`}
     >
+      {/* Badges de Status - Posicionados no topo */}
+      <div className="absolute top-2 right-2 z-10 flex flex-col space-y-1 items-end">
+        {isLowStock && (
+          <div className="flex items-center space-x-1 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium shadow-md">
+            <AlertTriangle size={12} />
+            <span>Estoque Baixo</span>
+          </div>
+        )}
+        {isAvailableForSale && !isLowStock && (
+          <div className="flex items-center space-x-1 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium shadow-md">
+            <ShoppingCart size={12} />
+            <span>À Venda</span>
+          </div>
+        )}
+      </div>
       {/* Imagem do produto */}
       {item.image_url && (
         <div className="w-full h-32 mb-3 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
@@ -43,44 +58,31 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, categories,
 
 
       <div className="flex items-start justify-between mb-3">
-        <div className="pr-4 flex-1">
-          <h3 className="font-semibold text-gray-800">{item.name}</h3>
+        <div className="flex-1 pr-20">
+          <h3 className="font-semibold text-gray-800 leading-tight">{item.name}</h3>
           <p className="text-sm text-gray-500">{category?.name || 'Sem categoria'}</p>
         </div>
-        <div className="flex space-x-2 ml-2">
+        <div className="flex space-x-1 ml-2 mt-1">
           <button 
             onClick={() => onEdit(item)} 
-            className="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded hover:bg-gray-100"
+            className="text-gray-400 hover:text-blue-600 transition-colors p-1.5 rounded hover:bg-gray-100"
             title="Editar item"
             aria-label={`Editar ${item.name}`}
           >
-            <Edit size={16} />
+            <Edit size={14} />
           </button>
           <button 
             onClick={() => onDelete(item.id)} 
-            className="text-gray-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-gray-100"
+            className="text-gray-400 hover:text-red-600 transition-colors p-1.5 rounded hover:bg-gray-100"
             title="Excluir item"
             aria-label={`Excluir ${item.name}`}
           >
-            <Trash2 size={16} />
+            <Trash2 size={14} />
           </button>
         </div>
       </div>
 
-      {/* Indicador de Status de Venda */}
-      <div className="mb-3">
-        {isAvailableForSale ? (
-          <div className="flex items-center space-x-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium w-fit">
-            <ShoppingCart size={12} />
-            <span>Disponível para venda</span>
-          </div>
-        ) : (
-          <div className="flex items-center space-x-1 bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-medium w-fit">
-            <XCircle size={12} />
-            <span>Não disponível para venda</span>
-          </div>
-        )}
-      </div>
+
 
       <div className="flex justify-between items-baseline mb-3">
         <span className="text-2xl font-bold text-gray-800">{item.currentStock}</span>
@@ -94,20 +96,12 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, categories,
         ></div>
       </div>
 
-      {(isLowStock || !isAvailableForSale) && (
-        <div className="flex flex-col space-y-1 mt-2">
-          {isLowStock && (
-            <div className="flex items-center space-x-1 text-red-600 text-xs">
-              <AlertTriangle size={14} />
-              <span>Estoque baixo</span>
-            </div>
-          )}
-          {!isAvailableForSale && (
-            <div className="flex items-center space-x-1 text-orange-600 text-xs">
-              <XCircle size={14} />
-              <span>Produto não liberado para venda no balcão</span>
-            </div>
-          )}
+      {!isAvailableForSale && (
+        <div className="mt-2">
+          <div className="flex items-center space-x-1 text-orange-600 text-xs">
+            <XCircle size={14} />
+            <span>Produto não liberado para venda no balcão</span>
+          </div>
         </div>
       )}
 
