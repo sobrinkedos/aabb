@@ -35,7 +35,7 @@ const ComandasView: React.FC = () => {
   const [isAddingItems, setIsAddingItems] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  
+
   // Estados para fechamento de conta
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closeModalComanda, setCloseModalComanda] = useState<ComandaWithItems | null>(null);
@@ -114,26 +114,26 @@ const ComandasView: React.FC = () => {
   // Funções do carrinho
   const addToCart = (item: MenuItem) => {
     console.log('Adicionando item ao carrinho:', item);
-    
+
     // Verificar estoque antes de adicionar
     const stockCheck = checkStock(item, 1);
-    
+
     if (!stockCheck.available) {
       alert(`${item.name}: ${stockCheck.warning}`);
       return;
     }
-    
+
     const existingIndex = cart.findIndex(cartItem => cartItem.menu_item_id === item.id);
 
     if (existingIndex >= 0) {
       const newQuantity = cart[existingIndex].quantity + 1;
       const newStockCheck = checkStock(item, newQuantity);
-      
+
       if (!newStockCheck.available) {
         alert(`${item.name}: ${newStockCheck.warning}`);
         return;
       }
-      
+
       const newCart = [...cart];
       newCart[existingIndex].quantity = newQuantity;
       setCart(newCart);
@@ -160,13 +160,13 @@ const ComandasView: React.FC = () => {
       const menuItem = menuItems.find(item => item.id === menuItemId);
       if (menuItem) {
         const stockCheck = checkStock(menuItem, newQuantity);
-        
+
         if (!stockCheck.available) {
           alert(`${menuItem.name}: ${stockCheck.warning}`);
           return;
         }
       }
-      
+
       setCart(cart.map(item =>
         item.menu_item_id === menuItemId
           ? { ...item, quantity: newQuantity }
@@ -249,7 +249,7 @@ const ComandasView: React.FC = () => {
   // Função para converter comanda do sistema para o formato do modal
   const convertComandaToCommand = (comanda: any): Command => {
     console.log('🔄 Convertendo comanda:', comanda);
-    
+
     return {
       id: comanda.id,
       mesa_id: comanda.table_id || undefined,
@@ -272,14 +272,14 @@ const ComandasView: React.FC = () => {
       } : undefined,
       itens: comanda.items?.map((item: any) => {
         console.log('🔄 Convertendo item:', item);
-        
+
         // Extrair dados do menu_item se disponível
         const menuItem = item.menu_item || item.menu_items;
         const nomeItem = item.product_name || menuItem?.name || 'Item sem nome';
         const precoUnitario = item.unit_price || menuItem?.price || 0;
         const quantidade = item.quantity || 1;
         const precoTotal = item.total_price || (precoUnitario * quantidade);
-        
+
         return {
           id: item.id,
           comanda_id: comanda.id,
@@ -439,7 +439,7 @@ const ComandasView: React.FC = () => {
             <button
               onClick={async () => {
                 if (!selectedComanda) return;
-                
+
                 try {
                   // Buscar comanda com itens completos
                   const { data: comandaData, error } = await supabase
@@ -530,13 +530,12 @@ const ComandasView: React.FC = () => {
                       <div
                         key={item.id}
                         onClick={() => !isOutOfStock && addToCart(item)}
-                        className={`bg-white border rounded-lg hover:shadow-md transition-all duration-200 group ${
-                          isOutOfStock
+                        className={`bg-white border rounded-lg hover:shadow-md transition-all duration-200 group ${isOutOfStock
                             ? 'cursor-not-allowed opacity-50 border-red-300'
                             : isLowStock
-                            ? 'cursor-pointer hover:border-yellow-400 hover:bg-yellow-50 border-yellow-300'
-                            : 'cursor-pointer hover:border-blue-300 hover:bg-blue-50 border-gray-200'
-                        }`}
+                              ? 'cursor-pointer hover:border-yellow-400 hover:bg-yellow-50 border-yellow-300'
+                              : 'cursor-pointer hover:border-blue-300 hover:bg-blue-50 border-gray-200'
+                          }`}
                       >
                         {/* Área dedicada para badges */}
                         <div className="p-2 pb-0 min-h-[32px] flex justify-end">
@@ -628,35 +627,35 @@ const ComandasView: React.FC = () => {
                       console.log('🔍 Debug item da comanda:', item);
                       return (
                         <div key={item.id} className="bg-white rounded-lg p-3 shadow-sm">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex-1">
-                            <h5 className="font-medium text-gray-900 text-sm">
-                              {item.menu_item?.name || item.menu_items?.name || `Item ${item.menu_item_id}`}
-                            </h5>
-                            <p className="text-xs text-gray-600">
-                              R$ {item.price.toFixed(2)} cada
-                            </p>
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex-1">
+                              <h5 className="font-medium text-gray-900 text-sm">
+                                {item.menu_item?.name || item.menu_items?.name || `Item ${item.menu_item_id}`}
+                              </h5>
+                              <p className="text-xs text-gray-600">
+                                R$ {item.price.toFixed(2)} cada
+                              </p>
+                            </div>
+                            <span className={`text-xs px-2 py-1 rounded-full ${item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              item.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                                item.status === 'ready' ? 'bg-green-100 text-green-800' :
+                                  'bg-gray-100 text-gray-800'
+                              }`}>
+                              {item.status === 'pending' ? 'Pendente' :
+                                item.status === 'preparing' ? 'Preparando' :
+                                  item.status === 'ready' ? 'Pronto' :
+                                    item.status === 'delivered' ? 'Entregue' : item.status}
+                            </span>
                           </div>
-                          <span className={`text-xs px-2 py-1 rounded-full ${item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            item.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
-                              item.status === 'ready' ? 'bg-green-100 text-green-800' :
-                                'bg-gray-100 text-gray-800'
-                            }`}>
-                            {item.status === 'pending' ? 'Pendente' :
-                              item.status === 'preparing' ? 'Preparando' :
-                                item.status === 'ready' ? 'Pronto' :
-                                  item.status === 'delivered' ? 'Entregue' : item.status}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">Qtd: {item.quantity}</span>
-                          <span className="font-medium text-green-600 text-sm">
-                            R$ {(item.price * item.quantity).toFixed(2)}
-                          </span>
-                        </div>
-                        {item.notes && (
-                          <p className="text-xs text-gray-500 mt-1">Obs: {item.notes}</p>
-                        )}
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Qtd: {item.quantity}</span>
+                            <span className="font-medium text-green-600 text-sm">
+                              R$ {(item.price * item.quantity).toFixed(2)}
+                            </span>
+                          </div>
+                          {item.notes && (
+                            <p className="text-xs text-gray-500 mt-1">Obs: {item.notes}</p>
+                          )}
                         </div>
                       );
                     })}
@@ -771,10 +770,10 @@ const ComandasView: React.FC = () => {
 
         {/* Modal Fechar Conta Melhorado */}
         {(() => {
-          console.log('🔍 Debug Modal:', { 
-            showCloseModal, 
+          console.log('🔍 Debug Modal:', {
+            showCloseModal,
             closeModalComanda: !!closeModalComanda,
-            isClosingComanda 
+            isClosingComanda
           });
           return closeModalComanda && (
             <ProcessComandaPaymentModal
