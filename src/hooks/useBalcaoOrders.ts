@@ -111,35 +111,54 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
     if (!user) throw new Error('Usuário não autenticado');
 
     try {
+      console.log('🔄 Iniciando criação de pedido:', data);
       updateState({ loading: true, error: null });
 
-      // Determinar empresa_id (usar o mesmo dos itens do menu)
-      const empresaId = 'df96edf7-f7d8-457a-a490-dd485855fc7d'; // Empresa dos itens do menu
+      // Obter empresa_id do usuário atual
+      const empresaId = await getCurrentUserEmpresaId();
+      
+      if (!empresaId) {
+        throw new Error('Não foi possível identificar a empresa do usuário');
+      }
+      
+      console.log('🏢 Empresa ID identificada:', empresaId);
       
       // Calcular totais
       const totalAmount = data.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
       const discountAmount = data.discount_amount || 0;
       const finalAmount = totalAmount - discountAmount;
       
+      console.log('💰 Totais calculados:', { totalAmount, discountAmount, finalAmount });
+      
+      // Preparar dados do pedido
+      const orderInsertData = {
+        employee_id: user.id,
+        customer_name: data.customer_name || null,
+        customer_phone: data.customer_phone || null,
+        total_amount: totalAmount,
+        discount_amount: discountAmount,
+        final_amount: finalAmount,
+        notes: data.notes || null,
+        customer_notes: data.customer_notes || null,
+        status: 'pending_payment' as const,
+        empresa_id: empresaId
+      };
+      
+      console.log('📋 Dados do pedido para inserção:', orderInsertData);
+      
       // Criar o pedido
       const { data: orderData, error: orderError } = await supabase
         .from('balcao_orders')
-        .insert({
-          employee_id: user.id,
-          customer_name: data.customer_name,
-          customer_phone: data.customer_phone,
-          total_amount: totalAmount,
-          discount_amount: discountAmount,
-          final_amount: finalAmount,
-          notes: data.notes,
-          customer_notes: data.customer_notes,
-          status: 'pending_payment',
-          empresa_id: empresaId // Adicionar empresa_id para RLS
-        })
+        .insert(orderInsertData)
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error('❌ Erro ao inserir pedido:', orderError);
+        throw orderError;
+      }
+      
+      console.log('✅ Pedido criado com sucesso:', orderData);
 
       // Inserir itens do pedido
       const itemsToInsert = data.items.map(item => ({
@@ -148,15 +167,23 @@ export const useBalcaoOrders = (): UseBalcaoOrdersReturn => {
         quantity: item.quantity,
         unit_price: item.unit_price,
         total_price: item.unit_price * item.quantity,
-        notes: item.notes,
+        notes: item.notes || null,
         status: 'pending' as BalcaoOrderItemStatus
       }));
 
-      const { error: itemsError } = await supabase
-        .from('balcao_order_items')
-        .insert(itemsToInsert);
+      console.log('📦 Itens para inserção:', itemsToInsert);
 
-      if (itemsError) throw itemsError;
+      const { data: insertedItems, error: itemsError } = await supabase
+        .from('balcao_order_items')
+        .insert(itemsToInsert)
+        .select();
+
+      if (itemsError) {
+        console.error('❌ Erro ao inserir itens do pedido:', itemsError);
+        throw itemsError;
+      }
+      
+      console.log('✅ Itens inseridos com sucesso:', insertedItems);
 
       await loadOrders();
       return orderData.id;
