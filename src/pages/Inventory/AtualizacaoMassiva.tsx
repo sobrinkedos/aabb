@@ -15,7 +15,7 @@ interface ItemCompra {
 
 const AtualizacaoMassiva: React.FC = () => {
   const navigate = useNavigate();
-  const { inventory, inventoryCategories } = useApp();
+  const { inventory, inventoryCategories, loadFullInventory } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoriaFiltro, setCategoriaFiltro] = useState('');
   const [itensCompra, setItensCompra] = useState<Record<string, ItemCompra>>({});
@@ -149,14 +149,14 @@ const AtualizacaoMassiva: React.FC = () => {
       await Promise.all(promises);
 
       console.log('✅ Todos os itens foram atualizados com sucesso!');
-      
+
       // Limpar seleções após salvar
       setItensCompra({});
 
+      // Recarregar inventário do contexto para refletir as mudanças
+      await loadFullInventory();
+
       alert(`${itensSelecionados.length} itens atualizados com sucesso!`);
-      
-      // Recarregar inventário para refletir as mudanças
-      window.location.reload();
     } catch (error) {
       console.error('Erro ao atualizar estoque:', error);
       alert('Erro ao atualizar estoque. Tente novamente.');
