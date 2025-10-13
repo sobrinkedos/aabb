@@ -53,11 +53,11 @@ const AtualizacaoMassiva: React.FC = () => {
 
   const handleAtualizarQuantidade = (itemId: string, quantidade: number) => {
     if (quantidade < 0) return;
-    
+
     setItensCompra(prev => {
       const item = prev[itemId] || { id: itemId, selecionado: false, quantidadeComprada: 0, valorUnitario: 0, valorTotal: 0 };
       const novoValorTotal = quantidade * item.valorUnitario;
-      
+
       return {
         ...prev,
         [itemId]: {
@@ -71,11 +71,11 @@ const AtualizacaoMassiva: React.FC = () => {
 
   const handleAtualizarValorUnitario = (itemId: string, valor: number) => {
     if (valor < 0) return;
-    
+
     setItensCompra(prev => {
       const item = prev[itemId] || { id: itemId, selecionado: false, quantidadeComprada: 0, valorUnitario: 0, valorTotal: 0 };
       const novoValorTotal = item.quantidadeComprada * valor;
-      
+
       return {
         ...prev,
         [itemId]: {
@@ -89,11 +89,11 @@ const AtualizacaoMassiva: React.FC = () => {
 
   const handleSalvarAtualizacoes = async () => {
     setSalvando(true);
-    
+
     try {
       console.log('🚀 Iniciando atualização massiva...');
       console.log('📋 Itens selecionados:', itensSelecionados);
-      
+
       // Buscar dados atualizados do banco antes de salvar
       const { data: itensAtuais, error: fetchError } = await supabase
         .from('inventory_items')
@@ -148,40 +148,15 @@ const AtualizacaoMassiva: React.FC = () => {
 
       await Promise.all(promises);
 
-      // Registrar movimentações de estoque
-      console.log('📝 Registrando movimentações de estoque...');
-      for (const itemCompra of itensSelecionados) {
-        const itemAtual = itensAtuais?.find(i => i.id === itemCompra.id);
-        if (!itemAtual) continue;
-
-        try {
-          const { error: movementError } = await supabase.rpc('register_inventory_movement', {
-            p_inventory_item_id: itemCompra.id,
-            p_movement_type: 'entrada_compra',
-            p_quantity: itemCompra.quantidadeComprada,
-            p_unit_cost: itemCompra.valorUnitario > 0 ? itemCompra.valorUnitario : (itemAtual.cost || 0),
-            p_notes: `Atualização massiva - Compra de ${itemCompra.quantidadeComprada} ${itemAtual.unit}`,
-            p_reference_document: undefined,
-            p_created_by: undefined
-          });
-
-          if (movementError) {
-            console.error('⚠️ Erro ao registrar movimentação:', movementError);
-          } else {
-            console.log(`✅ Movimentação registrada para ${itemAtual.name}`);
-          }
-        } catch (error) {
-          console.error('⚠️ Erro ao registrar movimentação:', error);
-        }
-      }
+      console.log('✅ Todos os itens foram atualizados com sucesso!');
       
       // Limpar seleções após salvar
       setItensCompra({});
+
+      alert(`${itensSelecionados.length} itens atualizados com sucesso!`);
       
       // Recarregar inventário para refletir as mudanças
       window.location.reload();
-      
-      alert(`${itensSelecionados.length} itens atualizados com sucesso!`);
     } catch (error) {
       console.error('Erro ao atualizar estoque:', error);
       alert('Erro ao atualizar estoque. Tente novamente.');
@@ -221,7 +196,7 @@ const AtualizacaoMassiva: React.FC = () => {
             </p>
           </div>
         </div>
-        
+
         {itensSelecionados.length > 0 && (
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -249,7 +224,7 @@ const AtualizacaoMassiva: React.FC = () => {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-          
+
           <select
             value={categoriaFiltro}
             onChange={(e) => setCategoriaFiltro(e.target.value)}
@@ -267,7 +242,7 @@ const AtualizacaoMassiva: React.FC = () => {
             onClick={() => {
               const itensEstoqueBaixo = inventarioFiltrado.filter(item => item.currentStock <= item.minStock);
               const novosItens = { ...itensCompra };
-              
+
               itensEstoqueBaixo.forEach(item => {
                 const quantidadeSugerida = Math.max(item.minStock * 2 - item.currentStock, item.minStock);
                 novosItens[item.id] = {
@@ -278,7 +253,7 @@ const AtualizacaoMassiva: React.FC = () => {
                   valorTotal: quantidadeSugerida * (item.cost || 0),
                 };
               });
-              
+
               setItensCompra(novosItens);
             }}
             className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center space-x-2"
@@ -330,7 +305,7 @@ const AtualizacaoMassiva: React.FC = () => {
             Produtos Disponíveis ({inventarioFiltrado.length})
           </h3>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -363,7 +338,7 @@ const AtualizacaoMassiva: React.FC = () => {
                 const itemCompra = getItemCompra(item.id);
                 const categoria = inventoryCategories.find(cat => cat.id === item.categoryId);
                 const novoEstoque = item.currentStock + (itemCompra.selecionado ? itemCompra.quantidadeComprada : 0);
-                
+
                 return (
                   <tr key={item.id} className={itemCompra.selecionado ? 'bg-blue-50' : ''}>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -374,25 +349,24 @@ const AtualizacaoMassiva: React.FC = () => {
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
                     </td>
-                    
+
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{item.name}</div>
                         <div className="text-sm text-gray-500">{categoria?.name}</div>
                       </div>
                     </td>
-                    
+
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`text-sm font-medium ${
-                        item.currentStock <= item.minStock ? 'text-red-600' : 'text-gray-900'
-                      }`}>
+                      <span className={`text-sm font-medium ${item.currentStock <= item.minStock ? 'text-red-600' : 'text-gray-900'
+                        }`}>
                         {item.currentStock} {item.unit}
                       </span>
                       {item.currentStock <= item.minStock && (
                         <div className="text-xs text-red-500">Estoque baixo</div>
                       )}
                     </td>
-                    
+
                     <td className="px-6 py-4 whitespace-nowrap">
                       {itemCompra.selecionado ? (
                         <div className="flex items-center space-x-2">
@@ -421,7 +395,7 @@ const AtualizacaoMassiva: React.FC = () => {
                         <span className="text-gray-400">-</span>
                       )}
                     </td>
-                    
+
                     <td className="px-6 py-4 whitespace-nowrap">
                       {itemCompra.selecionado ? (
                         <div className="flex items-center space-x-2">
@@ -440,7 +414,7 @@ const AtualizacaoMassiva: React.FC = () => {
                         <span className="text-gray-400">-</span>
                       )}
                     </td>
-                    
+
                     <td className="px-6 py-4 whitespace-nowrap">
                       {itemCompra.selecionado ? (
                         <span className="text-sm font-medium text-gray-900">
@@ -450,11 +424,10 @@ const AtualizacaoMassiva: React.FC = () => {
                         <span className="text-gray-400">-</span>
                       )}
                     </td>
-                    
+
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`text-sm font-medium ${
-                        itemCompra.selecionado ? 'text-green-600' : 'text-gray-500'
-                      }`}>
+                      <span className={`text-sm font-medium ${itemCompra.selecionado ? 'text-green-600' : 'text-gray-500'
+                        }`}>
                         {novoEstoque} {item.unit}
                       </span>
                       {itemCompra.selecionado && itemCompra.quantidadeComprada > 0 && (
@@ -469,7 +442,7 @@ const AtualizacaoMassiva: React.FC = () => {
             </tbody>
           </table>
         </div>
-        
+
         {inventarioFiltrado.length === 0 && (
           <div className="text-center py-8">
             <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
