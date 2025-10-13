@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Package, Save, Search, Check, X, Plus, Minus } from 'lucide-react';
+import { ArrowLeft, Package, Save, Search, X, Plus, Minus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
-import { InventoryItem } from '../../types';
 import { supabase } from '../../lib/supabase';
 
 interface ItemCompra {
@@ -16,7 +15,7 @@ interface ItemCompra {
 
 const AtualizacaoMassiva: React.FC = () => {
   const navigate = useNavigate();
-  const { inventory, inventoryCategories, updateInventoryItem } = useApp();
+  const { inventory, inventoryCategories } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoriaFiltro, setCategoriaFiltro] = useState('');
   const [itensCompra, setItensCompra] = useState<Record<string, ItemCompra>>({});
@@ -92,6 +91,9 @@ const AtualizacaoMassiva: React.FC = () => {
     setSalvando(true);
     
     try {
+      console.log('🚀 Iniciando atualização massiva...');
+      console.log('📋 Itens selecionados:', itensSelecionados);
+      
       // Buscar dados atualizados do banco antes de salvar
       const { data: itensAtuais, error: fetchError } = await supabase
         .from('inventory_items')
@@ -99,17 +101,19 @@ const AtualizacaoMassiva: React.FC = () => {
         .in('id', itensSelecionados.map(i => i.id));
 
       if (fetchError) {
-        console.error('Erro ao buscar itens atuais:', fetchError);
+        console.error('❌ Erro ao buscar itens atuais:', fetchError);
         alert('Erro ao buscar dados atualizados. Tente novamente.');
         setSalvando(false);
         return;
       }
 
+      console.log('✅ Itens do banco:', itensAtuais);
+
       const promises = itensSelecionados.map(async (itemCompra) => {
         // Usar dados do banco, não do estado local
         const itemAtual = itensAtuais?.find(i => i.id === itemCompra.id);
         if (!itemAtual) {
-          console.error('Item não encontrado no banco:', itemCompra.id);
+          console.error('❌ Item não encontrado no banco:', itemCompra.id);
           return;
         }
 
@@ -120,33 +124,62 @@ const AtualizacaoMassiva: React.FC = () => {
         console.log(`📦 Atualizando ${itemAtual.name}:`, {
           estoqueAtual: estoqueAtualDoBanco,
           quantidadeComprada: itemCompra.quantidadeComprada,
-          novoEstoque: novoEstoque
+          novoEstoque: novoEstoque,
+          formula: `${estoqueAtualDoBanco} + ${itemCompra.quantidadeComprada} = ${novoEstoque}`
         });
 
-        const itemAtualizado: InventoryItem = {
-          id: itemAtual.id,
-          name: itemAtual.name,
-          categoryId: itemAtual.category_id || undefined,
-          currentStock: novoEstoque,
-          minStock: itemAtual.min_stock,
-          unit: itemAtual.unit as InventoryItem['unit'],
-          lastUpdated: new Date(),
-          supplier: itemAtual.supplier || undefined,
-          cost: novoCusto || 0,
-          availableForSale: itemAtual.available_for_sale || false,
-          image_url: itemAtual.image_url || undefined,
-          salePrice: itemAtual.sale_price || undefined,
-          marginPercentage: itemAtual.margin_percentage || undefined,
-          pricingMethod: itemAtual.pricing_method || 'margin'
-        };
+        // Atualizar diretamente no banco para evitar duplicação de cálculo
+        const { error: updateError } = await supabase
+          .from('inventory_items')
+          .update({
+            current_stock: novoEstoque,
+            cost: novoCusto,
+            last_updated: new Date().toISOString()
+          })
+          .eq('id', itemAtual.id);
 
-        await updateInventoryItem(itemAtualizado);
+        if (updateError) {
+          console.error(`❌ Erro ao atualizar ${itemAtual.name}:`, updateError);
+          throw updateError;
+        }
+
+        console.log(`✅ ${itemAtual.name} atualizado com sucesso!`);
       });
 
       await Promise.all(promises);
+
+      // Registrar movimentações de estoque
+      console.log('📝 Registrando movimentações de estoque...');
+      for (const itemCompra of itensSelecionados) {
+        const itemAtual = itensAtuais?.find(i => i.id === itemCompra.id);
+        if (!itemAtual) continue;
+
+        try {
+          const { error: movementError } = await supabase.rpc('register_inventory_movement', {
+            p_inventory_item_id: itemCompra.id,
+            p_movement_type: 'entrada_compra',
+            p_quantity: itemCompra.quantidadeComprada,
+            p_unit_cost: itemCompra.valorUnitario > 0 ? itemCompra.valorUnitario : (itemAtual.cost || 0),
+            p_notes: `Atualização massiva - Compra de ${itemCompra.quantidadeComprada} ${itemAtual.unit}`,
+            p_reference_document: undefined,
+            p_created_by: undefined
+          });
+
+          if (movementError) {
+            console.error('⚠️ Erro ao registrar movimentação:', movementError);
+          } else {
+            console.log(`✅ Movimentação registrada para ${itemAtual.name}`);
+          }
+        } catch (error) {
+          console.error('⚠️ Erro ao registrar movimentação:', error);
+        }
+      }
       
       // Limpar seleções após salvar
       setItensCompra({});
+      
+      // Recarregar inventário para refletir as mudanças
+      window.location.reload();
       
       alert(`${itensSelecionados.length} itens atualizados com sucesso!`);
     } catch (error) {
