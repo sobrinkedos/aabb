@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Configurar Riltons como Primeiro Usuário</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+        .step {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .step h3 {
+            color: #495057;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        .status.pending { background: #fff3cd; color: #856404; }
+        .status.running { background: #d1ecf1; color: #0c5460; }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            border-left: 4px solid;
+        }
+        .message.info { background: #e3f2fd; border-color: #2196f3; color: #1565c0; }
+        .message.success { background: #e8f5e8; border-color: #4caf50; color: #2e7d32; }
+        .message.warning { background: #fff3e0; border-color: #ff9800; color: #f57c00; }
+        .message.error { background: #ffebee; border-color: #f44336; color: #c62828; }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin: 10px 5px;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #28a745, #20c997);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #dee2e6;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+        .data-table td {
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Configurar Riltons como Primeiro Usuário</h1>
+        
+        <div class="message info">
+            <strong>📋 Este script irá:</strong>
+            1. Verificar dados atuais do usuário riltons@gmail.com
+            2. Configurá-lo como primeiro usuário (is_primeiro_usuario = true)
+            3. Ativar triggers automáticos para criar:
+               • public.configuracoes_empresa (5 categorias)
+               • public.permissoes_usuario (10+ módulos)
+               • public.logs_auditoria (registro da criação)
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="step">
+            <h3>🔧 Configuração do Supabase</h3>
+            <div>
+                <label>URL do Supabase:</label>
+                <input type="url" id="supabaseUrl" value="https://egfkflqhqfqagwzxppdo.supabase.co" style="width: 100%; padding: 8px; margin: 5px 0;">
+            </div>
+            <div>
+                <label>Service Role Key:</label>
+                <input type="password" id="supabaseKey" placeholder="Cole sua service role key aqui..." style="width: 100%; padding: 8px; margin: 5px 0;">
+            </div>
+            <button onclick="testConnection()">🔗 Testar Conexão</button>
+            <span id="connectionStatus" class="status pending">Aguardando teste</span>
+        </div>
+        
+        <div class="step">
+            <h3>📊 Status Atual</h3>
+            <button onclick="checkCurrentStatus()">🔍 Verificar Status Atual</button>
+            <div id="currentStatusResult"></div>
+        </div>
+        
+        <div class="step">
+            <h3>🚀 Executar Configuração</h3>
+            <button onclick="executeConfiguration()" id="executeBtn" disabled>🎯 Configurar como Primeiro Usuário</button>
+            <div id="executionResult"></div>
+        </div>
+        
+        <div class="step">
+            <h3>✅ Verificação Final</h3>
+            <button onclick="verifyResults()">📋 Verificar Resultados</button>
+            <div id="verificationResult"></div>
+        </div>
+        
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        let supabase = null;
+        let currentStep = 0;
+        const totalSteps = 7;
+        
+        function updateProgress(step) {
+            currentStep = step;
+            const percentage = (step / totalSteps) * 100;
+            document.getElementById('progressFill').style.width = `${percentage}%`;
+        }
+        
+        function addMessage(text, type = 'info') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = `[${new Date().toLocaleTimeString()}] ${text}`;
+            messagesDiv.appendChild(messageDiv);
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        async function testConnection() {
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('supabaseKey').value;
+            const statusSpan = document.getElementById('connectionStatus');
+            
+            if (!url || !key) {
+                statusSpan.className = 'status error';
+                statusSpan.textContent = 'URL e chave são obrigatórios';
+                return;
+            }
+            
+            try {
+                statusSpan.className = 'status running';
+                statusSpan.textContent = 'Testando...';
+                
+                supabase = window.supabase.createClient(url, key);
+                
+                // Teste básico
+                const { data, error } = await supabase
+                    .from('empresas')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) throw error;
+                
+                statusSpan.className = 'status success';
+                statusSpan.textContent = 'Conectado com sucesso!';
+                document.getElementById('executeBtn').disabled = false;
+                addMessage('🎉 Conexão com Supabase estabelecida!', 'success');
+                updateProgress(1);
+                
+            } catch (error) {
+                statusSpan.className = 'status error';
+                statusSpan.textContent = `Erro: ${error.message}`;
+                addMessage(`❌ Erro na conexão: ${error.message}`, 'error');
+            }
+        }
+        
+        async function checkCurrentStatus() {
+            if (!supabase) {
+                addMessage('❌ Conecte-se ao Supabase primeiro!', 'error');
+                return;
+            }
+            
+            try {
+                addMessage('🔍 Verificando status atual do usuário riltons@gmail.com...', 'info');
+                updateProgress(2);
+                
+                // Verificar se existe no auth.users
+                const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+                const riltonUser = authUsers?.users?.find(u => u.email === 'riltons@gmail.com');
+                
+                const resultDiv = document.getElementById('currentStatusResult');
+                let html = '<h4>📊 Status Atual:</h4>';
+                
+                if (riltonUser) {
+                    html += `<div class="message success">✅ Usuário encontrado no auth.users - ID: ${riltonUser.id}</div>`;
+                    
+                    // Verificar usuarios_empresa
+                    const { data: usuariosEmpresa, error: ueError } = await supabase
+                        .from('usuarios_empresa')
+                        .select('*')
+                        .eq('user_id', riltonUser.id);
+                    
+                    if (usuariosEmpresa && usuariosEmpresa.length > 0) {
+                        const usuario = usuariosEmpresa[0];
+                        html += `<div class="message info">📋 Dados em usuarios_empresa:
+- Nome: ${usuario.nome_completo}
+- Email: ${usuario.email}
+- Papel: ${usuario.papel}
+- Primeiro usuário: ${usuario.is_primeiro_usuario ? 'SIM' : 'NÃO'}
+- Status: ${usuario.status}</div>`;
+                        
+                        // Verificar configurações
+                        const { data: configs } = await supabase
+                            .from('configuracoes_empresa')
+                            .select('*')
+                            .eq('empresa_id', usuario.empresa_id);
+                        
+                        html += `<div class="message info">⚙️ Configurações da empresa: ${configs?.length || 0} registros</div>`;
+                        
+                        // Verificar permissões
+                        const { data: perms } = await supabase
+                            .from('permissoes_usuario')
+                            .select('*')
+                            .eq('usuario_empresa_id', usuario.id);
+                        
+                        html += `<div class="message info">🔐 Permissões do usuário: ${perms?.length || 0} registros</div>`;
+                        
+                    } else {
+                        html += `<div class="message warning">⚠️ Usuário NÃO encontrado em usuarios_empresa</div>`;
+                    }
+                    
+                } else {
+                    html += `<div class="message error">❌ Usuário NÃO encontrado no auth.users</div>`;
+                }
+                
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                addMessage(`❌ Erro ao verificar status: ${error.message}`, 'error');
+            }
+        }
+        
+        async function executeConfiguration() {
+            if (!supabase) {
+                addMessage('❌ Conecte-se ao Supabase primeiro!', 'error');
+                return;
+            }
+            
+            try {
+                addMessage('🚀 Iniciando configuração do primeiro usuário...', 'info');
+                updateProgress(3);
+                
+                const resultDiv = document.getElementById('executionResult');
+                let html = '<h4>🔄 Executando configuração:</h4>';
+                
+                // Passo 1: Verificar/criar empresa
+                addMessage('📊 Verificando empresa...', 'info');
+                let { data: empresas, error: empresaError } = await supabase
+                    .from('empresas')
+                    .select('*')
+                    .limit(1);
+                
+                let empresaId;
+                if (!empresas || empresas.length === 0) {
+                    addMessage('🏢 Criando empresa AABB Garanhuns...', 'info');
+                    const { data: novaEmpresa, error: criarEmpresaError } = await supabase
+                        .from('empresas')
+                        .insert({
+                            nome: 'AABB Garanhuns',
+                            cnpj: '12.345.678/0001-90',
+                            email_admin: 'riltons@gmail.com',
+                            telefone: '(87) 99999-9999',
+                            plano: 'premium',
+                            status: 'ativo',
+                            configuracoes: { tema: 'claro', primeira_configuracao: true }
+                        })
+                        .select()
+                        .single();
+                    
+                    if (criarEmpresaError) throw criarEmpresaError;
+                    empresaId = novaEmpresa.id;
+                    html += `<div class="message success">✅ Empresa criada - ID: ${empresaId}</div>`;
+                } else {
+                    empresaId = empresas[0].id;
+                    html += `<div class="message info">ℹ️ Empresa existente - ID: ${empresaId}</div>`;
+                }
+                
+                updateProgress(4);
+                
+                // Passo 2: Verificar usuário auth
+                addMessage('👤 Verificando usuário no auth...', 'info');
+                const { data: authUsers } = await supabase.auth.admin.listUsers();
+                const riltonUser = authUsers?.users?.find(u => u.email === 'riltons@gmail.com');
+                
+                if (!riltonUser) {
+                    html += `<div class="message error">❌ Usuário riltons@gmail.com não encontrado no auth.users. Crie primeiro!</div>`;
+                    resultDiv.innerHTML = html;
+                    return;
+                }
+                
+                html += `<div class="message success">✅ Usuário encontrado no auth - ID: ${riltonUser.id}</div>`;
+                updateProgress(5);
+                
+                // Passo 3: Limpar dados existentes
+                addMessage('🧹 Limpando dados existentes...', 'info');
+                
+                // Remover configurações
+                await supabase
+                    .from('configuracoes_empresa')
+                    .delete()
+                    .eq('empresa_id', empresaId);
+                
+                // Remover usuarios_empresa existente
+                const { data: usuarioExistente } = await supabase
+                    .from('usuarios_empresa')
+                    .select('id')
+                    .eq('user_id', riltonUser.id)
+                    .eq('empresa_id', empresaId)
+                    .single();
+                
+                if (usuarioExistente) {
+                    await supabase
+                        .from('permissoes_usuario')
+                        .delete()
+                        .eq('usuario_empresa_id', usuarioExistente.id);
+                    
+                    await supabase
+                        .from('usuarios_empresa')
+                        .delete()
+                        .eq('id', usuarioExistente.id);
+                }
+                
+                await supabase
+                    .from('logs_auditoria')
+                    .delete()
+                    .eq('empresa_id', empresaId)
+                    .eq('usuario_id', riltonUser.id);
+                
+                html += `<div class="message info">🗑️ Dados existentes limpos</div>`;
+                updateProgress(6);
+                
+                // Passo 4: Criar como primeiro usuário (ativa triggers)
+                addMessage('🎯 Criando registro como primeiro usuário (ativando triggers)...', 'info');
+                
+                const { data: novoUsuario, error: criarUsuarioError } = await supabase
+                    .from('usuarios_empresa')
+                    .insert({
+                        user_id: riltonUser.id,
+                        empresa_id: empresaId,
+                        nome_completo: 'Rilton Silva',
+                        email: 'riltons@gmail.com',
+                        telefone: '(87) 99999-9999',
+                        cargo: 'Diretor Geral',
+                        tipo_usuario: 'administrador',
+                        papel: 'SUPER_ADMIN',
+                        is_primeiro_usuario: true, // 🔥 ATIVA TRIGGERS
+                        status: 'ativo',
+                        senha_provisoria: false
+                    })
+                    .select()
+                    .single();
+                
+                if (criarUsuarioError) throw criarUsuarioError;
+                
+                html += `<div class="message success">🎉 PRIMEIRO USUÁRIO CRIADO - ID: ${novoUsuario.id}</div>`;
+                html += `<div class="message success">🚀 Triggers automáticos foram ativados!</div>`;
+                
+                updateProgress(7);
+                resultDiv.innerHTML = html;
+                
+                addMessage('✅ Configuração concluída com sucesso!', 'success');
+                
+                // Auto-verificar resultados após 2 segundos
+                setTimeout(() => {
+                    verifyResults();
+                }, 2000);
+                
+            } catch (error) {
+                addMessage(`❌ Erro na configuração: ${error.message}`, 'error');
+                console.error('Erro detalhado:', error);
+            }
+        }
+        
+        async function verifyResults() {
+            if (!supabase) {
+                addMessage('❌ Conecte-se ao Supabase primeiro!', 'error');
+                return;
+            }
+            
+            try {
+                addMessage('📋 Verificando resultados dos triggers automáticos...', 'info');
+                
+                const resultDiv = document.getElementById('verificationResult');
+                let html = '<h4>📊 Resultados da Configuração:</h4>';
+                
+                // Buscar dados do usuário
+                const { data: authUsers } = await supabase.auth.admin.listUsers();
+                const riltonUser = authUsers?.users?.find(u => u.email === 'riltons@gmail.com');
+                
+                if (!riltonUser) {
+                    html += `<div class="message error">❌ Usuário não encontrado</div>`;
+                    resultDiv.innerHTML = html;
+                    return;
+                }
+                
+                const { data: usuariosEmpresa } = await supabase
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .eq('user_id', riltonUser.id);
+                
+                if (!usuariosEmpresa || usuariosEmpresa.length === 0) {
+                    html += `<div class="message error">❌ Usuário não encontrado em usuarios_empresa</div>`;
+                    resultDiv.innerHTML = html;
+                    return;
+                }
+                
+                const usuario = usuariosEmpresa[0];
+                
+                // Verificar status do usuário
+                html += `<div class="message ${usuario.is_primeiro_usuario ? 'success' : 'error'}">
+👤 Status do Usuário:
+- Nome: ${usuario.nome_completo}
+- Papel: ${usuario.papel}
+- Primeiro usuário: ${usuario.is_primeiro_usuario ? '✅ SIM' : '❌ NÃO'}
+- Status: ${usuario.status}
+</div>`;
+                
+                // Verificar configurações da empresa
+                const { data: configs } = await supabase
+                    .from('configuracoes_empresa')
+                    .select('*')
+                    .eq('empresa_id', usuario.empresa_id);
+                
+                html += `<div class="message ${configs && configs.length >= 5 ? 'success' : 'warning'}">
+⚙️ Configurações da Empresa: ${configs?.length || 0} registros
+${configs && configs.length >= 5 ? '✅ Todas as categorias criadas' : '⚠️ Algumas categorias podem estar faltando'}
+</div>`;
+                
+                if (configs && configs.length > 0) {
+                    html += '<table class="data-table"><tr><th>Categoria</th><th>Configurações</th></tr>';
+                    configs.forEach(config => {
+                        html += `<tr><td>${config.categoria}</td><td>${JSON.stringify(config.configuracoes, null, 2)}</td></tr>`;
+                    });
+                    html += '</table>';
+                }
+                
+                // Verificar permissões
+                const { data: perms } = await supabase
+                    .from('permissoes_usuario')
+                    .select('*')
+                    .eq('usuario_empresa_id', usuario.id);
+                
+                html += `<div class="message ${perms && perms.length >= 10 ? 'success' : 'warning'}">
+🔐 Permissões do Usuário: ${perms?.length || 0} registros
+${perms && perms.length >= 10 ? '✅ Todas as permissões criadas' : '⚠️ Algumas permissões podem estar faltando'}
+</div>`;
+                
+                if (perms && perms.length > 0) {
+                    html += '<table class="data-table"><tr><th>Módulo</th><th>Permissões</th></tr>';
+                    perms.forEach(perm => {
+                        html += `<tr><td>${perm.modulo}</td><td>${JSON.stringify(perm.permissoes, null, 2)}</td></tr>`;
+                    });
+                    html += '</table>';
+                }
+                
+                // Verificar logs de auditoria
+                const { data: logs } = await supabase
+                    .from('logs_auditoria')
+                    .select('*')
+                    .eq('empresa_id', usuario.empresa_id)
+                    .eq('usuario_id', riltonUser.id)
+                    .eq('acao', 'PRIMEIRO_USUARIO_CRIADO');
+                
+                html += `<div class="message ${logs && logs.length > 0 ? 'success' : 'warning'}">
+📝 Logs de Auditoria: ${logs?.length || 0} registros
+${logs && logs.length > 0 ? '✅ Log de criação registrado' : '⚠️ Log de criação não encontrado'}
+</div>`;
+                
+                if (logs && logs.length > 0) {
+                    html += '<table class="data-table"><tr><th>Ação</th><th>Recurso</th><th>Detalhes</th><th>Data</th></tr>';
+                    logs.forEach(log => {
+                        html += `<tr>
+                            <td>${log.acao}</td>
+                            <td>${log.recurso}</td>
+                            <td>${JSON.stringify(log.detalhes, null, 2)}</td>
+                            <td>${new Date(log.created_at).toLocaleString()}</td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                }
+                
+                // Resumo final
+                const configsOk = configs && configs.length >= 5;
+                const permsOk = perms && perms.length >= 10;
+                const logsOk = logs && logs.length > 0;
+                const isFirstUser = usuario.is_primeiro_usuario;
+                
+                if (configsOk && permsOk && logsOk && isFirstUser) {
+                    html += `<div class="message success">
+🎉 === CONFIGURAÇÃO CONCLUÍDA COM SUCESSO! ===
+✅ riltons@gmail.com configurado como primeiro usuário
+✅ ${configs.length} configurações da empresa criadas automaticamente
+✅ ${perms.length} permissões completas atribuídas automaticamente
+✅ ${logs.length} log(s) de auditoria registrado(s) automaticamente
+
+🚀 Todos os triggers automáticos funcionaram corretamente!
+</div>`;
+                } else {
+                    html += `<div class="message warning">
+⚠️ Configuração parcialmente concluída
+- Primeiro usuário: ${isFirstUser ? '✅' : '❌'}
+- Configurações: ${configsOk ? '✅' : '❌'} (${configs?.length || 0}/5)
+- Permissões: ${permsOk ? '✅' : '❌'} (${perms?.length || 0}/10+)
+- Logs: ${logsOk ? '✅' : '❌'} (${logs?.length || 0}/1)
+
+Verifique se os triggers estão funcionando corretamente.
+</div>`;
+                }
+                
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                addMessage(`❌ Erro na verificação: ${error.message}`, 'error');
+                console.error('Erro detalhado:', error);
+            }
+        }
+        
+        // Auto-focus no campo da chave
+        document.getElementById('supabaseKey').focus();
+    </script>
+</body>
+</html>

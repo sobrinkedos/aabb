@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Usuário Antonio no Auth</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .info-card {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border: 1px solid #2196f3;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .info-card h3 {
+            color: #1976d2;
+            margin-top: 0;
+        }
+        .error-card {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border: 1px solid #f44336;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            color: #c62828;
+        }
+        .success-card {
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+            border: 1px solid #4caf50;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .credentials-card {
+            background: linear-gradient(135deg, #fff, #f5f5f5);
+            border: 3px solid #ff9800;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+        button {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            padding: 18px 35px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            width: 100%;
+            margin: 25px 0;
+            transition: all 0.3s ease;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: linear-gradient(135deg, #cccccc, #999999);
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Criar Usuário Antonio no Supabase Auth</h1>
+        
+        <div class="info-card">
+            <h3>📋 Situação Atual</h3>
+            <ul>
+                <li><strong>Problema:</strong> Antonio não consegue fazer login</li>
+                <li><strong>Causa:</strong> Usuário não existe no Supabase Auth</li>
+                <li><strong>Email tentado:</strong> antonio@teste.com</li>
+                <li><strong>Senha tentada:</strong> X5rm2AV9</li>
+                <li><strong>Status na usuarios_empresa:</strong> ✅ Existe</li>
+                <li><strong>Status no Supabase Auth:</strong> ❌ Não existe</li>
+            </ul>
+        </div>
+
+        <div class="info-card">
+            <h3>🔧 O que será feito</h3>
+            <ol>
+                <li>Criar usuário no Supabase Auth com email antonio@teste.com</li>
+                <li>Usar a senha X5rm2AV9 que você tentou</li>
+                <li>Confirmar email automaticamente</li>
+                <li>Criar perfil na tabela profiles</li>
+                <li>Atualizar user_id na tabela usuarios_empresa</li>
+                <li>Atualizar employee_id na tabela bar_employees</li>
+            </ol>
+        </div>
+
+        <button id="createBtn" onclick="createAntonioAuthUser()">
+            🚀 Criar Usuário Antonio no Auth
+        </button>
+
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+        function addMessage(message, type = 'info') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            
+            let className = 'info-card';
+            if (type === 'success') className = 'success-card';
+            if (type === 'error') className = 'error-card';
+            
+            messageDiv.className = className;
+            messageDiv.innerHTML = message;
+            messagesDiv.appendChild(messageDiv);
+            
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+        }
+
+        async function createAntonioAuthUser() {
+            const btn = document.getElementById('createBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Criando usuário...';
+            
+            clearMessages();
+            
+            const email = 'antonio@teste.com';
+            const password = 'X5rm2AV9'; // Usar a senha que foi tentada
+            const usuarioEmpresaId = '8c02451f-17b9-43ea-a824-751b6028a182';
+            const barEmployeeId = '73f5d604-6cd1-4b79-9606-130558d0fe26';
+            
+            let authUserId = null;
+
+            try {
+                // 1. Criar usuário no Supabase Auth
+                addMessage('🔐 Criando usuário no Supabase Auth...', 'info');
+                
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            name: 'Antonio',
+                            role: 'funcionario',
+                            cargo: 'Garçom',
+                            temporary_password: true,
+                            created_by: 'system_fix'
+                        }
+                    }
+                });
+
+                if (authError) {
+                    throw new Error(`Erro ao criar usuário no Auth: ${authError.message}`);
+                }
+
+                if (!authData.user) {
+                    throw new Error('Usuário não foi criado no Auth');
+                }
+
+                authUserId = authData.user.id;
+                addMessage(`✅ Usuário criado no Auth: ${authUserId}`, 'success');
+
+                // 2. Aguardar processamento
+                addMessage('⏳ Aguardando processamento...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // 3. Criar perfil
+                addMessage('👤 Criando perfil do usuário...', 'info');
+                
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .insert([{
+                        id: authUserId,
+                        name: 'Antonio',
+                        role: 'employee',
+                        avatar_url: 'https://api.dicebear.com/8.x/initials/svg?seed=Antonio',
+                        updated_at: new Date().toISOString()
+                    }]);
+
+                if (profileError) {
+                    addMessage(`⚠️ Aviso - Erro ao criar perfil: ${profileError.message}`, 'error');
+                } else {
+                    addMessage('✅ Perfil criado com sucesso', 'success');
+                }
+
+                // 4. Atualizar user_id na tabela usuarios_empresa
+                addMessage('🏢 Atualizando registro na tabela usuarios_empresa...', 'info');
+                
+                const { error: updateUsuarioError } = await supabase
+                    .from('usuarios_empresa')
+                    .update({ 
+                        user_id: authUserId,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', usuarioEmpresaId);
+
+                if (updateUsuarioError) {
+                    addMessage(`⚠️ Aviso - Erro ao atualizar usuarios_empresa: ${updateUsuarioError.message}`, 'error');
+                } else {
+                    addMessage('✅ Registro usuarios_empresa atualizado', 'success');
+                }
+
+                // 5. Atualizar employee_id na tabela bar_employees
+                addMessage('👔 Atualizando registro na tabela bar_employees...', 'info');
+                
+                const { error: updateBarError } = await supabase
+                    .from('bar_employees')
+                    .update({ 
+                        employee_id: authUserId,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', barEmployeeId);
+
+                if (updateBarError) {
+                    addMessage(`⚠️ Aviso - Erro ao atualizar bar_employees: ${updateBarError.message}`, 'error');
+                } else {
+                    addMessage('✅ Registro bar_employees atualizado', 'success');
+                }
+
+                // 6. Resultado final
+                addMessage(`
+                    <h3>🎉 Usuário Antonio criado com sucesso no Auth!</h3>
+                    
+                    <div class="credentials-card">
+                        <h4 style="color: #f57c00; margin-top: 0;">🔑 Credenciais de Login:</h4>
+                        <div><strong>Email:</strong> ${email}</div>
+                        <div><strong>Senha:</strong> ${password}</div>
+                        <div><strong>Deve Alterar Senha:</strong> Sim (primeiro login)</div>
+                        <div><strong>User ID:</strong> ${authUserId}</div>
+                    </div>
+                    
+                    <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                        <h4 style="color: #2e7d32; margin-top: 0;">✅ Agora Antonio pode fazer login!</h4>
+                        <ul style="margin: 10px 0;">
+                            <li>Use exatamente: <strong>antonio@teste.com</strong></li>
+                            <li>Com a senha: <strong>X5rm2AV9</strong></li>
+                            <li>No primeiro login, será obrigado a alterar a senha</li>
+                            <li>Terá acesso aos módulos configurados (Dashboard, Atendimento Bar, Clientes)</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: #f0f8ff; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                        <h4 style="color: #1976d2; margin-top: 0;">📝 Teste o Login:</h4>
+                        <ol style="margin: 10px 0;">
+                            <li>Volte para a tela de login</li>
+                            <li>Digite: antonio@teste.com</li>
+                            <li>Digite: X5rm2AV9</li>
+                            <li>Clique em "Entrar"</li>
+                            <li>Sistema deve solicitar alteração de senha</li>
+                            <li>Após alterar, Antonio terá acesso completo</li>
+                        </ol>
+                    </div>
+                `, 'success');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                
+                addMessage(`
+                    <h3>❌ Erro ao criar usuário Antonio</h3>
+                    <p><strong>Erro:</strong> ${error.message}</p>
+                    
+                    <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                        <h4 style="color: #f57c00; margin-top: 0;">💡 Possíveis soluções:</h4>
+                        <ul>
+                            <li>Verifique se o Supabase está configurado corretamente</li>
+                            <li>Confirme se as tabelas existem</li>
+                            <li>Verifique as permissões RLS</li>
+                            <li>Tente novamente em alguns minutos</li>
+                            <li>Se o erro persistir, pode ser necessário usar a service role key</li>
+                        </ul>
+                    </div>
+                `, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🚀 Criar Usuário Antonio no Auth';
+            }
+        }
+    </script>
+</body>
+</html>

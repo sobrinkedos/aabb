@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔐 Criar Funcionário para Teste Login</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            width: 100%;
+            transition: background 0.3s;
+        }
+        
+        .button:hover {
+            background: #45a049;
+        }
+        
+        .button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .credentials {
+            background: #fff3e0;
+            border: 2px solid #ff9800;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            text-align: center;
+        }
+        
+        .success {
+            background: #e8f5e8;
+            border: 1px solid #4CAF50;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        
+        .error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        
+        .info {
+            background: #e3f2fd;
+            border: 1px solid #2196F3;
+            color: #1976D2;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Criar Funcionário Teste</h1>
+            <p>Com senha genérica "123456"</p>
+        </div>
+        
+        <div class="content">
+            <div class="info">
+                <h3>🎯 Objetivo</h3>
+                <p>Criar um funcionário específico para testar o login com a senha genérica "123456"</p>
+            </div>
+            
+            <button class="button" onclick="criarFuncionarioTeste()" id="btnCriar">
+                🚀 Criar Funcionário: funcionario.teste@123456.com
+            </button>
+            
+            <div id="messages"></div>
+            
+            <div id="resultados" style="display: none;">
+                <div class="credentials">
+                    <h3>✅ FUNCIONÁRIO CRIADO!</h3>
+                    <div style="margin: 20px 0;">
+                        <strong>📧 Email:</strong> funcionario.teste@123456.com<br>
+                        <strong>🔑 Senha:</strong> 123456
+                    </div>
+                    <div style="font-size: 14px; color: #666;">
+                        Use estas credenciais para fazer login no sistema principal
+                    </div>
+                </div>
+                
+                <div class="info">
+                    <h4>📱 Como testar:</h4>
+                    <ol>
+                        <li>Vá para <strong>localhost:5174/login</strong></li>
+                        <li>Digite o email: <strong>funcionario.teste@123456.com</strong></li>
+                        <li>Digite a senha: <strong>123456</strong></li>
+                        <li>Clique em "Entrar"</li>
+                        <li>Se der certo, será redirecionado para alterar senha</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        
+        const { createClient } = supabase;
+        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+        
+        function addMessage(message, type = 'info') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type;
+            messageDiv.innerHTML = message;
+            messagesDiv.appendChild(messageDiv);
+        }
+        
+        async function criarFuncionarioTeste() {
+            const btn = document.getElementById('btnCriar');
+            btn.disabled = true;
+            btn.textContent = 'Criando funcionário...';
+            
+            const email = 'funcionario.teste@123456.com';
+            const senha = '123456';
+            const empresaId = '00000000-0000-0000-0000-000000000001';
+            
+            try {
+                // 1. Verificar se já existe
+                addMessage('🔍 Verificando se funcionário já existe...', 'info');
+                
+                const { data: existing } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .select('id')
+                    .eq('email', email)
+                    .single();
+                
+                if (existing) {
+                    addMessage('✅ Funcionário já existe! Pode usar as credenciais para teste.', 'success');
+                    document.getElementById('resultados').style.display = 'block';
+                    btn.textContent = '✅ Funcionário já existe';
+                    return;
+                }
+                
+                // 2. Criar no Auth
+                addMessage('👤 Criando usuário no Supabase Auth...', 'info');
+                
+                const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                    email: email,
+                    password: senha,
+                    options: {
+                        data: {
+                            name: 'Funcionário Teste',
+                            role: 'funcionario'
+                        }
+                    }
+                });
+                
+                if (authError) {
+                    throw new Error(`Auth: ${authError.message}`);
+                }
+                
+                const authUserId = authData.user?.id;
+                addMessage(`✅ Usuário Auth criado: ${authUserId}`, 'success');
+                
+                // 3. Criar perfil
+                addMessage('📝 Criando perfil...', 'info');
+                
+                const { error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .insert([{
+                        id: authUserId,
+                        name: 'Funcionário Teste',
+                        role: 'employee'
+                    }]);
+                
+                if (profileError) {
+                    addMessage(`⚠️ Perfil: ${profileError.message}`, 'error');
+                }
+                
+                // 4. Criar na usuarios_empresa
+                addMessage('🏢 Criando vínculo com empresa...', 'info');
+                
+                const { data: usuarioEmpresa, error: empresaError } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .insert([{
+                        user_id: authUserId,
+                        empresa_id: empresaId,
+                        nome_completo: 'Funcionário Teste',
+                        email: email,
+                        telefone: '(87) 99999-9999',
+                        cargo: 'Testador',
+                        tipo_usuario: 'funcionario',
+                        status: 'ativo',
+                        senha_provisoria: true, // IMPORTANTE!
+                        ativo: true,
+                        tem_acesso_sistema: true,
+                        papel: 'USER'
+                    }])
+                    .select()
+                    .single();
+                
+                if (empresaError) {
+                    throw new Error(`Empresa: ${empresaError.message}`);
+                }
+                
+                addMessage('✅ Funcionário criado na empresa!', 'success');
+                
+                // 5. Criar permissões básicas
+                addMessage('🔐 Configurando permissões...', 'info');
+                
+                const { error: permError } = await supabaseClient
+                    .from('permissoes_usuario')
+                    .insert([{
+                        usuario_empresa_id: usuarioEmpresa.id,
+                        modulo: 'dashboard',
+                        permissoes: { visualizar: true }
+                    }]);
+                
+                if (permError) {
+                    addMessage(`⚠️ Permissões: ${permError.message}`, 'error');
+                }
+                
+                // SUCESSO!
+                addMessage('🎉 Funcionário criado com sucesso!', 'success');
+                document.getElementById('resultados').style.display = 'block';
+                btn.textContent = '✅ Funcionário criado!';
+                
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+                btn.disabled = false;
+                btn.textContent = '🔄 Tentar novamente';
+            }
+        }
+    </script>
+</body>
+</html>

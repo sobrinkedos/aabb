@@ -1,0 +1,258 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { BarTable, BarTableInsert, BarTableUpdate, TableStatus } from '../types/bar-attendance';
+import { organizeTablesInGrid, DEFAULT_LAYOUT_CONFIG } from '../utils/table-layout';
+import { useAuth } from '../contexts/AuthContextSimple';
+
+export const useBarTables = () => {
+  const { user } = useAuth();
+  const [tables, setTables] = useState<BarTable[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchTables = async () => {
+    try {
+      setLoading(true);
+      console.log('useBarTables - Fetching tables...');
+      
+      // CORREÇÃO: Filtrar por empresa do usuário logado
+      if (!user) {
+        console.log('useBarTables - Usuário não autenticado');
+        setTables([]);
+        return;
+      }
+
+      // Buscar empresa do usuário atual
+      const { data: usuarioEmpresa, error: empresaError } = await supabase
+        .from('usuarios_empresa')
+        .select('empresa_id')
+        .eq('user_id', user.id)
+        .eq('ativo', true)
+        .single();
+
+      if (empresaError || !usuarioEmpresa) {
+        console.error('useBarTables - Erro ao buscar empresa do usuário:', empresaError);
+        setError('Erro: Não foi possível identificar sua empresa');
+        return;
+      }
+
+      const empresaId = usuarioEmpresa.empresa_id;
+      console.log('useBarTables - Carregando mesas para empresa:', empresaId);
+
+      const { data, error } = await supabase
+        .from('bar_tables')
+        .select('*')
+        .eq('empresa_id', empresaId)
+        .order('number');
+
+      console.log('useBarTables - Query result:', { data, error });
+      
+      if (error) throw error;
+      setTables(data || []);
+      console.log('useBarTables - Tables set:', data || []);
+    } catch (err) {
+      console.error('useBarTables - Error:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao carregar mesas');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createTable = async (tableData: Omit<BarTableInsert, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      // CORREÇÃO: Incluir empresa_id do usuário logado
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      // Buscar empresa do usuário atual
+      const { data: usuarioEmpresa, error: empresaError } = await supabase
+        .from('usuarios_empresa')
+        .select('empresa_id')
+        .eq('user_id', user.id)
+        .eq('ativo', true)
+        .single();
+
+      if (empresaError || !usuarioEmpresa) {
+        throw new Error('Erro: Não foi possível identificar sua empresa');
+      }
+
+      const { data, error } = await supabase
+        .from('bar_tables')
+        .insert({
+          ...tableData,
+          empresa_id: usuarioEmpresa.empresa_id, // Incluir empresa_id
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      // Atualizar o estado local
+      setTables(prev => [...prev, data]);
+      return data;
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Erro ao criar mesa');
+    }
+  };
+
+  const updateTable = async (tableId: string, updates: Partial<BarTableUpdate>) => {
+    try {
+      const { data, error } = await supabase
+        .from('bar_tables')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', tableId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      // Atualizar o estado local
+      setTables(prev => prev.map(table => 
+        table.id === tableId ? data : table
+      ));
+      return data;
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Erro ao atualizar mesa');
+    }
+  };
+
+  const deleteTable = async (tableId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bar_tables')
+        .delete()
+        .eq('id', tableId);
+
+      if (error) throw error;
+      
+      // Atualizar o estado local
+      setTables(prev => prev.filter(table => table.id !== tableId));
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Erro ao excluir mesa');
+    }
+  };
+
+  const updateTableStatus = async (tableId: string, status: TableStatus) => {
+    return updateTable(tableId, { status });
+  };
+
+  const updateTablePosition = async (tableId: string, position_x: number, position_y: number) => {
+    try {
+      const { error } = await supabase
+        .from('bar_tables')
+        .update({ position_x, position_y, updated_at: new Date().toISOString() })
+        .eq('id', tableId);
+
+      if (error) throw error;
+      
+      // Atualizar o estado local
+      setTables(prev => prev.map(table => 
+        table.id === tableId ? { ...table, position_x, position_y } : table
+      ));
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Erro ao atualizar posição da mesa');
+    }
+  };
+
+  const getTableById = (tableId: string) => {
+    return tables.find(table => table.id === tableId);
+  };
+
+  const getTableByNumber = (number: string) => {
+    return tables.find(table => table.number === number);
+  };
+
+  const getAvailableTables = () => {
+    return tables.filter(table => table.status === 'available');
+  };
+
+  const getOccupiedTables = () => {
+    return tables.filter(table => table.status === 'occupied');
+  };
+
+  const getTablesByStatus = (status: TableStatus) => {
+    return tables.filter(table => table.status === status);
+  };
+
+  // Função para organizar todas as mesas automaticamente
+  const organizeTablesAutomatically = async (layoutWidth: number = 800, layoutHeight: number = 600) => {
+    console.log('Organizing tables with dimensions:', { layoutWidth, layoutHeight, tablesCount: tables.length });
+    
+    const config = {
+      ...DEFAULT_LAYOUT_CONFIG,
+      layoutWidth: Math.max(layoutWidth - 100, 600), // Margem de segurança
+      layoutHeight: Math.max(layoutHeight - 150, 400) // Espaço para toolbar e legenda
+    };
+    
+    const organizedTables = organizeTablesInGrid(tables, config);
+    
+    const updatePromises = organizedTables.map(({ id, position }) => {
+      console.log(`Updating table ${id} to position:`, position);
+      return updateTablePosition(id, position.x, position.y);
+    });
+
+    try {
+      await Promise.all(updatePromises);
+      console.log('All tables organized successfully');
+    } catch (error) {
+      console.error('Error organizing tables:', error);
+      throw new Error('Erro ao organizar mesas automaticamente');
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchTables();
+    }
+
+    // Configurar real-time subscription
+    const subscription = supabase
+      .channel('bar_tables_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bar_tables' },
+        (payload) => {
+          console.log('Mudança em mesas:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            setTables(prev => [...prev, payload.new as BarTable]);
+          } else if (payload.eventType === 'UPDATE') {
+            setTables(prev => prev.map(table => 
+              table.id === payload.new.id ? payload.new as BarTable : table
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            setTables(prev => prev.filter(table => table.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [user]);
+
+  return {
+    tables,
+    loading,
+    error,
+    refetch: fetchTables,
+    createTable,
+    updateTable,
+    deleteTable,
+    updateTableStatus,
+    updateTablePosition,
+    organizeTablesAutomatically,
+    getTableById,
+    getTableByNumber,
+    getAvailableTables,
+    getOccupiedTables,
+    getTablesByStatus
+  };
+};

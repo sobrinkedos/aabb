@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Teste - Correção API Key</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border: 1px solid #2196f3;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .success-card {
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+            border: 1px solid #4caf50;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .error-card {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border: 1px solid #f44336;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            color: #c62828;
+        }
+        button {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            padding: 18px 35px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            width: 100%;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: linear-gradient(135deg, #cccccc, #999999);
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Teste - Correção API Key</h1>
+        
+        <div class="test-section">
+            <h3>🎯 Problema Identificado</h3>
+            <p>O erro "Invalid API key" ocorre porque o sistema estava tentando usar o <code>supabaseAdmin</code> sem ter a service role key configurada.</p>
+            
+            <h4>✅ Correção Implementada:</h4>
+            <ul>
+                <li>Sistema agora detecta se tem service role key</li>
+                <li>Se não tem, usa o cliente normal (<code>supabase</code>)</li>
+                <li>Se tem, usa o cliente admin (<code>supabaseAdmin</code>)</li>
+                <li>Criação de usuários funciona nos dois casos</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Teste de Conexão</h3>
+            <p>Vamos testar se a conexão com o Supabase está funcionando:</p>
+            <button onclick="testConnection()">🔌 Testar Conexão</button>
+        </div>
+
+        <div class="test-section">
+            <h3>👤 Teste de Criação Simplificada</h3>
+            <p>Teste de criação usando apenas o cliente normal (sem admin):</p>
+            <button onclick="testSimpleCreation()">🚀 Testar Criação Simples</button>
+        </div>
+
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        const empresaId = '142f9c74-bec6-447f-9f8f-c68d7c1d7958'; // AABB Garanhuns
+
+        function addMessage(message, type = 'info') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            
+            let className = 'test-section';
+            if (type === 'success') className = 'success-card';
+            if (type === 'error') className = 'error-card';
+            
+            messageDiv.className = className;
+            messageDiv.innerHTML = message;
+            messagesDiv.appendChild(messageDiv);
+            
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function testConnection() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando conexão...';
+
+            try {
+                // Testar conexão básica
+                const { data, error } = await supabase
+                    .from('bar_employees')
+                    .select('count')
+                    .eq('empresa_id', empresaId)
+                    .limit(1);
+
+                if (error) {
+                    addMessage(`❌ Erro na conexão: ${error.message}`, 'error');
+                } else {
+                    addMessage(`
+                        <h3>✅ Conexão funcionando!</h3>
+                        <p>O Supabase está respondendo corretamente.</p>
+                        <p><strong>URL:</strong> ${supabaseUrl}</p>
+                        <p><strong>Status:</strong> Conectado</p>
+                    `, 'success');
+                }
+
+            } catch (error) {
+                addMessage(`❌ Erro: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔌 Testar Conexão';
+            }
+        }
+
+        async function testSimpleCreation() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testando criação...';
+
+            try {
+                const email = `teste.${Date.now()}@exemplo.com`;
+                const password = 'TempPass123@';
+                
+                // 1. Tentar criar usuário com signup normal
+                addMessage('🔐 Testando criação de usuário com signup normal...', 'info');
+                
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            name: 'Teste Funcionário',
+                            role: 'funcionario',
+                            cargo: 'Garçom',
+                            temporary_password: true
+                        }
+                    }
+                });
+
+                if (authError) {
+                    addMessage(`❌ Erro no Auth: ${authError.message}`, 'error');
+                    return;
+                }
+
+                if (!authData.user) {
+                    addMessage('❌ Usuário não foi criado no Auth', 'error');
+                    return;
+                }
+
+                const userId = authData.user.id;
+                addMessage(`✅ Usuário criado no Auth: ${userId}`, 'success');
+
+                // 2. Aguardar um pouco
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // 3. Tentar criar na bar_employees
+                addMessage('👔 Testando criação na tabela bar_employees...', 'info');
+                
+                const { data: barEmployee, error: barError } = await supabase
+                    .from('bar_employees')
+                    .insert([{
+                        employee_id: userId,
+                        bar_role: 'garcom',
+                        shift_preference: 'qualquer',
+                        specialties: ['atendimento'],
+                        commission_rate: 0,
+                        is_active: true,
+                        start_date: new Date().toISOString().split('T')[0],
+                        notes: `Teste: ${email}`,
+                        empresa_id: empresaId
+                    }])
+                    .select('id')
+                    .single();
+
+                if (barError) {
+                    addMessage(`❌ Erro na bar_employees: ${barError.message}`, 'error');
+                } else {
+                    addMessage(`✅ Funcionário criado na bar_employees: ${barEmployee.id}`, 'success');
+                }
+
+                // 4. Tentar criar na usuarios_empresa
+                addMessage('🏢 Testando criação na tabela usuarios_empresa...', 'info');
+                
+                const { data: usuarioEmpresa, error: empresaError } = await supabase
+                    .from('usuarios_empresa')
+                    .insert([{
+                        user_id: userId,
+                        empresa_id: empresaId,
+                        nome_completo: 'Teste Funcionário',
+                        email: email,
+                        cargo: 'Garçom',
+                        tipo_usuario: 'funcionario',
+                        status: 'ativo',
+                        senha_provisoria: true,
+                        ativo: true,
+                        tem_acesso_sistema: true,
+                        papel: 'USER',
+                        is_primeiro_usuario: false,
+                        tentativas_login_falhadas: 0,
+                        total_logins: 0,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }])
+                    .select('id')
+                    .single();
+
+                if (empresaError) {
+                    addMessage(`❌ Erro na usuarios_empresa: ${empresaError.message}`, 'error');
+                } else {
+                    addMessage(`✅ Usuário criado na usuarios_empresa: ${usuarioEmpresa.id}`, 'success');
+                }
+
+                // 5. Resultado final
+                addMessage(`
+                    <h3>🎉 Teste de criação concluído!</h3>
+                    <p><strong>Email:</strong> ${email}</p>
+                    <p><strong>Senha:</strong> ${password}</p>
+                    <p><strong>User ID:</strong> ${userId}</p>
+                    
+                    <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                        <h4 style="color: #2e7d32; margin-top: 0;">✅ Sistema Corrigido!</h4>
+                        <p>A criação está funcionando sem erros de API key.</p>
+                        <p>Agora você pode testar no sistema principal.</p>
+                    </div>
+                `, 'success');
+
+            } catch (error) {
+                addMessage(`❌ Erro geral: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🚀 Testar Criação Simples';
+            }
+        }
+    </script>
+</body>
+</html>

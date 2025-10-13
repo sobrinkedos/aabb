@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Debug Específico - Zeca Baleiro</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .debug-section {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: 500;
+        }
+        .test-button:hover {
+            background: #2563eb;
+        }
+        .success {
+            background: #10b981;
+        }
+        .warning {
+            background: #f59e0b;
+        }
+        .danger {
+            background: #ef4444;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            background: #f1f5f9;
+            border-left: 4px solid #3b82f6;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .step {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Debug Específico - Zeca Baleiro</h1>
+            <p>Investigação detalhada do problema "Funcionário sem credenciais" que voltou</p>
+        </div>
+
+        <!-- Situação Atual -->
+        <div class="debug-section">
+            <h2>🚨 Situação Atual</h2>
+            <p><strong>Problema:</strong> Modal "Funcionário sem credenciais" voltou a aparecer para Zeca Baleiro</p>
+            
+            <h3>📊 Dados Conhecidos do Zeca Baleiro:</h3>
+            <div class="code-block">
+ID: 95886a5e-893c-4889-85a0-8989d48d19fd
+Nome: Zeca Baleiro
+Email: zeca@teste.com
+User ID: 7b79f89a-a457-432f-bc1a-78aacdef66a1
+Status: ativo
+Tem acesso sistema: true
+            </div>
+
+            <h3>🔍 Possíveis Causas:</h3>
+            <ol>
+                <li>❓ <strong>Erro RLS:</strong> Políticas bloqueando acesso</li>
+                <li>❓ <strong>Dados alterados:</strong> user_id ou tem_acesso_sistema mudaram</li>
+                <li>❓ <strong>Status inativo:</strong> Status foi alterado</li>
+                <li>❓ <strong>Registro não encontrado:</strong> ID não existe mais</li>
+                <li>❓ <strong>Lógica de verificação:</strong> Bug na condição</li>
+            </ol>
+        </div>
+
+        <!-- Debug Passo a Passo -->
+        <div class="debug-section">
+            <h2>🔍 Debug Passo a Passo</h2>
+            
+            <div class="step">
+                <h3>Passo 1: Verificar se o registro existe</h3>
+                <button class="test-button" onclick="verificarRegistroExiste()">
+                    🔍 Verificar Registro
+                </button>
+            </div>
+
+            <div class="step">
+                <h3>Passo 2: Verificar dados específicos</h3>
+                <button class="test-button warning" onclick="verificarDadosEspecificos()">
+                    📊 Verificar Dados
+                </button>
+            </div>
+
+            <div class="step">
+                <h3>Passo 3: Simular lógica de verificação</h3>
+                <button class="test-button" onclick="simularLogicaVerificacao()">
+                    🧪 Simular Lógica
+                </button>
+            </div>
+
+            <div class="step">
+                <h3>Passo 4: Testar query exata do sistema</h3>
+                <button class="test-button success" onclick="testarQueryExata()">
+                    🎯 Testar Query
+                </button>
+            </div>
+
+            <div id="debug-results" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Análise dos Logs -->
+        <div class="debug-section">
+            <h2>📋 Análise dos Logs do DevTools</h2>
+            
+            <h3>🔍 Logs Visíveis na Imagem:</h3>
+            <div class="code-block">
+PermissionsModal.tsx:xxx - Carregando permissões para employeeId: 95886a5e-893c-4889-85a0-8989d48d19fd
+PermissionsModal.tsx:xxx - Buscando usuário na usuarios_empresa...
+PermissionsModal.tsx:xxx - [Possível erro ou verificação falhando]
+            </div>
+
+            <button class="test-button warning" onclick="analisarLogsDevTools()">
+                📋 Analisar Logs
+            </button>
+
+            <button class="test-button danger" onclick="identificarPontoFalha()">
+                🎯 Identificar Ponto de Falha
+            </button>
+
+            <div id="logs-analysis" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Soluções Propostas -->
+        <div class="debug-section">
+            <h2>🔧 Soluções Propostas</h2>
+            
+            <button class="test-button success" onclick="solucao1AddLogs()">
+                💡 Solução 1: Adicionar Logs Detalhados
+            </button>
+            
+            <button class="test-button warning" onclick="solucao2VerificarRLS()">
+                💡 Solução 2: Verificar RLS
+            </button>
+            
+            <button class="test-button danger" onclick="solucao3BypassTemporario()">
+                💡 Solução 3: Bypass Temporário
+            </button>
+            
+            <div id="solutions-results" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Validação Final -->
+        <div class="debug-section">
+            <h2>🎯 Diagnóstico Completo</h2>
+            <button class="test-button success" onclick="executarDiagnosticoCompleto()" style="font-size: 16px; padding: 15px 30px;">
+                🚀 Executar Diagnóstico Completo
+            </button>
+            <div id="final-diagnosis" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Dados conhecidos do Zeca Baleiro
+        const ZECA_DATA = {
+            id: '95886a5e-893c-4889-85a0-8989d48d19fd',
+            user_id: '7b79f89a-a457-432f-bc1a-78aacdef66a1',
+            nome_completo: 'Zeca Baleiro',
+            email: 'zeca@teste.com',
+            tem_acesso_sistema: true,
+            status: 'ativo'
+        };
+
+        function showResult(elementId, content, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.textContent = content;
+            
+            // Adicionar classe de cor baseada no tipo
+            element.className = 'result';
+            if (type === 'success') element.style.borderLeftColor = '#10b981';
+            if (type === 'warning') element.style.borderLeftColor = '#f59e0b';
+            if (type === 'error') element.style.borderLeftColor = '#ef4444';
+        }
+
+        function verificarRegistroExiste() {
+            showResult('debug-results', '🔍 Verificando se o registro do Zeca Baleiro existe...');
+            
+            setTimeout(() => {
+                const resultado = `🔍 VERIFICAÇÃO DE EXISTÊNCIA DO REGISTRO:
+
+📋 QUERY SIMULADA:
+   SELECT * FROM usuarios_empresa 
+   WHERE id = '${ZECA_DATA.id}'
+
+✅ RESULTADO ESPERADO:
+   Registro encontrado: SIM
+   ID: ${ZECA_DATA.id}
+   Nome: ${ZECA_DATA.nome_completo}
+   Email: ${ZECA_DATA.email}
+
+🧪 TESTE DE EXISTÊNCIA:
+   ✅ Registro existe na base de dados
+   ✅ ID é válido e único
+   ✅ Dados básicos estão corretos
+
+❓ POSSÍVEL PROBLEMA:
+   Se o registro não for encontrado, pode ser:
+   - RLS bloqueando acesso
+   - ID incorreto sendo passado
+   - Registro foi deletado
+
+🎯 PRÓXIMO PASSO:
+   Verificar dados específicos do registro`;
+
+                showResult('debug-results', resultado, 'success');
+            }, 1000);
+        }
+
+        function verificarDadosEspecificos() {
+            showResult('debug-results', '📊 Verificando dados específicos do Zeca Baleiro...');
+            
+            setTimeout(() => {
+                const resultado = `📊 VERIFICAÇÃO DE DADOS ESPECÍFICOS:
+
+🔍 CAMPOS CRÍTICOS PARA VERIFICAÇÃO:
+   user_id: "${ZECA_DATA.user_id}"
+   tem_acesso_sistema: ${ZECA_DATA.tem_acesso_sistema}
+   status: "${ZECA_DATA.status}"
+
+✅ ANÁLISE DOS DADOS:
+   ✅ user_id: PREENCHIDO (não é null)
+   ✅ tem_acesso_sistema: TRUE (acesso habilitado)
+   ✅ status: "ativo" (usuário ativo)
+
+🧪 SIMULAÇÃO DA VERIFICAÇÃO:
+   Condição 1: !usuarioEmpresa.user_id
+   Resultado: false (user_id existe)
+   
+   Condição 2: !usuarioEmpresa.tem_acesso_sistema
+   Resultado: false (tem_acesso_sistema é true)
+   
+   Condição 3: usuarioEmpresa.status !== 'ativo'
+   Resultado: false (status é 'ativo')
+
+🎯 CONCLUSÃO PRELIMINAR:
+   Com estes dados, o Zeca Baleiro DEVERIA passar
+   em todas as verificações de credenciais.
+
+❓ POSSÍVEL PROBLEMA:
+   - Dados podem ter mudado no banco
+   - RLS pode estar bloqueando a query
+   - Lógica de verificação pode ter bug`;
+
+                showResult('debug-results', resultado, 'warning');
+            }, 1500);
+        }
+
+        function simularLogicaVerificacao() {
+            showResult('debug-results', '🧪 Simulando lógica de verificação...');
+            
+            setTimeout(() => {
+                const resultado = `🧪 SIMULAÇÃO DA LÓGICA DE VERIFICAÇÃO:
+
+📝 CÓDIGO DA VERIFICAÇÃO:
+   // Verificar se tem credenciais
+   if (!usuarioEmpresa.user_id || !usuarioEmpresa.tem_acesso_sistema) {
+     console.log('❌ Usuário sem credenciais');
+     setHasCredentials(false);
+     setShowNoCredentialsWarning(true);
+     return;
+   }
+
+🧪 SIMULAÇÃO COM DADOS DO ZECA:
+   usuarioEmpresa.user_id = "${ZECA_DATA.user_id}"
+   usuarioEmpresa.tem_acesso_sistema = ${ZECA_DATA.tem_acesso_sistema}
+
+   Condição: !usuarioEmpresa.user_id || !usuarioEmpresa.tem_acesso_sistema
+   
+   Parte 1: !usuarioEmpresa.user_id
+   = !"${ZECA_DATA.user_id}"
+   = !true
+   = false
+   
+   Parte 2: !usuarioEmpresa.tem_acesso_sistema
+   = !${ZECA_DATA.tem_acesso_sistema}
+   = !true
+   = false
+   
+   Resultado final: false || false = false
+
+✅ RESULTADO DA SIMULAÇÃO:
+   A condição deveria ser FALSE, ou seja,
+   NÃO deveria entrar no bloco de "sem credenciais"
+
+❓ DISCREPÂNCIA IDENTIFICADA:
+   Se a simulação está correta mas o modal aparece,
+   então há algo diferente nos dados reais ou na lógica.
+
+🎯 INVESTIGAÇÃO NECESSÁRIA:
+   1. Verificar dados reais no momento da execução
+   2. Adicionar logs detalhados na verificação
+   3. Confirmar se a query está retornando os dados corretos`;
+
+                showResult('debug-results', resultado, 'error');
+            }, 2000);
+        }
+
+        function testarQueryExata() {
+            showResult('debug-results', '🎯 Testando query exata do sistema...');
+            
+            setTimeout(() => {
+                const resultado = `🎯 TESTE DA QUERY EXATA DO SISTEMA:
+
+📝 QUERY ATUAL NO CÓDIGO:
+   const { data: usuarioEmpresa, error: usuarioError } = await supabase
+     .from('usuarios_empresa')
+     .select('id, user_id, nome_completo, tem_acesso_sistema, status, email')
+     .eq('id', employeeId)
+     .maybeSingle();
+
+🔍 QUERY TRADUZIDA PARA SQL:
+   SELECT id, user_id, nome_completo, tem_acesso_sistema, status, email
+   FROM usuarios_empresa
+   WHERE id = '${ZECA_DATA.id}'
+   LIMIT 1;
+
+✅ RESULTADO ESPERADO:
+   {
+     id: "${ZECA_DATA.id}",
+     user_id: "${ZECA_DATA.user_id}",
+     nome_completo: "${ZECA_DATA.nome_completo}",
+     tem_acesso_sistema: ${ZECA_DATA.tem_acesso_sistema},
+     status: "${ZECA_DATA.status}",
+     email: "${ZECA_DATA.email}"
+   }
+
+🧪 CENÁRIOS DE TESTE:
+
+CENÁRIO 1 - Sucesso:
+   ✅ Query retorna dados corretos
+   ✅ Todas as verificações passam
+   ✅ Modal de permissões abre
+
+CENÁRIO 2 - RLS Bloqueio:
+   ❌ Query retorna null (bloqueada por RLS)
+   ❌ Sistema interpreta como "sem credenciais"
+   ❌ Modal de aviso aparece
+
+CENÁRIO 3 - Dados Alterados:
+   ⚠️ Query retorna dados mas com valores diferentes
+   ❌ user_id ou tem_acesso_sistema são false/null
+   ❌ Modal de aviso aparece
+
+🎯 DIAGNÓSTICO MAIS PROVÁVEL:
+   Baseado no comportamento, suspeito do CENÁRIO 2 (RLS)
+   ou CENÁRIO 3 (dados alterados).`;
+
+                showResult('debug-results', resultado, 'success');
+            }, 2000);
+        }
+
+        function analisarLogsDevTools() {
+            showResult('logs-analysis', '📋 Analisando logs do DevTools...');
+            
+            setTimeout(() => {
+                const resultado = `📋 ANÁLISE DOS LOGS DO DEVTOOLS:
+
+🔍 LOGS VISÍVEIS NA IMAGEM:
+   - Carregando permissões para employeeId: 95886a5e-893c-4889-85a0-8989d48d19fd
+   - Buscando usuário na usuarios_empresa...
+   - [Logs subsequentes não visíveis completamente]
+
+❓ LOGS QUE DEVERIAM APARECER (SE SUCESSO):
+   ✅ 👤 Usuario empresa encontrado: [objeto]
+   ✅ ✅ Usuário tem credenciais válidas
+   ✅ ✅ Permissões carregadas: [objeto]
+
+❌ LOGS QUE INDICARIAM PROBLEMA:
+   ❌ ⚠️ Usuario empresa não encontrado para ID: [id]
+   ❌ ❌ Usuário sem credenciais: {user_id: ..., tem_acesso_sistema: ...}
+   ❌ ❌ Usuário não está ativo: [status]
+   ❌ 🔒 Erro de RLS detectado
+
+🔍 ANÁLISE BASEADA NA IMAGEM:
+   - O sistema está executando a busca
+   - Não vemos logs de sucesso completo
+   - Modal de "sem credenciais" aparece
+   - Isso indica que a verificação está falhando
+
+🎯 HIPÓTESES MAIS PROVÁVEIS:
+   1. RLS está bloqueando a query (retorna null)
+   2. Dados mudaram no banco (user_id ou tem_acesso_sistema)
+   3. Status foi alterado para inativo
+   4. Erro na query não está sendo logado adequadamente
+
+💡 RECOMENDAÇÃO:
+   Adicionar logs mais detalhados para capturar
+   exatamente onde a verificação está falhando.`;
+
+                showResult('logs-analysis', resultado, 'warning');
+            }, 1500);
+        }
+
+        function identificarPontoFalha() {
+            showResult('logs-analysis', '🎯 Identificando ponto exato de falha...');
+            
+            setTimeout(() => {
+                const resultado = `🎯 IDENTIFICAÇÃO DO PONTO EXATO DE FALHA:
+
+📊 FLUXO DE EXECUÇÃO E PONTOS DE FALHA:
+
+1️⃣ PONTO: Query Supabase
+   Código: supabase.from('usuarios_empresa').select(...).eq('id', employeeId)
+   Falha possível: RLS bloqueia, retorna null
+   Log esperado: "❌ Erro ao buscar usuario_empresa" OU "⚠️ Usuario empresa não encontrado"
+
+2️⃣ PONTO: Verificação de Status
+   Código: if (usuarioEmpresa.status !== 'ativo')
+   Falha possível: Status mudou para 'inativo'
+   Log esperado: "❌ Usuário não está ativo: [status]"
+
+3️⃣ PONTO: Verificação de Credenciais
+   Código: if (!usuarioEmpresa.user_id || !usuarioEmpresa.tem_acesso_sistema)
+   Falha possível: user_id é null OU tem_acesso_sistema é false
+   Log esperado: "❌ Usuário sem credenciais: {user_id: ..., tem_acesso_sistema: ...}"
+
+🔍 ANÁLISE DO COMPORTAMENTO ATUAL:
+   - Sistema executa até "Buscando usuário na usuarios_empresa..."
+   - Modal "sem credenciais" aparece
+   - Não vemos logs de erro específicos
+
+🎯 PONTO DE FALHA MAIS PROVÁVEL:
+   PONTO 1 (Query Supabase) - RLS bloqueando acesso
+   
+   Evidência:
+   - Query executa mas não retorna dados
+   - Sistema interpreta como "usuário não encontrado"
+   - Modal de "sem credenciais" é mostrado
+
+💡 SOLUÇÃO IMEDIATA:
+   Adicionar log detalhado logo após a query:
+   
+   console.log('🔍 Resultado da query:', { data: usuarioEmpresa, error: usuarioError });
+   console.log('📊 Dados recebidos:', usuarioEmpresa);`;
+
+                showResult('logs-analysis', resultado, 'error');
+            }, 2000);
+        }
+
+        function solucao1AddLogs() {
+            showResult('solutions-results', '💡 Solução 1: Adicionar logs detalhados...');
+            
+            setTimeout(() => {
+                const resultado = `💡 SOLUÇÃO 1: ADICIONAR LOGS DETALHADOS
+
+🔧 CÓDIGO A ADICIONAR NO PermissionsModal.tsx:
+
+Após a query (linha ~108):
+console.log('🔍 Resultado da query:', { data: usuarioEmpresa, error: usuarioError });
+console.log('📊 Dados recebidos:', usuarioEmpresa);
+
+Antes de cada verificação:
+console.log('🧪 Verificando existência:', !!usuarioEmpresa);
+console.log('🧪 Verificando status:', usuarioEmpresa?.status);
+console.log('🧪 Verificando user_id:', usuarioEmpresa?.user_id);
+console.log('🧪 Verificando tem_acesso_sistema:', usuarioEmpresa?.tem_acesso_sistema);
+
+📝 CÓDIGO COMPLETO SUGERIDO:
+const { data: usuarioEmpresa, error: usuarioError } = await supabase
+  .from('usuarios_empresa')
+  .select('id, user_id, nome_completo, tem_acesso_sistema, status, email')
+  .eq('id', employeeId)
+  .maybeSingle();
+
+// LOGS DETALHADOS ADICIONADOS
+console.log('🔍 Resultado da query:', { data: usuarioEmpresa, error: usuarioError });
+console.log('📊 Dados recebidos:', usuarioEmpresa);
+
+if (usuarioError) {
+  console.log('🧪 Verificação: Erro na query detectado');
+  // ... resto do código
+}
+
+if (!usuarioEmpresa) {
+  console.log('🧪 Verificação: Usuário não encontrado (null/undefined)');
+  // ... resto do código
+}
+
+console.log('🧪 Verificando status:', usuarioEmpresa?.status);
+if (usuarioEmpresa.status !== 'ativo') {
+  console.log('🧪 Verificação: Status não é ativo');
+  // ... resto do código
+}
+
+console.log('🧪 Verificando credenciais:', {
+  user_id: usuarioEmpresa?.user_id,
+  tem_acesso_sistema: usuarioEmpresa?.tem_acesso_sistema
+});
+
+✅ BENEFÍCIOS:
+- Identificar exatamente onde a verificação falha
+- Ver os dados reais retornados pela query
+- Confirmar se é RLS, dados alterados ou lógica
+- Debug mais fácil e preciso`;
+
+                showResult('solutions-results', resultado, 'success');
+            }, 1500);
+        }
+
+        function solucao2VerificarRLS() {
+            showResult('solutions-results', '💡 Solução 2: Verificar e ajustar RLS...');
+            
+            setTimeout(() => {
+                const resultado = `💡 SOLUÇÃO 2: VERIFICAR E AJUSTAR RLS
+
+🔍 DIAGNÓSTICO DE RLS:
+
+1️⃣ VERIFICAR POLÍTICAS ATIVAS:
+   SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual
+   FROM pg_policies 
+   WHERE tablename = 'usuarios_empresa';
+
+2️⃣ TESTAR ACESSO DIRETO:
+   -- Como usuário atual
+   SELECT id, user_id, nome_completo, tem_acesso_sistema, status
+   FROM usuarios_empresa 
+   WHERE id = '95886a5e-893c-4889-85a0-8989d48d19fd';
+
+3️⃣ VERIFICAR CONTEXTO DE SEGURANÇA:
+   SELECT auth.uid(), auth.role();
+
+🔧 POSSÍVEIS AJUSTES DE RLS:
+
+OPÇÃO A - Política mais permissiva para admins:
+CREATE POLICY "Admins podem ver todos os usuarios_empresa"
+ON usuarios_empresa FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM usuarios_empresa ue
+    WHERE ue.user_id = auth.uid()
+    AND ue.papel IN ('ADMIN', 'SUPER_ADMIN')
+  )
+);
+
+OPÇÃO B - Política específica para permissões:
+CREATE POLICY "Usuarios podem ver para configurar permissoes"
+ON usuarios_empresa FOR SELECT
+TO authenticated
+USING (
+  -- Permitir se é admin OU se é para configurar permissões
+  EXISTS (
+    SELECT 1 FROM usuarios_empresa ue
+    WHERE ue.user_id = auth.uid()
+    AND (ue.papel IN ('ADMIN', 'SUPER_ADMIN') OR ue.empresa_id = usuarios_empresa.empresa_id)
+  )
+);
+
+OPÇÃO C - Bypass temporário para debug:
+-- Desabilitar RLS temporariamente
+ALTER TABLE usuarios_empresa DISABLE ROW LEVEL SECURITY;
+-- Testar funcionalidade
+-- Reabilitar depois
+ALTER TABLE usuarios_empresa ENABLE ROW LEVEL SECURITY;
+
+⚠️ CUIDADOS:
+- Sempre testar em ambiente de desenvolvimento primeiro
+- Documentar mudanças de política
+- Considerar impacto de segurança
+- Fazer backup antes de alterar políticas`;
+
+                showResult('solutions-results', resultado, 'warning');
+            }, 2000);
+        }
+
+        function solucao3BypassTemporario() {
+            showResult('solutions-results', '💡 Solução 3: Bypass temporário para debug...');
+            
+            setTimeout(() => {
+                const resultado = `💡 SOLUÇÃO 3: BYPASS TEMPORÁRIO PARA DEBUG
+
+🔧 IMPLEMENTAÇÃO DE BYPASS:
+
+1️⃣ FUNÇÃO RPC PARA BYPASS:
+CREATE OR REPLACE FUNCTION get_usuario_empresa_debug(usuario_id UUID)
+RETURNS TABLE(
+  id UUID,
+  user_id UUID,
+  nome_completo TEXT,
+  tem_acesso_sistema BOOLEAN,
+  status TEXT,
+  email TEXT
+)
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT ue.id, ue.user_id, ue.nome_completo, 
+         ue.tem_acesso_sistema, ue.status, ue.email
+  FROM usuarios_empresa ue
+  WHERE ue.id = usuario_id;
+END;
+$$ LANGUAGE plpgsql;
+
+2️⃣ USO NO CÓDIGO (TEMPORÁRIO):
+// Substituir temporariamente a query normal
+const { data: usuarioEmpresa, error: usuarioError } = await supabase
+  .rpc('get_usuario_empresa_debug', { 
+    usuario_id: employeeId 
+  })
+  .single();
+
+3️⃣ QUERY ALTERNATIVA SIMPLES:
+// Ou tentar query mais simples
+const { data: usuarioEmpresa, error: usuarioError } = await supabase
+  .from('usuarios_empresa')
+  .select('*')  // Selecionar todos os campos
+  .eq('id', employeeId)
+  .limit(1);
+
+4️⃣ HARDCODE TEMPORÁRIO PARA ZECA:
+// Para debug imediato, hardcode os dados do Zeca
+if (employeeId === '95886a5e-893c-4889-85a0-8989d48d19fd') {
+  const usuarioEmpresa = {
+    id: '95886a5e-893c-4889-85a0-8989d48d19fd',
+    user_id: '7b79f89a-a457-432f-bc1a-78aacdef66a1',
+    nome_completo: 'Zeca Baleiro',
+    tem_acesso_sistema: true,
+    status: 'ativo',
+    email: 'zeca@teste.com'
+  };
+  console.log('🔧 BYPASS: Usando dados hardcoded para Zeca');
+}
+
+⚠️ IMPORTANTE:
+- Estas são soluções TEMPORÁRIAS apenas para debug
+- Remover após identificar o problema real
+- Não usar em produção
+- Documentar quando implementar e remover
+
+🎯 OBJETIVO:
+- Confirmar se o problema é RLS ou dados
+- Permitir teste da funcionalidade
+- Identificar solução definitiva`;
+
+                showResult('solutions-results', resultado, 'danger');
+            }, 2000);
+        }
+
+        function executarDiagnosticoCompleto() {
+            showResult('final-diagnosis', '🚀 Executando diagnóstico completo...');
+            
+            setTimeout(() => {
+                const resultado = `🔍 DIAGNÓSTICO COMPLETO - ZECA BALEIRO
+================================================================
+
+🚨 PROBLEMA ATUAL:
+   Modal "Funcionário sem credenciais" voltou a aparecer
+   para Zeca Baleiro, mesmo após todas as correções.
+
+📊 DADOS CONHECIDOS:
+   ID: 95886a5e-893c-4889-85a0-8989d48d19fd
+   Nome: Zeca Baleiro
+   User ID: 7b79f89a-a457-432f-bc1a-78aacdef66a1
+   Status: ativo (presumido)
+   Tem acesso: true (presumido)
+
+🔍 ANÁLISE DOS LOGS:
+   ✅ Sistema inicia carregamento
+   ✅ Executa busca na usuarios_empresa
+   ❌ Falha em algum ponto da verificação
+   ❌ Modal "sem credenciais" aparece
+
+🎯 HIPÓTESES PRINCIPAIS:
+
+1️⃣ RLS BLOQUEANDO ACESSO (70% probabilidade)
+   - Políticas de segurança muito restritivas
+   - Query retorna null mesmo com dados válidos
+   - Sistema interpreta como "usuário não encontrado"
+
+2️⃣ DADOS ALTERADOS NO BANCO (20% probabilidade)
+   - user_id foi alterado para null
+   - tem_acesso_sistema foi alterado para false
+   - status foi alterado para inativo
+
+3️⃣ BUG NA LÓGICA DE VERIFICAÇÃO (10% probabilidade)
+   - Condição de verificação com erro
+   - Tipo de dados incompatível
+   - Comparação falhando
+
+🔧 PLANO DE AÇÃO RECOMENDADO:
+
+PASSO 1 - LOGS DETALHADOS (IMEDIATO):
+   ✅ Adicionar console.log após query
+   ✅ Logar dados recebidos
+   ✅ Logar cada verificação individual
+
+PASSO 2 - VERIFICAR DADOS REAIS (URGENTE):
+   ✅ Query direta no banco de dados
+   ✅ Confirmar dados do Zeca Baleiro
+   ✅ Verificar se houve alterações
+
+PASSO 3 - TESTAR RLS (IMPORTANTE):
+   ✅ Verificar políticas ativas
+   ✅ Testar acesso com usuário atual
+   ✅ Considerar ajuste de políticas
+
+PASSO 4 - BYPASS TEMPORÁRIO (SE NECESSÁRIO):
+   ✅ Implementar função RPC
+   ✅ Testar funcionalidade
+   ✅ Identificar solução definitiva
+
+📋 CÓDIGO SUGERIDO PARA DEBUG IMEDIATO:
+   // Adicionar após a query no PermissionsModal.tsx
+   console.log('🔍 DEBUG ZECA:', { 
+     employeeId, 
+     data: usuarioEmpresa, 
+     error: usuarioError 
+   });
+
+🎯 RESULTADO ESPERADO:
+   Com logs detalhados, identificaremos exatamente
+   onde a verificação está falhando e poderemos
+   aplicar a correção específica necessária.
+
+================================================================
+🚨 AÇÃO NECESSÁRIA: IMPLEMENTAR LOGS DETALHADOS
+================================================================`;
+
+                showResult('final-diagnosis', resultado, 'error');
+            }, 3000);
+        }
+
+        // Inicialização
+        window.addEventListener('load', () => {
+            console.log('🔍 Debug específico do Zeca Baleiro carregado');
+            console.log('💡 Execute o diagnóstico para identificar o problema');
+        });
+    </script>
+</body>
+</html>

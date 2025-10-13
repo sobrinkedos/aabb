@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Teste SenhaProvisionariaGuard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+        }
+        .step {
+            background: rgba(0, 123, 255, 0.2);
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background: rgba(40, 167, 69, 0.2);
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .warning {
+            background: rgba(255, 193, 7, 0.2);
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .error {
+            background: rgba(220, 53, 69, 0.2);
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .code {
+            background: rgba(0, 0, 0, 0.7);
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .highlight {
+            background: rgba(255, 255, 0, 0.3);
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Teste: SenhaProvisionariaGuard</h1>
+        <p>Este teste verifica se o sistema está detectando corretamente usuários com senha provisória.</p>
+
+        <div class="step">
+            <h3>📋 Instruções</h3>
+            <ol>
+                <li>Certifique-se de que criou um funcionário com senha "123456"</li>
+                <li>Faça login com o funcionário no sistema principal</li>
+                <li>Clique no botão abaixo para testar a detecção</li>
+            </ol>
+        </div>
+
+        <button onclick="testarDeteccaoSenhaProvisoria()">🔍 Testar Detecção de Senha Provisória</button>
+        <button onclick="simularLogin()">🧪 Simular Login com Senha 123456</button>
+        <button onclick="verificarConsole()">📝 Mostrar Logs do Console</button>
+
+        <div id="resultados" style="margin-top: 20px;">
+            <!-- Resultados aparecerão aqui -->
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        function addMessage(message, type = 'info') {
+            const resultados = document.getElementById('resultados');
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = message;
+            resultados.appendChild(div);
+        }
+
+        function clearMessages() {
+            document.getElementById('resultados').innerHTML = '';
+        }
+
+        async function testarDeteccaoSenhaProvisoria() {
+            clearMessages();
+            addMessage('🔍 <strong>TESTE: Detecção de Senha Provisória</strong>', 'step');
+
+            try {
+                // 1. Buscar usuários com senha provisória
+                addMessage('📊 1. Buscando usuários com senha_provisoria = true...', 'step');
+                
+                const { data: usuariosProvisórios, error: searchError } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .select('user_id, nome_completo, email, senha_provisoria, status, created_at')
+                    .eq('senha_provisoria', true)
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+
+                if (searchError) {
+                    addMessage(`❌ Erro na busca: ${searchError.message}`, 'error');
+                    return;
+                }
+
+                if (!usuariosProvisórios || usuariosProvisórios.length === 0) {
+                    addMessage('⚠️ <strong>PROBLEMA ENCONTRADO:</strong> Nenhum usuário com senha_provisoria = true encontrado!', 'warning');
+                    addMessage(`
+                        <h4>🔧 Soluções possíveis:</h4>
+                        <ul>
+                            <li>Verifique se criou um funcionário recentemente</li>
+                            <li>Confirme se o funcionário foi criado com tem_acesso_sistema = true</li>
+                            <li>Verifique se a flag senha_provisoria foi definida corretamente</li>
+                        </ul>
+                    `, 'warning');
+                    return;
+                }
+
+                addMessage(`✅ Encontrados ${usuariosProvisórios.length} usuário(s) com senha provisória:`, 'success');
+                
+                usuariosProvisórios.forEach((usuario, index) => {
+                    addMessage(`
+                        <div class="code">
+                            👤 Usuário ${index + 1}:
+                            Nome: ${usuario.nome_completo}
+                            Email: ${usuario.email}
+                            User ID: ${usuario.user_id || 'NULL'}
+                            Senha Provisória: ${usuario.senha_provisoria}
+                            Status: ${usuario.status}
+                            Criado em: ${new Date(usuario.created_at).toLocaleString()}
+                        </div>
+                    `, 'success');
+                });
+
+                // 2. Testar o SenhaProvisionariaGuard simulado
+                addMessage('🧪 2. Simulando lógica do SenhaProvisionariaGuard...', 'step');
+                
+                const primeiroUsuario = usuariosProvisórios[0];
+                
+                if (primeiroUsuario.user_id) {
+                    addMessage(`🔍 Testando detecção para: <span class="highlight">${primeiroUsuario.nome_completo}</span>`, 'step');
+                    
+                    // Simular a consulta que o Guard faz
+                    const { data: usuarioEmpresa, error: guardError } = await supabaseClient
+                        .from('usuarios_empresa')
+                        .select('senha_provisoria, status, nome_completo, email')
+                        .eq('user_id', primeiroUsuario.user_id)
+                        .single();
+
+                    if (guardError) {
+                        addMessage(`❌ Erro na consulta do Guard: ${guardError.message}`, 'error');
+                        return;
+                    }
+
+                    if (usuarioEmpresa?.senha_provisoria === true) {
+                        addMessage(`
+                            ✅ <strong>SUCESSO!</strong> SenhaProvisionariaGuard detectaria corretamente:
+                            <div class="code">
+                                🎯 Condição: senha_provisoria === true ✓
+                                🔄 Ação: Redirecionaria para /alterar-senha-provisoria
+                                🚨 Status: Usuário seria forçado a alterar senha
+                            </div>
+                        `, 'success');
+                    } else {
+                        addMessage(`❌ <strong>PROBLEMA:</strong> SenhaProvisionariaGuard NÃO detectaria (senha_provisoria: ${usuarioEmpresa?.senha_provisoria})`, 'error');
+                    }
+                } else {
+                    addMessage(`⚠️ <strong>PROBLEMA:</strong> Usuário não tem user_id (${primeiroUsuario.user_id})`, 'warning');
+                    addMessage(`
+                        <h4>🔧 Isso significa que:</h4>
+                        <ul>
+                            <li>O funcionário foi criado na tabela usuarios_empresa</li>
+                            <li>Mas NÃO foi criado no Supabase Auth</li>
+                            <li>Por isso não consegue fazer login</li>
+                        </ul>
+                    `, 'warning');
+                }
+
+            } catch (error) {
+                addMessage(`❌ Erro geral: ${error.message}`, 'error');
+                console.error('Erro no teste:', error);
+            }
+        }
+
+        async function simularLogin() {
+            clearMessages();
+            addMessage('🧪 <strong>SIMULAÇÃO: Login com Senha 123456</strong>', 'step');
+
+            const email = prompt('Digite o email do funcionário para testar:');
+            if (!email) {
+                addMessage('❌ Email não fornecido', 'error');
+                return;
+            }
+
+            try {
+                addMessage(`🔍 Tentando login para: <span class="highlight">${email}</span>`, 'step');
+
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: '123456'
+                });
+
+                if (error) {
+                    addMessage(`❌ <strong>Login falhou:</strong> ${error.message}`, 'error');
+                    
+                    if (error.message.includes('Invalid login credentials')) {
+                        addMessage(`
+                            <h4>🔧 Possíveis causas:</h4>
+                            <ul>
+                                <li>Usuário não existe no Supabase Auth</li>
+                                <li>Email não foi confirmado</li>
+                                <li>Senha não é realmente "123456"</li>
+                            </ul>
+                        `, 'warning');
+                    }
+                    return;
+                }
+
+                addMessage(`✅ <strong>LOGIN BEM-SUCEDIDO!</strong>`, 'success');
+                addMessage(`
+                    <div class="code">
+                        User ID: ${data.user.id}
+                        Email: ${data.user.email}
+                        Email Confirmado: ${data.user.email_confirmed_at ? 'SIM' : 'NÃO'}
+                    </div>
+                `, 'success');
+
+                // Verificar status de senha provisória
+                addMessage('🔍 Verificando status na usuarios_empresa...', 'step');
+                
+                const { data: userData, error: userError } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .select('senha_provisoria, nome_completo, status')
+                    .eq('user_id', data.user.id)
+                    .single();
+
+                if (userData) {
+                    if (userData.senha_provisoria) {
+                        addMessage(`✅ <strong>PERFEITO!</strong> O SenhaProvisionariaGuard detectaria:
+                            <div class="code">
+                                🎯 senha_provisoria: ${userData.senha_provisoria}
+                                🔄 Redirecionamento: /alterar-senha-provisoria
+                                🔒 Ação: Forçar alteração de senha
+                            </div>
+                        `, 'success');
+                    } else {
+                        addMessage(`⚠️ <strong>ATENÇÃO:</strong> senha_provisoria é ${userData.senha_provisoria} - usuário NÃO seria redirecionado`, 'warning');
+                    }
+                } else {
+                    addMessage(`❌ Erro ao buscar dados: ${userError?.message}`, 'error');
+                }
+
+                // Fazer logout
+                await supabaseClient.auth.signOut();
+                addMessage('🚪 Logout realizado', 'step');
+
+            } catch (error) {
+                addMessage(`❌ Erro geral: ${error.message}`, 'error');
+                console.error('Erro na simulação:', error);
+            }
+        }
+
+        function verificarConsole() {
+            clearMessages();
+            addMessage('📝 <strong>LOGS DO CONSOLE</strong>', 'step');
+            addMessage(`
+                <div class="code">
+                    Abra o Console do Navegador (F12) e procure por:
+                    
+                    🔍 [SenhaProvisionariaGuard] Verificando senha provisória...
+                    📊 [SenhaProvisionariaGuard] Resultado da consulta...
+                    🚨 [SenhaProvisionariaGuard] SENHA PROVISÓRIA DETECTADA!
+                    
+                    Se você vê essas mensagens, o Guard está funcionando!
+                </div>
+            `, 'step');
+            
+            addMessage(`
+                <h4>🔧 Como interpretar os logs:</h4>
+                <ul>
+                    <li><strong>Verificando senha provisória:</strong> Guard está ativo</li>
+                    <li><strong>Resultado da consulta:</strong> Mostra os dados encontrados</li>
+                    <li><strong>SENHA PROVISÓRIA DETECTADA:</strong> Redirecionamento ativado</li>
+                </ul>
+            `, 'step');
+        }
+
+        // Executar teste inicial ao carregar a página
+        window.onload = function() {
+            addMessage('🚀 <strong>Sistema de Teste Carregado</strong>', 'success');
+            addMessage('Clique nos botões acima para executar os testes.', 'step');
+        };
+    </script>
+</body>
+</html>

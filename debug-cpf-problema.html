@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Debug CPF - Problema Interface</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .debug-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .success { background-color: #d4edda; border: 2px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .error { background-color: #f8d7da; border: 2px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .info { background-color: #d1ecf1; border: 2px solid #bee5eb; color: #0c5460; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 8px; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        .employee-card { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin: 10px 0; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="debug-section">
+        <h1>🔍 Debug CPF - Problema Interface</h1>
+        <p>Vamos investigar por que o CPF não aparece na interface</p>
+        
+        <button onclick="executarDebug()" id="btn-debug">🔍 Executar Debug Completo</button>
+        
+        <div id="resultado-debug"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function executarDebug() {
+            try {
+                document.getElementById('resultado-debug').innerHTML = `
+                    <div class="info">🔄 Executando debug completo...</div>
+                `;
+
+                // Passo 1: Login
+                console.log('🔐 Fazendo login...');
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                    email: 'riltons@gmail.com',
+                    password: '000000'
+                });
+
+                if (authError) {
+                    throw new Error(`Erro no login: ${authError.message}`);
+                }
+
+                const empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e';
+                console.log('✅ Login realizado, empresa ID:', empresaId);
+
+                // Passo 2: Buscar dados brutos da tabela employees
+                console.log('📊 Buscando dados brutos da tabela employees...');
+                const { data: employeesRaw, error: employeesError } = await supabase
+                    .from('employees')
+                    .select('*')
+                    .eq('empresa_id', empresaId)
+                    .eq('status', 'active')
+                    .order('created_at', { ascending: false });
+
+                if (employeesError) {
+                    throw new Error(`Erro ao buscar employees: ${employeesError.message}`);
+                }
+
+                console.log('📋 Dados brutos encontrados:', employeesRaw.length);
+
+                // Passo 3: Simular o mapeamento do hook useBarEmployees
+                console.log('🔄 Simulando mapeamento do hook...');
+                const mappedEmployees = (employeesRaw || []).map((emp) => {
+                    return {
+                        id: emp.id,
+                        employee_id: emp.id,
+                        bar_role: 'atendente',
+                        shift_preference: 'qualquer',
+                        specialties: [],
+                        commission_rate: 0,
+                        status: emp.status,
+                        start_date: emp.created_at,
+                        end_date: null,
+                        notes: `Código: ${emp.employee_code}`,
+                        created_at: emp.created_at,
+                        updated_at: emp.updated_at,
+                        is_active: emp.status === 'active',
+                        // Dados reais da tabela employees
+                        employee: {
+                            id: emp.id,
+                            name: emp.name || 'Nome não informado',
+                            cpf: emp.cpf,
+                            email: emp.email,
+                            phone: emp.phone,
+                            hire_date: emp.created_at,
+                            status: emp.status
+                        },
+                        // Dados adicionais para compatibilidade
+                        usuario_empresa: {
+                            id: emp.id,
+                            nome_completo: emp.name,
+                            email: emp.email,
+                            telefone: emp.phone,
+                            status: emp.status,
+                            tem_acesso_sistema: emp.tem_acesso_sistema,
+                            auth_user_id: emp.auth_user_id
+                        }
+                    };
+                });
+
+                console.log('✅ Mapeamento concluído:', mappedEmployees.length);
+
+                // Passo 4: Análise detalhada
+                let html = `
+                    <div class="success">
+                        ✅ <strong>Debug Concluído!</strong><br>
+                        📊 Total de funcionários: ${employeesRaw.length}<br>
+                        🔄 Funcionários mapeados: ${mappedEmployees.length}
+                    </div>
+                `;
+
+                // Mostrar dados brutos
+                html += `<h3>📋 Dados Brutos da Tabela employees:</h3>`;
+                html += `<table>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>CPF</th>
+                        <th>Email</th>
+                        <th>Telefone</th>
+                        <th>Status</th>
+                    </tr>`;
+                
+                employeesRaw.forEach(emp => {
+                    html += `
+                        <tr>
+                            <td>${emp.id}</td>
+                            <td>${emp.name || 'N/A'}</td>
+                            <td style="background: ${emp.cpf ? '#d4edda' : '#f8d7da'}; font-weight: bold;">
+                                ${emp.cpf || 'NULL/VAZIO'}
+                            </td>
+                            <td>${emp.email || 'N/A'}</td>
+                            <td>${emp.phone || 'N/A'}</td>
+                            <td>${emp.status}</td>
+                        </tr>
+                    `;
+                });
+                html += `</table>`;
+
+                // Mostrar dados mapeados
+                html += `<h3>🔄 Dados Após Mapeamento (como a interface vê):</h3>`;
+                html += `<table>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>CPF (employee.cpf)</th>
+                        <th>CPF (barEmployee.employee?.cpf)</th>
+                        <th>Email</th>
+                        <th>Telefone</th>
+                    </tr>`;
+                
+                mappedEmployees.forEach(barEmp => {
+                    const emp = barEmp.employee;
+                    html += `
+                        <tr>
+                            <td>${barEmp.id}</td>
+                            <td>${emp?.name || 'N/A'}</td>
+                            <td style="background: ${emp?.cpf ? '#d4edda' : '#f8d7da'}; font-weight: bold;">
+                                ${emp?.cpf || 'NULL/VAZIO'}
+                            </td>
+                            <td style="background: ${barEmp.employee?.cpf ? '#d4edda' : '#f8d7da'}; font-weight: bold;">
+                                ${barEmp.employee?.cpf || 'NULL/VAZIO'}
+                            </td>
+                            <td>${emp?.email || 'N/A'}</td>
+                            <td>${emp?.phone || 'N/A'}</td>
+                        </tr>
+                    `;
+                });
+                html += `</table>`;
+
+                // Simulação da lógica da interface
+                html += `<h3>🖥️ Simulação da Lógica da Interface:</h3>`;
+                mappedEmployees.forEach((barEmployee, index) => {
+                    const employee = barEmployee.employee;
+                    if (!employee) return;
+                    
+                    const cpfDisplay = employee.cpf || barEmployee.employee?.cpf || 'CPF não informado';
+                    
+                    html += `
+                        <div class="employee-card">
+                            <strong>Funcionário ${index + 1}:</strong><br>
+                            📝 Nome: ${employee.name}<br>
+                            🆔 CPF Exibido: <span style="background: ${cpfDisplay !== 'CPF não informado' ? '#d4edda' : '#f8d7da'}; padding: 2px 5px; border-radius: 3px; font-weight: bold;">${cpfDisplay}</span><br>
+                            📧 Email: ${employee.email || 'N/A'}<br>
+                            📱 Telefone: ${employee.phone || 'N/A'}
+                        </div>
+                    `;
+                });
+
+                // Logs detalhados
+                html += `<h3>🔍 Logs Detalhados:</h3>`;
+                html += `<pre>`;
+                html += `Dados brutos do primeiro funcionário:\n`;
+                html += JSON.stringify(employeesRaw[0], null, 2);
+                html += `\n\nDados mapeados do primeiro funcionário:\n`;
+                html += JSON.stringify(mappedEmployees[0], null, 2);
+                html += `</pre>`;
+
+                document.getElementById('resultado-debug').innerHTML = html;
+
+                // Logs no console também
+                console.log('🔍 DADOS BRUTOS:', employeesRaw);
+                console.log('🔍 DADOS MAPEADOS:', mappedEmployees);
+                console.log('🔍 CPFs encontrados:', employeesRaw.map(emp => ({ nome: emp.name, cpf: emp.cpf })));
+
+            } catch (error) {
+                document.getElementById('resultado-debug').innerHTML = `
+                    <div class="error">❌ Erro no debug: ${error.message}</div>
+                `;
+                console.error('❌ Erro no debug:', error);
+            }
+        }
+    </script>
+</body>
+</html>

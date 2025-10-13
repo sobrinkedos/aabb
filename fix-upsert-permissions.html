@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Fix UPSERT Permissions</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .problem-section {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .solution-section {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Fix UPSERT Permissions</h1>
+            <p>Solução para o erro 409 Conflict no salvamento de permissões</p>
+        </div>
+
+        <!-- Problema Identificado -->
+        <div class="problem-section">
+            <h2>❌ Problema: Erro 409 Conflict</h2>
+            
+            <h3>📊 Evidência do Erro:</h3>
+            <div class="code-block">
+POST /rest/v1/permissoes_usuario 409 (Conflict)
+Erro ao salvar permissões: [detalhes do erro]
+            </div>
+
+            <h3>🔍 Possíveis Causas:</h3>
+            <ol>
+                <li><strong>RLS bloqueando DELETE:</strong> Não consegue remover permissões existentes</li>
+                <li><strong>Constraint de chave única:</strong> Tentativa de inserir registro duplicado</li>
+                <li><strong>Permissões já existem:</strong> Tabela já tem dados para o usuário</li>
+                <li><strong>Transação incompleta:</strong> DELETE não executou mas INSERT tentou</li>
+            </ol>
+
+            <h3>🎯 Causa Mais Provável:</h3>
+            <p>O <strong>DELETE</strong> está sendo bloqueado pelo RLS, então as permissões existentes não são removidas. Quando o <strong>INSERT</strong> tenta adicionar novas permissões, gera conflito com as existentes.</p>
+        </div>
+
+        <!-- Solução 1: Logs Detalhados -->
+        <div class="solution-section">
+            <h2>🔍 Solução 1: Logs Detalhados (Implementado)</h2>
+            
+            <h3>✅ Logs Adicionados:</h3>
+            <div class="code-block">
+🗑️ Removendo permissões existentes...
+✅ Permissões existentes removidas
+💾 Inserindo X novas permissões...
+📋 Dados para inserir: [array de permissões]
+✅ X permissões salvas com sucesso
+            </div>
+
+            <h3>🎯 Objetivo:</h3>
+            <p>Identificar exatamente onde o processo está falhando - se é no DELETE ou no INSERT.</p>
+        </div>
+
+        <!-- Solução 2: UPSERT -->
+        <div class="solution-section">
+            <h2>💡 Solução 2: Usar UPSERT (Recomendado)</h2>
+            
+            <h3>🔧 Código UPSERT:</h3>
+            <div class="code-block">
+// Em vez de DELETE + INSERT, usar UPSERT
+const { error: upsertError } = await supabase
+  .from('permissoes_usuario')
+  .upsert(permissoesParaInserir, {
+    onConflict: 'usuario_empresa_id,modulo'
+  });
+            </div>
+
+            <h3>✅ Vantagens do UPSERT:</h3>
+            <ul>
+                <li>✅ <strong>Atômico:</strong> Uma única operação</li>
+                <li>✅ <strong>Sem conflitos:</strong> Atualiza se existe, insere se não existe</li>
+                <li>✅ <strong>Menos RLS:</strong> Não precisa de permissão de DELETE</li>
+                <li>✅ <strong>Mais seguro:</strong> Não há estado intermediário</li>
+            </ul>
+        </div>
+
+        <!-- Solução 3: Bypass DELETE -->
+        <div class="solution-section">
+            <h2>🔧 Solução 3: Bypass DELETE Temporário</h2>
+            
+            <h3>📝 Código Alternativo:</h3>
+            <div class="code-block">
+// BYPASS TEMPORÁRIO: Pular DELETE para Zeca Baleiro
+if (employeeId === '95886a5e-893c-4889-85a0-8989d48d19fd') {
+  console.log('🔧 BYPASS DELETE: Pulando remoção para Zeca Baleiro');
+  
+  // Usar UPSERT diretamente
+  const { error: upsertError } = await supabase
+    .from('permissoes_usuario')
+    .upsert(permissoesParaInserir, {
+      onConflict: 'usuario_empresa_id,modulo'
+    });
+} else {
+  // Lógica normal DELETE + INSERT
+}
+            </div>
+        </div>
+
+        <!-- Implementação Imediata -->
+        <div class="solution-section">
+            <h2>🚀 Implementação Imediata</h2>
+            
+            <h3>📋 Plano de Ação:</h3>
+            <ol>
+                <li><strong>Teste com logs:</strong> Execute novamente e veja onde falha</li>
+                <li><strong>Se DELETE falhar:</strong> Implementar UPSERT</li>
+                <li><strong>Se INSERT falhar:</strong> Verificar dados duplicados</li>
+                <li><strong>Validar resultado:</strong> Confirmar salvamento</li>
+            </ol>
+
+            <h3>🧪 Como Testar:</h3>
+            <ol>
+                <li>Abra o console (F12)</li>
+                <li>Tente salvar permissões do Zeca Baleiro</li>
+                <li>Observe os logs detalhados</li>
+                <li>Identifique onde exatamente falha</li>
+            </ol>
+
+            <h3>📊 Logs Esperados (Sucesso):</h3>
+            <div class="code-block">
+🗑️ Removendo permissões existentes...
+✅ Permissões existentes removidas
+💾 Inserindo 2 novas permissões...
+📋 Dados para inserir: [{usuario_empresa_id: "...", modulo: "gestao_caixa", ...}]
+✅ 2 permissões salvas com sucesso
+            </div>
+
+            <h3>📊 Logs Esperados (Falha DELETE):</h3>
+            <div class="code-block">
+🗑️ Removendo permissões existentes...
+❌ Erro ao deletar permissões existentes: [erro RLS]
+            </div>
+
+            <h3>📊 Logs Esperados (Falha INSERT):</h3>
+            <div class="code-block">
+🗑️ Removendo permissões existentes...
+✅ Permissões existentes removidas
+💾 Inserindo 2 novas permissões...
+📋 Dados para inserir: [...]
+❌ Erro ao inserir permissões: [erro 409]
+            </div>
+        </div>
+
+        <!-- Próximos Passos -->
+        <div class="solution-section">
+            <h2>🎯 Próximos Passos</h2>
+            
+            <h3>1️⃣ Teste Imediato:</h3>
+            <p>Execute o salvamento novamente e observe os logs detalhados para identificar onde exatamente está falhando.</p>
+
+            <h3>2️⃣ Implementar Correção:</h3>
+            <p>Baseado nos logs, implementar a solução apropriada (UPSERT ou bypass DELETE).</p>
+
+            <h3>3️⃣ Validar Funcionamento:</h3>
+            <p>Confirmar que as permissões são salvas e persistem após recarregar a página.</p>
+
+            <h3>🎯 Objetivo Final:</h3>
+            <p><strong>Zeca Baleiro deve conseguir salvar suas permissões específicas sem qualquer erro 409!</strong></p>
+        </div>
+    </div>
+</body>
+</html>

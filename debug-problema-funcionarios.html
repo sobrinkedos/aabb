@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Problema Funcionários</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .step {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Problema Funcionários</h1>
+        <p>Vamos identificar exatamente onde está o problema no cadastro de funcionários.</p>
+        
+        <div class="step info">
+            <h3>📋 Status da Conexão</h3>
+            <p id="connection-status">Verificando conexão...</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🔍 Diagnóstico Completo</h2>
+        
+        <div class="step">
+            <h3>1. Verificar Usuário Atual</h3>
+            <button onclick="verificarUsuario()">Verificar Usuário</button>
+            <div id="usuario-info"></div>
+        </div>
+
+        <div class="step">
+            <h3>2. Verificar Estrutura da Tabela</h3>
+            <button onclick="verificarTabela()">Verificar Tabela bar_employees</button>
+            <div id="tabela-info"></div>
+        </div>
+
+        <div class="step">
+            <h3>3. Verificar Políticas RLS</h3>
+            <button onclick="verificarRLS()">Verificar RLS</button>
+            <div id="rls-info"></div>
+        </div>
+
+        <div class="step">
+            <h3>4. Teste de Inserção Simples</h3>
+            <div class="form-group">
+                <label>Nome:</label>
+                <input type="text" id="test-nome" value="João Teste" />
+            </div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="test-email" value="joao.teste@exemplo.com" />
+            </div>
+            <div class="form-group">
+                <label>Cargo:</label>
+                <select id="test-cargo">
+                    <option value="atendente">Atendente</option>
+                    <option value="garcom">Garçom</option>
+                    <option value="cozinheiro">Cozinheiro</option>
+                </select>
+            </div>
+            <button onclick="testeInsercaoSimples()">Teste Inserção Simples</button>
+            <div id="teste-insercao"></div>
+        </div>
+
+        <div class="step">
+            <h3>5. Verificar Funcionários Existentes</h3>
+            <button onclick="listarFuncionarios()">Listar Funcionários</button>
+            <div id="funcionarios-lista"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📊 Log de Operações</h2>
+        <div id="log-operacoes" class="step">
+            <p>Aguardando operações...</p>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://pqmjfwmbitodwtpedlle.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxbWpmd21iaXRvZHd0cGVkbGxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI2MzQyNzEsImV4cCI6MjA0ODIxMDI3MX0.lAOmVJmBgLHGVJhqvQqIgzJdKAhHHkWqxpKdlJ8Q_qI';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let currentUser = null;
+        let empresaId = null;
+
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('log-operacoes');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `step ${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logContainer.appendChild(logEntry);
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        // Verificar conexão inicial
+        async function verificarConexao() {
+            try {
+                log('Iniciando verificação de conexão...');
+                
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error) {
+                    log(`❌ Erro de autenticação: ${error.message}`, 'error');
+                    document.getElementById('connection-status').innerHTML = 
+                        `❌ Erro de autenticação: ${error.message}`;
+                    return;
+                }
+
+                if (!user) {
+                    log('⚠️ Usuário não autenticado', 'error');
+                    document.getElementById('connection-status').innerHTML = 
+                        `⚠️ Usuário não autenticado. <a href="index.html">Fazer login</a>`;
+                    return;
+                }
+
+                currentUser = user;
+                empresaId = user.user_metadata?.empresa_id;
+
+                log(`✅ Usuário autenticado: ${user.email}`, 'success');
+                log(`📋 Empresa ID: ${empresaId || 'NÃO ENCONTRADO'}`, empresaId ? 'success' : 'error');
+
+                document.getElementById('connection-status').innerHTML = 
+                    `✅ Conectado como: ${user.email} | Empresa: ${empresaId || 'NÃO ENCONTRADO'}`;
+
+            } catch (error) {
+                log(`❌ Erro inesperado: ${error.message}`, 'error');
+                document.getElementById('connection-status').innerHTML = 
+                    `❌ Erro: ${error.message}`;
+            }
+        }
+
+        // Verificar usuário atual
+        async function verificarUsuario() {
+            try {
+                log('Verificando detalhes do usuário...');
+                
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error) {
+                    log(`❌ Erro ao buscar usuário: ${error.message}`, 'error');
+                    return;
+                }
+
+                const userInfo = {
+                    id: user?.id,
+                    email: user?.email,
+                    user_metadata: user?.user_metadata,
+                    app_metadata: user?.app_metadata,
+                    created_at: user?.created_at
+                };
+
+                document.getElementById('usuario-info').innerHTML = `
+                    <pre>${JSON.stringify(userInfo, null, 2)}</pre>
+                `;
+
+                log(`✅ Usuário verificado: ${user?.email}`, 'success');
+
+            } catch (error) {
+                log(`❌ Erro ao verificar usuário: ${error.message}`, 'error');
+            }
+        }
+
+        // Verificar estrutura da tabela
+        async function verificarTabela() {
+            try {
+                log('Verificando estrutura da tabela bar_employees...');
+                
+                // Tentar fazer uma consulta simples para verificar se a tabela existe
+                const { data, error } = await supabase
+                    .from('bar_employees')
+                    .select('*')
+                    .limit(1);
+
+                if (error) {
+                    log(`❌ Erro ao acessar tabela: ${error.message}`, 'error');
+                    document.getElementById('tabela-info').innerHTML = `
+                        <div class="error">
+                            <h4>Erro ao acessar tabela:</h4>
+                            <pre>${JSON.stringify(error, null, 2)}</pre>
+                        </div>
+                    `;
+                    return;
+                }
+
+                log(`✅ Tabela bar_employees acessível`, 'success');
+                document.getElementById('tabela-info').innerHTML = `
+                    <div class="success">
+                        <h4>✅ Tabela bar_employees acessível</h4>
+                        <p>Registros encontrados: ${data?.length || 0}</p>
+                        ${data?.length > 0 ? `<pre>${JSON.stringify(data[0], null, 2)}</pre>` : ''}
+                    </div>
+                `;
+
+            } catch (error) {
+                log(`❌ Erro inesperado ao verificar tabela: ${error.message}`, 'error');
+            }
+        }
+
+        // Verificar políticas RLS
+        async function verificarRLS() {
+            try {
+                log('Verificando políticas RLS...');
+                
+                if (!empresaId) {
+                    log('❌ Empresa ID não encontrado - não é possível testar RLS', 'error');
+                    document.getElementById('rls-info').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Empresa ID não encontrado</h4>
+                            <p>Não é possível testar RLS sem empresa_id</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Teste de SELECT com empresa_id
+                const { data: selectData, error: selectError } = await supabase
+                    .from('bar_employees')
+                    .select('*')
+                    .eq('empresa_id', empresaId);
+
+                if (selectError) {
+                    log(`❌ Erro no SELECT com RLS: ${selectError.message}`, 'error');
+                } else {
+                    log(`✅ SELECT com RLS funcionando - ${selectData.length} registros`, 'success');
+                }
+
+                document.getElementById('rls-info').innerHTML = `
+                    <div class="${selectError ? 'error' : 'success'}">
+                        <h4>Teste RLS - SELECT</h4>
+                        ${selectError ? 
+                            `<p>❌ Erro: ${selectError.message}</p>` : 
+                            `<p>✅ Sucesso: ${selectData.length} registros encontrados</p>`
+                        }
+                        <pre>${JSON.stringify(selectError || selectData, null, 2)}</pre>
+                    </div>
+                `;
+
+            } catch (error) {
+                log(`❌ Erro inesperado ao verificar RLS: ${error.message}`, 'error');
+            }
+        }
+
+        // Teste de inserção simples
+        async function testeInsercaoSimples() {
+            try {
+                const nome = document.getElementById('test-nome').value;
+                const email = document.getElementById('test-email').value;
+                const cargo = document.getElementById('test-cargo').value;
+
+                if (!nome || !email) {
+                    log('❌ Nome e email são obrigatórios', 'error');
+                    return;
+                }
+
+                if (!empresaId) {
+                    log('❌ Empresa ID não encontrado', 'error');
+                    return;
+                }
+
+                log(`Tentando inserir funcionário: ${nome} (${email})...`);
+
+                const dadosInsercao = {
+                    nome,
+                    email,
+                    cargo,
+                    empresa_id: empresaId,
+                    ativo: true,
+                    tem_acesso_sistema: false,
+                    auth_user_id: null,
+                    salario: 0
+                };
+
+                log(`Dados para inserção: ${JSON.stringify(dadosInsercao)}`);
+
+                const { data, error } = await supabase
+                    .from('bar_employees')
+                    .insert(dadosInsercao)
+                    .select()
+                    .single();
+
+                if (error) {
+                    log(`❌ Erro na inserção: ${error.message}`, 'error');
+                    document.getElementById('teste-insercao').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro na Inserção</h4>
+                            <p><strong>Mensagem:</strong> ${error.message}</p>
+                            <p><strong>Código:</strong> ${error.code}</p>
+                            <p><strong>Detalhes:</strong> ${error.details}</p>
+                            <pre>${JSON.stringify(error, null, 2)}</pre>
+                        </div>
+                    `;
+                    return;
+                }
+
+                log(`✅ Funcionário inserido com sucesso: ID ${data.id}`, 'success');
+                document.getElementById('teste-insercao').innerHTML = `
+                    <div class="success">
+                        <h4>✅ Inserção Bem-sucedida</h4>
+                        <p><strong>ID:</strong> ${data.id}</p>
+                        <p><strong>Nome:</strong> ${data.nome}</p>
+                        <p><strong>Email:</strong> ${data.email}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+
+            } catch (error) {
+                log(`❌ Erro inesperado na inserção: ${error.message}`, 'error');
+                document.getElementById('teste-insercao').innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erro Inesperado</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Listar funcionários existentes
+        async function listarFuncionarios() {
+            try {
+                log('Listando funcionários existentes...');
+
+                if (!empresaId) {
+                    log('❌ Empresa ID não encontrado', 'error');
+                    return;
+                }
+
+                const { data, error } = await supabase
+                    .from('bar_employees')
+                    .select('*')
+                    .eq('empresa_id', empresaId)
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    log(`❌ Erro ao listar funcionários: ${error.message}`, 'error');
+                    document.getElementById('funcionarios-lista').innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro ao Listar</h4>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                log(`✅ ${data.length} funcionários encontrados`, 'success');
+
+                if (data.length === 0) {
+                    document.getElementById('funcionarios-lista').innerHTML = `
+                        <div class="info">
+                            <h4>📋 Nenhum funcionário encontrado</h4>
+                            <p>A empresa não possui funcionários cadastrados ainda.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const funcionariosHtml = data.map(func => `
+                    <div class="step">
+                        <h4>${func.nome}</h4>
+                        <p><strong>Email:</strong> ${func.email}</p>
+                        <p><strong>Cargo:</strong> ${func.cargo}</p>
+                        <p><strong>Ativo:</strong> ${func.ativo ? 'Sim' : 'Não'}</p>
+                        <p><strong>Tem Acesso:</strong> ${func.tem_acesso_sistema ? 'Sim' : 'Não'}</p>
+                        <p><strong>Criado em:</strong> ${new Date(func.created_at).toLocaleString('pt-BR')}</p>
+                        ${func.auth_user_id ? `<p><strong>Auth User ID:</strong> ${func.auth_user_id}</p>` : ''}
+                    </div>
+                `).join('');
+
+                document.getElementById('funcionarios-lista').innerHTML = `
+                    <div class="success">
+                        <h4>✅ ${data.length} Funcionários Encontrados</h4>
+                        ${funcionariosHtml}
+                    </div>
+                `;
+
+            } catch (error) {
+                log(`❌ Erro inesperado ao listar funcionários: ${error.message}`, 'error');
+            }
+        }
+
+        // Inicializar quando a página carregar
+        document.addEventListener('DOMContentLoaded', verificarConexao);
+    </script>
+</body>
+</html>

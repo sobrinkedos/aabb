@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Sistema de Permissões</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .result { margin: 10px 0; padding: 15px; border-radius: 5px; border-left: 4px solid #3498db; background: #ecf0f1; }
+        .success { border-left-color: #27ae60; background: #d5f4e6; }
+        .error { border-left-color: #e74c3c; background: #fdeaea; }
+        .warning { border-left-color: #f39c12; background: #fef9e7; }
+        .info { border-left-color: #3498db; background: #ebf3fd; }
+        button { background: #3498db; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #2980b9; }
+        .permissions-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        .permissions-table th, .permissions-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .permissions-table th { background: #f4f4f4; font-weight: bold; }
+        .loading { text-align: center; padding: 20px; color: #7f8c8d; }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        h3 { color: #34495e; margin-top: 25px; }
+        .code { background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 5px; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.4; margin: 10px 0; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Teste Sistema de Permissões - Funcionário Segmentado</h1>
+        
+        <div class="result info">
+            <h3>📋 Objetivo do Teste</h3>
+            <p>Verificar se o usuário <strong>joao.grilo@teste.com</strong> tem apenas as permissões limitadas configuradas e se o sistema de proteção de rotas está funcionando.</p>
+            <p><strong>Permissões Esperadas:</strong> Dashboard (visualizar) + Atendimento Bar (visualizar)</p>
+        </div>
+
+        <button onclick="testarSistemaPermissoes()">🧪 Executar Teste Completo</button>
+        <button onclick="limparResultados()">🗑️ Limpar Resultados</button>
+        
+        <div id="resultados"></div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://xucuvzdjsbmghplcfdzs.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1Y3V2emRqc2JtZ2hwbGNmZHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYxNzY0ODAsImV4cCI6MjA1MTc1MjQ4MH0.HNFddaJY6lZFAQKb26qBR4kKZPj1K4S0Qu5-OLJX5I8';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        function addResult(content, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = content;
+            document.getElementById('resultados').appendChild(div);
+        }
+
+        function limparResultados() {
+            document.getElementById('resultados').innerHTML = '';
+        }
+
+        async function testarSistemaPermissoes() {
+            addResult('<h3>🔄 Iniciando teste do sistema de permissões...</h3>', 'info');
+            
+            try {
+                // 1. Login como funcionário
+                addResult('<h4>1️⃣ Fazendo login como joao.grilo@teste.com...</h4>');
+                
+                const { data: loginData, error: loginError } = await supabaseClient.auth.signInWithPassword({
+                    email: 'joao.grilo@teste.com',
+                    password: '000000' // Senha correta informada pelo usuário
+                });
+
+                if (loginError) {
+                    addResult(`❌ Erro no login: ${loginError.message}`, 'error');
+                    return;
+                }
+
+                addResult(`✅ Login realizado com sucesso!`, 'success');
+
+                // 2. Verificar usuário autenticado
+                const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+                
+                if (userError || !user) {
+                    addResult(`❌ Erro ao verificar usuário: ${userError?.message || 'Usuário não encontrado'}`, 'error');
+                    return;
+                }
+
+                addResult(`✅ Usuário autenticado: ${user.email}`, 'success');
+
+                // 3. Buscar dados do funcionário
+                addResult('<h4>2️⃣ Verificando dados do funcionário...</h4>');
+                
+                const { data: funcionario, error: funcionarioError } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (funcionarioError || !funcionario) {
+                    addResult(`❌ Erro ao buscar dados do funcionário: ${funcionarioError?.message || 'Não encontrado'}`, 'error');
+                    return;
+                }
+
+                addResult(`✅ Funcionário encontrado:
+                    <ul>
+                        <li><strong>Tipo:</strong> ${funcionario.tipo_usuario}</li>
+                        <li><strong>Status:</strong> ${funcionario.status}</li>
+                        <li><strong>Senha Provisória:</strong> ${funcionario.senha_provisoria ? 'Sim' : 'Não'}</li>
+                    </ul>`, funcionario.tipo_usuario === 'funcionario' ? 'success' : 'warning');
+
+                // 4. Verificar permissões específicas
+                addResult('<h4>3️⃣ Verificando permissões específicas...</h4>');
+                
+                const { data: permissoes, error: permissoesError } = await supabaseClient
+                    .from('permissoes_usuario')
+                    .select('*')
+                    .eq('usuario_empresa_id', funcionario.id);
+
+                if (permissoesError) {
+                    addResult(`❌ Erro ao buscar permissões: ${permissoesError.message}`, 'error');
+                    return;
+                }
+
+                if (!permissoes || permissoes.length === 0) {
+                    addResult(`⚠️ PROBLEMA: Funcionário não tem permissões específicas configuradas!`, 'warning');
+                    return;
+                }
+
+                // Mostrar permissões encontradas
+                let permissoesHtml = '<table class="permissions-table"><tr><th>Módulo</th><th>Permissões</th></tr>';
+                let modulosComAcesso = [];
+                
+                permissoes.forEach(perm => {
+                    const permObj = perm.permissoes;
+                    const acoesPermitidas = Object.keys(permObj).filter(acao => permObj[acao] === true);
+                    
+                    if (acoesPermitidas.length > 0) {
+                        modulosComAcesso.push(perm.modulo);
+                        permissoesHtml += `<tr><td><strong>${perm.modulo}</strong></td><td>${acoesPermitidas.join(', ')}</td></tr>`;
+                    }
+                });
+                
+                permissoesHtml += '</table>';
+
+                if (modulosComAcesso.length <= 2) {
+                    addResult(`✅ CORRETO: Funcionário tem acesso limitado a ${modulosComAcesso.length} módulo(s): <br>${permissoesHtml}`, 'success');
+                } else {
+                    addResult(`⚠️ PROBLEMA: Funcionário tem acesso a muitos módulos (${modulosComAcesso.length}): <br>${permissoesHtml}`, 'warning');
+                }
+
+                // 5. Simular verificação do sistema de roteamento
+                addResult('<h4>4️⃣ Simulando verificação de acesso a módulos...</h4>');
+                
+                const modulosParaTestar = [
+                    { nome: 'Dashboard', modulo: 'dashboard', acao: 'visualizar' },
+                    { nome: 'Atendimento Bar', modulo: 'atendimento_bar', acao: 'visualizar' },
+                    { nome: 'Monitor Bar', modulo: 'monitor_bar', acao: 'visualizar' },
+                    { nome: 'Funcionários', modulo: 'funcionarios', acao: 'visualizar' },
+                    { nome: 'Configurações', modulo: 'configuracoes', acao: 'visualizar' }
+                ];
+
+                let testeAcessoHtml = '<table class="permissions-table"><tr><th>Módulo</th><th>Ação</th><th>Acesso</th></tr>';
+                let acessosIndevidos = [];
+                
+                modulosParaTestar.forEach(teste => {
+                    const permissaoModulo = permissoes.find(p => p.modulo === teste.modulo);
+                    const temAcesso = permissaoModulo && permissaoModulo.permissoes[teste.acao] === true;
+                    
+                    const statusAcesso = temAcesso ? '✅ Permitido' : '❌ Negado';
+                    const corStatus = temAcesso ? 'success' : 'error';
+                    
+                    testeAcessoHtml += `<tr><td>${teste.nome}</td><td>${teste.acao}</td><td style="color: ${temAcesso ? 'green' : 'red'}">${statusAcesso}</td></tr>`;
+                    
+                    // Verificar se tem acesso a módulos que não deveria (exceto dashboard e atendimento_bar)
+                    if (temAcesso && !['dashboard', 'atendimento_bar'].includes(teste.modulo)) {
+                        acessosIndevidos.push(teste.nome);
+                    }
+                });
+                
+                testeAcessoHtml += '</table>';
+                addResult(`Resultado da verificação de acesso: <br>${testeAcessoHtml}`, 'info');
+
+                // 6. Conclusão do teste
+                addResult('<h4>5️⃣ Conclusão do Teste</h4>');
+                
+                if (acessosIndevidos.length === 0) {
+                    addResult(`🎉 <strong>TESTE PASSOU!</strong> O sistema de permissões está funcionando corretamente. O funcionário tem acesso apenas aos módulos autorizados.`, 'success');
+                } else {
+                    addResult(`⚠️ <strong>TESTE FALHOU!</strong> O funcionário tem acesso indevido aos seguintes módulos: ${acessosIndevidos.join(', ')}. A segmentação de permissões não está funcionando adequadamente no frontend.`, 'warning');
+                }
+
+                // 7. Logout
+                await supabaseClient.auth.signOut();
+                addResult('🔓 Logout realizado', 'info');
+
+            } catch (error) {
+                addResult(`❌ Erro durante o teste: ${error.message}`, 'error');
+                console.error('Erro completo:', error);
+            }
+        }
+    </script>
+</body>
+</html>

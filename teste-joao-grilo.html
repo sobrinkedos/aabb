@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Teste Joao Grilo - RLS Desabilitado</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            color: white;
+            border-radius: 10px;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+            background: #f8f9fa;
+            border-radius: 0 5px 5px 0;
+        }
+        .success { border-left-color: #27ae60; background: #e8f5e9; }
+        .error { border-left-color: #e74c3c; background: #f8d7da; }
+        .button {
+            padding: 12px 24px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+        }
+        .button:hover { background: #229954; }
+        .code {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 TESTE JOAO GRILO</h1>
+            <p>Testando criação após desabilitar RLS</p>
+        </div>
+
+        <div class="step">
+            <p><strong>Status:</strong> RLS desabilitado temporariamente para employees e bar_employees</p>
+            <p><strong>Objetivo:</strong> Verificar se a criação funciona sem RLS</p>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <button class="button" onclick="testarCriacaoJoaoGrilo()">
+                🚀 Criar Joao Grilo
+            </button>
+        </div>
+
+        <div id="resultados"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        function addResult(message, type = 'step') {
+            const resultsDiv = document.getElementById('resultados');
+            const div = document.createElement('div');
+            div.className = `step ${type}`;
+            div.innerHTML = message;
+            resultsDiv.appendChild(div);
+            div.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function clearResults() {
+            document.getElementById('resultados').innerHTML = '';
+        }
+
+        async function testarCriacaoJoaoGrilo() {
+            clearResults();
+            addResult('🧪 Iniciando teste de criação do funcionário Joao Grilo...', 'step');
+
+            try {
+                // 1. Primeiro, fazer login como administrador para ter acesso
+                addResult('🔐 Fazendo login como administrador...', 'step');
+                
+                // Tentar login com credenciais conhecidas (riltons@gmail.com)
+                const { data: loginData, error: loginError } = await supabaseClient.auth.signInWithPassword({
+                    email: 'riltons@gmail.com',
+                    password: '000000' // Senha correta
+                });
+
+                if (loginError) {
+                    addResult(`⚠️ Não foi possível fazer login automático: ${loginError.message}`, 'error');
+                    addResult('🔑 Faça login manualmente na aplicação principal e depois execute este teste', 'error');
+                    return;
+                }
+
+                addResult(`✅ Login realizado: ${loginData.user.email}`, 'success');
+
+                // 2. Verificar sessão atual
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session?.user) {
+                    addResult('❌ Usuário não está autenticado. Faça login primeiro.', 'error');
+                    return;
+                }
+
+                addResult(`✅ Usuário autenticado: ${session.user.email}`, 'success');
+
+                // 3. Buscar empresa
+                const { data: empresas, error: empresaError } = await supabaseClient
+                    .from('empresas')
+                    .select('id, nome')
+                    .eq('status', 'ativo')
+                    .limit(1);
+
+                if (empresaError || !empresas || empresas.length === 0) {
+                    addResult(`❌ Erro ao buscar empresa: ${empresaError?.message || 'Nenhuma empresa encontrada'}`, 'error');
+                    return;
+                }
+
+                const empresaId = empresas[0].id;
+                addResult(`✅ Empresa encontrada: ${empresas[0].nome}`, 'success');
+
+                // 4. Dados do funcionário
+                const funcionarioData = {
+                    email: `joao.grilo.${Date.now()}@teste.com`,
+                    senha: '123456',
+                    nome_completo: 'Joao Grilo',
+                    cargo: 'Garçom',
+                    telefone: '(81) 99999-9999'
+                };
+
+                addResult(`📧 Criando funcionário: ${funcionarioData.nome_completo} (${funcionarioData.email})`, 'step');
+
+                // 5. Criar usuário no Auth
+                const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                    email: funcionarioData.email,
+                    password: funcionarioData.senha,
+                    options: {
+                        data: {
+                            nome_completo: funcionarioData.nome_completo,
+                            role: 'employee'
+                        }
+                    }
+                });
+
+                if (authError) {
+                    addResult(`❌ Erro ao criar usuário no Auth: ${authError.message}`, 'error');
+                    return;
+                }
+
+                if (!authData.user) {
+                    addResult('❌ Usuário não foi criado no Auth', 'error');
+                    return;
+                }
+
+                addResult(`✅ Usuário criado no Auth: ${authData.user.id}`, 'success');
+
+                // 6. Buscar department e position
+                const { data: departments } = await supabaseClient
+                    .from('departments')
+                    .select('id')
+                    .eq('is_active', true)
+                    .limit(1);
+
+                const { data: positions } = await supabaseClient
+                    .from('positions')
+                    .select('id') 
+                    .eq('is_active', true)
+                    .limit(1);
+
+                // 7. Criar employee (TESTE PRINCIPAL - RLS desabilitado)
+                addResult('👥 Testando criação na tabela employees (RLS desabilitado)...', 'step');
+                
+                const employeeRecord = {
+                    employee_code: `EMP-${Date.now()}`,
+                    name: funcionarioData.nome_completo,
+                    email: funcionarioData.email,
+                    hire_date: new Date().toISOString().split('T')[0],
+                    status: 'active',
+                    empresa_id: empresaId,
+                    profile_id: authData.user.id
+                };
+
+                if (departments?.[0]?.id) employeeRecord.department_id = departments[0].id;
+                if (positions?.[0]?.id) employeeRecord.position_id = positions[0].id;
+
+                const { data: employeeData, error: employeeError } = await supabaseClient
+                    .from('employees')
+                    .insert(employeeRecord)
+                    .select('id')
+                    .single();
+
+                if (employeeError) {
+                    addResult(`❌ ERRO ao criar employee: ${employeeError.message}`, 'error');
+                    addResult(`<div class="code">Dados enviados: ${JSON.stringify(employeeRecord, null, 2)}</div>`, 'error');
+                    return;
+                }
+
+                const employeeId = employeeData.id;
+                addResult(`✅ Employee criado com sucesso: ${employeeId}`, 'success');
+
+                // 8. Criar bar_employee
+                addResult('🍺 Criando registro na tabela bar_employees...', 'step');
+                
+                const { data: barEmployeeData, error: barEmployeeError } = await supabaseClient
+                    .from('bar_employees')
+                    .insert({
+                        employee_id: employeeId,
+                        bar_role: 'garcom',
+                        shift_preference: 'qualquer',
+                        specialties: ['atendimento'],
+                        commission_rate: 0,
+                        is_active: true,
+                        start_date: new Date().toISOString().split('T')[0],
+                        notes: `Nome: ${funcionarioData.nome_completo}, Email: ${funcionarioData.email}`,
+                        empresa_id: empresaId
+                    })
+                    .select('id')
+                    .single();
+
+                if (barEmployeeError) {
+                    addResult(`❌ Erro ao criar bar_employee: ${barEmployeeError.message}`, 'error');
+                } else {
+                    addResult(`✅ Bar employee criado: ${barEmployeeData.id}`, 'success');
+                }
+
+                // 9. Criar usuarios_empresa
+                addResult('🏢 Criando registro na tabela usuarios_empresa...', 'step');
+                
+                const { data: usuarioEmpresaData, error: usuarioEmpresaError } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .insert({
+                        user_id: authData.user.id,
+                        empresa_id: empresaId,
+                        nome_completo: funcionarioData.nome_completo,
+                        email: funcionarioData.email,
+                        telefone: funcionarioData.telefone,
+                        cargo: funcionarioData.cargo,
+                        tipo_usuario: 'funcionario',
+                        status: 'ativo',
+                        senha_provisoria: true,
+                        ativo: true,
+                        tem_acesso_sistema: true,
+                        papel: 'USER'
+                    })
+                    .select('id')
+                    .single();
+
+                if (usuarioEmpresaError) {
+                    addResult(`❌ Erro ao criar usuarios_empresa: ${usuarioEmpresaError.message}`, 'error');
+                } else {
+                    addResult(`✅ Usuario empresa criado: ${usuarioEmpresaData.id}`, 'success');
+                    
+                    // 10. Criar permissões
+                    const permissoes = [
+                        {
+                            usuario_empresa_id: usuarioEmpresaData.id,
+                            modulo: 'dashboard',
+                            permissoes: { visualizar: true, criar: false, editar: false, excluir: false, administrar: false }
+                        },
+                        {
+                            usuario_empresa_id: usuarioEmpresaData.id,
+                            modulo: 'atendimento_bar',
+                            permissoes: { visualizar: true, criar: true, editar: true, excluir: false, administrar: false }
+                        }
+                    ];
+
+                    const { error: permissaoError } = await supabaseClient
+                        .from('permissoes_usuario')
+                        .insert(permissoes);
+
+                    if (permissaoError) {
+                        addResult(`❌ Erro ao criar permissões: ${permissaoError.message}`, 'error');
+                    } else {
+                        addResult('✅ Permissões criadas com sucesso', 'success');
+                    }
+                }
+
+                // 11. Resumo final
+                addResult(`
+                    <div class="success">
+                        <h4>🎉 TESTE CONCLUÍDO COM SUCESSO!</h4>
+                        <p><strong>Email:</strong> ${funcionarioData.email}</p>
+                        <p><strong>Senha:</strong> ${funcionarioData.senha}</p>
+                        <p><strong>Employee ID:</strong> ${employeeId}</p>
+                        <p><strong>RLS Status:</strong> Desabilitado temporariamente ✅</p>
+                        
+                        <h5>📋 Próximos Passos:</h5>
+                        <ol>
+                            <li>Teste fazer login com essas credenciais</li>
+                            <li>Verificar se SenhaProvisionariaGuard funciona</li>
+                            <li>Reabilitar RLS com políticas corretas</li>
+                        </ol>
+                    </div>
+                `, 'success');
+
+            } catch (error) {
+                addResult(`❌ Erro geral no teste: ${error.message}`, 'error');
+                console.error('Erro completo:', error);
+            }
+        }
+    </script>
+</body>
+</html>

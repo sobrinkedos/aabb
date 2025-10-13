@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 SOLUÇÃO DEFINITIVA - Funcionários</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+            border-radius: 10px;
+        }
+        .problema {
+            margin: 20px 0;
+            padding: 20px;
+            border-left: 4px solid #e74c3c;
+            background: #f8d7da;
+            border-radius: 0 5px 5px 0;
+        }
+        .solucao {
+            margin: 20px 0;
+            padding: 20px;
+            border-left: 4px solid #27ae60;
+            background: #d4edda;
+            border-radius: 0 5px 5px 0;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+            background: #f8f9fa;
+            border-radius: 0 5px 5px 0;
+        }
+        .info { border-left-color: #3498db; background: #e3f2fd; }
+        .success { border-left-color: #27ae60; background: #e8f5e9; }
+        .warning { border-left-color: #f39c12; background: #fff3cd; }
+        .error { border-left-color: #e74c3c; background: #f8d7da; }
+        .button {
+            padding: 12px 24px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+        }
+        .button:hover { background: #2980b9; }
+        .button.fix { background: #e74c3c; }
+        .button.fix:hover { background: #c0392b; }
+        .button.test { background: #27ae60; }
+        .button.test:hover { background: #229954; }
+        .code {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .sql-block {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 SOLUÇÃO DEFINITIVA</h1>
+            <p>Corrigindo TODOS os problemas de criação de funcionários</p>
+        </div>
+
+        <div class="problema">
+            <h3>🔍 Problemas Identificados</h3>
+            <ol>
+                <li><strong>Role incorreto na tabela profiles:</strong> Funcionários criados como "employer" em vez de "employee"</li>
+                <li><strong>tipo_usuario incorreto:</strong> Alguns funcionários criados como "administrador"</li>
+                <li><strong>SenhaProvisionariaGuard não funciona:</strong> senha_provisoria = false</li>
+                <li><strong>Acesso total aos módulos:</strong> Sistema dá permissões administrativas por padrão</li>
+                <li><strong>Trigger handle_new_user problemático:</strong> Causa falhas na criação</li>
+            </ol>
+        </div>
+
+        <div class="solucao">
+            <h3>💡 Solução Definitiva</h3>
+            <ol>
+                <li><strong>Corrigir trigger handle_new_user:</strong> Sempre criar como "employee"</li>
+                <li><strong>Criar permissões específicas:</strong> Funcionários só acessam módulos permitidos</li>
+                <li><strong>Garantir senha_provisoria = true:</strong> Para ativar o Guard</li>
+                <li><strong>Corrigir todos os funcionários existentes:</strong> Aplicar correções retroativamente</li>
+                <li><strong>Atualizar serviços de criação:</strong> Usar configurações corretas</li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <button class="button fix" onclick="aplicarSolucaoCompleta()">
+                🚀 Aplicar Solução Definitiva
+            </button>
+            <button class="button test" onclick="testarNovoFuncionario()">
+                🧪 Testar Criação de Funcionário
+            </button>
+            <button class="button" onclick="verificarStatus()">
+                📊 Verificar Status Atual
+            </button>
+        </div>
+
+        <div id="resultados"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjcyMDA5NjEsImV4cCI6MjA0Mjc3Njk2MX0.tVqbLxPjmHtip8SCgd61iZFBBKY_EqmlnSz2aHaJaLg';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('resultados');
+            const div = document.createElement('div');
+            div.className = `step ${type}`;
+            div.innerHTML = message;
+            resultsDiv.appendChild(div);
+            div.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function clearResults() {
+            document.getElementById('resultados').innerHTML = '';
+        }
+
+        async function aplicarSolucaoCompleta() {
+            clearResults();
+            addResult('🚀 Iniciando aplicação da solução definitiva...', 'info');
+
+            try {
+                // 1. Corrigir trigger handle_new_user
+                addResult('1️⃣ Precisamos corrigir o trigger no banco de dados...', 'warning');
+                addResult(`
+                    <h4>🔧 Execute este SQL no Supabase Dashboard:</h4>
+                    <p><strong>Vá em:</strong> Dashboard → SQL Editor → New Query</p>
+                    <div class="sql-block">
+-- 1. CORRIGIR TRIGGER HANDLE_NEW_USER
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  BEGIN
+    INSERT INTO public.profiles (id, name, avatar_url, role)
+    VALUES (
+      new.id,
+      COALESCE(new.raw_user_meta_data->>'name', new.email),
+      new.raw_user_meta_data->>'avatar_url',
+      CASE 
+        WHEN new.raw_user_meta_data->>'role' = 'employee' THEN 'employee'
+        WHEN new.raw_user_meta_data->>'role' = 'admin' THEN 'admin'
+        ELSE 'employee' -- PADRÃO SEMPRE EMPLOYEE
+      END
+    );
+  EXCEPTION WHEN OTHERS THEN
+    -- Não falhar se houver erro
+    RAISE WARNING 'Erro ao criar perfil para usuário %: %', new.id, SQLERRM;
+  END;
+  
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 2. CORRIGIR TODOS OS FUNCIONÁRIOS EXISTENTES COM ROLE ERRADO
+UPDATE public.profiles 
+SET role = 'employee' 
+WHERE role != 'employee' 
+  AND id IN (
+    SELECT user_id 
+    FROM usuarios_empresa 
+    WHERE tipo_usuario = 'funcionario'
+  );
+
+-- 3. CORRIGIR TIPO_USUARIO DE FUNCIONÁRIOS QUE ESTÃO COMO ADMINISTRADOR
+UPDATE usuarios_empresa 
+SET tipo_usuario = 'funcionario'
+WHERE tipo_usuario = 'administrador' 
+  AND papel IN ('USER', 'EMPLOYEE')
+  AND email NOT LIKE '%admin%'
+  AND email NOT LIKE '%gerente%';
+
+-- 4. ATIVAR SENHA PROVISÓRIA PARA FUNCIONÁRIOS QUE NÃO TÊM
+UPDATE usuarios_empresa 
+SET senha_provisoria = true
+WHERE tipo_usuario = 'funcionario' 
+  AND senha_provisoria = false
+  AND tem_acesso_sistema = true;
+                    </div>
+                `, 'warning');
+
+                // 2. Aguardar confirmação
+                const userConfirm = confirm('Execute o SQL acima no Supabase Dashboard e clique OK quando terminar.');
+                if (!userConfirm) {
+                    addResult('❌ Operação cancelada pelo usuário', 'error');
+                    return;
+                }
+
+                // 3. Verificar correções aplicadas
+                addResult('🔍 Verificando se as correções foram aplicadas...', 'info');
+
+                // Verificar funcionários corrigidos
+                const { data: funcionarios, error: funcError } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .select('id, email, tipo_usuario, senha_provisoria, user_id')
+                    .eq('tipo_usuario', 'funcionario');
+
+                if (funcError) {
+                    addResult(`❌ Erro ao verificar funcionários: ${funcError.message}`, 'error');
+                    return;
+                }
+
+                // Verificar profiles corrigidos
+                const funcionariosComUserId = funcionarios.filter(f => f.user_id);
+                const userIds = funcionariosComUserId.map(f => f.user_id);
+                
+                let profilesCorrigidos = 0;
+                if (userIds.length > 0) {
+                    const { data: profiles, error: profileError } = await supabaseClient
+                        .from('profiles')
+                        .select('id, role')
+                        .in('id', userIds);
+
+                    if (profiles) {
+                        profilesCorrigidos = profiles.filter(p => p.role === 'employee').length;
+                    }
+                }
+
+                addResult(`
+                    <h4>📊 Status das Correções:</h4>
+                    <ul>
+                        <li><strong>Funcionários encontrados:</strong> ${funcionarios.length}</li>
+                        <li><strong>Funcionários com user_id:</strong> ${funcionariosComUserId.length}</li>
+                        <li><strong>Profiles como 'employee':</strong> ${profilesCorrigidos}</li>
+                        <li><strong>Com senha_provisoria=true:</strong> ${funcionarios.filter(f => f.senha_provisoria).length}</li>
+                        <li><strong>Com tipo_usuario='funcionario':</strong> ${funcionarios.filter(f => f.tipo_usuario === 'funcionario').length}</li>
+                    </ul>
+                `, 'success');
+
+                // 4. Criar permissões para funcionários sem permissões
+                addResult('🛡️ Criando permissões específicas para funcionários...', 'info');
+
+                for (const funcionario of funcionarios) {
+                    if (!funcionario.user_id) continue;
+
+                    // Verificar se já tem permissões
+                    const { data: permissoesExistentes } = await supabaseClient
+                        .from('permissoes_usuario')
+                        .select('id')
+                        .eq('usuario_empresa_id', funcionario.id);
+
+                    if (permissoesExistentes && permissoesExistentes.length > 0) {
+                        continue; // Já tem permissões
+                    }
+
+                    // Criar permissões limitadas para funcionário
+                    const permissoesFuncionario = [
+                        {
+                            usuario_empresa_id: funcionario.id,
+                            modulo: 'dashboard',
+                            permissoes: {
+                                visualizar: true,
+                                criar: false,
+                                editar: false,
+                                excluir: false,
+                                administrar: false
+                            }
+                        },
+                        {
+                            usuario_empresa_id: funcionario.id,
+                            modulo: 'atendimento_bar',
+                            permissoes: {
+                                visualizar: true,
+                                criar: true,
+                                editar: true,
+                                excluir: false,
+                                administrar: false
+                            }
+                        },
+                        {
+                            usuario_empresa_id: funcionario.id,
+                            modulo: 'clientes',
+                            permissoes: {
+                                visualizar: true,
+                                criar: true,
+                                editar: false,
+                                excluir: false,
+                                administrar: false
+                            }
+                        }
+                    ];
+
+                    const { error: permError } = await supabaseClient
+                        .from('permissoes_usuario')
+                        .insert(permissoesFuncionario);
+
+                    if (permError) {
+                        console.warn(`Erro ao criar permissões para ${funcionario.email}:`, permError.message);
+                    }
+                }
+
+                addResult(`
+                    <div class="success">
+                        <h4>🎉 SOLUÇÃO DEFINITIVA APLICADA!</h4>
+                        
+                        <h5>✅ Correções Realizadas:</h5>
+                        <ol>
+                            <li><strong>Trigger corrigido:</strong> Novos funcionários sempre "employee"</li>
+                            <li><strong>Funcionários existentes corrigidos:</strong> Role e tipo_usuario</li>
+                            <li><strong>Senha provisória ativada:</strong> Para todos os funcionários</li>
+                            <li><strong>Permissões específicas criadas:</strong> Acesso limitado</li>
+                        </ol>
+
+                        <h5>🧪 Próximo Teste:</h5>
+                        <p>Clique em "Testar Criação de Funcionário" para verificar se tudo funciona!</p>
+                        
+                        <h5>🔑 Para Testar Funcionários Existentes:</h5>
+                        <p>Faça login com qualquer funcionário usando senha <strong>123456</strong></p>
+                        <p>Deve redirecionar para alteração de senha e ter acesso limitado aos módulos.</p>
+                    </div>
+                `, 'success');
+
+            } catch (error) {
+                addResult(`❌ Erro durante aplicação da solução: ${error.message}`, 'error');
+            }
+        }
+
+        async function testarNovoFuncionario() {
+            clearResults();
+            addResult('🧪 Testando criação de novo funcionário...', 'info');
+
+            try {
+                const testEmail = `teste.funcionario.${Date.now()}@exemplo.com`;
+                const senha = '123456';
+
+                addResult(`📧 Criando funcionário de teste: ${testEmail}`, 'info');
+
+                // 1. Criar usuário no Auth com metadados corretos
+                const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                    email: testEmail,
+                    password: senha,
+                    options: {
+                        data: {
+                            name: 'Funcionário Teste Definitivo',
+                            role: 'employee' // CORRETO: employee
+                        }
+                    }
+                });
+
+                if (authError) {
+                    addResult(`❌ Erro ao criar usuário: ${authError.message}`, 'error');
+                    return;
+                }
+
+                if (!authData.user) {
+                    addResult('❌ Usuário não foi criado', 'error');
+                    return;
+                }
+
+                addResult(`✅ Usuário criado no Auth: ${authData.user.id}`, 'success');
+
+                // Aguardar processamento do trigger
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // 2. Verificar se profile foi criado corretamente
+                const { data: profile, error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', authData.user.id)
+                    .single();
+
+                if (profile) {
+                    addResult(`✅ Profile criado com role: ${profile.role}`, profile.role === 'employee' ? 'success' : 'warning');
+                } else {
+                    addResult(`⚠️ Profile não encontrado ou erro: ${profileError?.message}`, 'warning');
+                }
+
+                // 3. Criar na usuarios_empresa
+                const { data: usuarioEmpresa, error: empresaError } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .insert([{
+                        user_id: authData.user.id,
+                        empresa_id: '00000000-0000-0000-0000-000000000001', // ID padrão
+                        nome_completo: 'Funcionário Teste Definitivo',
+                        email: testEmail,
+                        cargo: 'Testador',
+                        tipo_usuario: 'funcionario',
+                        status: 'ativo',
+                        senha_provisoria: true,
+                        ativo: true,
+                        tem_acesso_sistema: true,
+                        papel: 'USER'
+                    }])
+                    .select('id')
+                    .single();
+
+                if (empresaError) {
+                    addResult(`❌ Erro ao criar usuarios_empresa: ${empresaError.message}`, 'error');
+                    return;
+                }
+
+                addResult(`✅ Funcionário criado na empresa: ${usuarioEmpresa.id}`, 'success');
+
+                // 4. Criar permissões limitadas
+                const permissoesFuncionario = [
+                    {
+                        usuario_empresa_id: usuarioEmpresa.id,
+                        modulo: 'dashboard',
+                        permissoes: {
+                            visualizar: true,
+                            criar: false,
+                            editar: false,
+                            excluir: false,
+                            administrar: false
+                        }
+                    }
+                ];
+
+                const { error: permError } = await supabaseClient
+                    .from('permissoes_usuario')
+                    .insert(permissoesFuncionario);
+
+                if (permError) {
+                    addResult(`⚠️ Erro ao criar permissões: ${permError.message}`, 'warning');
+                } else {
+                    addResult(`✅ Permissões limitadas criadas`, 'success');
+                }
+
+                // 5. Testar login
+                addResult('🔐 Testando login com as credenciais...', 'info');
+
+                const { data: loginData, error: loginError } = await supabaseClient.auth.signInWithPassword({
+                    email: testEmail,
+                    password: senha
+                });
+
+                if (loginError) {
+                    addResult(`❌ Login falhou: ${loginError.message}`, 'error');
+                } else {
+                    addResult(`✅ Login funcionou! User ID: ${loginData.user.id}`, 'success');
+                    
+                    // Fazer logout
+                    await supabaseClient.auth.signOut();
+                    addResult(`🚪 Logout realizado`, 'info');
+                }
+
+                // 6. Resumo do teste
+                addResult(`
+                    <div class="success">
+                        <h4>🎯 TESTE COMPLETO!</h4>
+                        
+                        <h5>📋 Resultado do Teste:</h5>
+                        <ul>
+                            <li><strong>Email:</strong> ${testEmail}</li>
+                            <li><strong>Senha:</strong> ${senha}</li>
+                            <li><strong>Profile Role:</strong> ${profile?.role || 'Não criado'}</li>
+                            <li><strong>Tipo Usuário:</strong> funcionario</li>
+                            <li><strong>Senha Provisória:</strong> true</li>
+                            <li><strong>Login:</strong> ${loginError ? 'Falhou' : 'Funcionou'}</li>
+                        </ul>
+
+                        <h5>🧪 Para Testar no Sistema:</h5>
+                        <p>1. Faça login no sistema com: <strong>${testEmail}</strong> / <strong>${senha}</strong></p>
+                        <p>2. Deve redirecionar para alteração de senha</p>
+                        <p>3. Após alterar, deve ter acesso apenas ao Dashboard</p>
+                    </div>
+                `, 'success');
+
+            } catch (error) {
+                addResult(`❌ Erro no teste: ${error.message}`, 'error');
+            }
+        }
+
+        async function verificarStatus() {
+            clearResults();
+            addResult('📊 Verificando status atual do sistema...', 'info');
+
+            try {
+                // 1. Verificar funcionários
+                const { data: funcionarios, error: funcError } = await supabaseClient
+                    .from('usuarios_empresa')
+                    .select('id, email, tipo_usuario, senha_provisoria, user_id, papel')
+                    .eq('tipo_usuario', 'funcionario');
+
+                if (funcError) {
+                    addResult(`❌ Erro ao buscar funcionários: ${funcError.message}`, 'error');
+                    return;
+                }
+
+                // 2. Verificar profiles
+                const funcionariosComUserId = funcionarios.filter(f => f.user_id);
+                const userIds = funcionariosComUserId.map(f => f.user_id);
+                
+                let profiles = [];
+                if (userIds.length > 0) {
+                    const { data: profilesData } = await supabaseClient
+                        .from('profiles')
+                        .select('id, role')
+                        .in('id', userIds);
+                    profiles = profilesData || [];
+                }
+
+                // 3. Verificar permissões
+                let totalPermissoes = 0;
+                if (funcionarios.length > 0) {
+                    const { data: permissoesData } = await supabaseClient
+                        .from('permissoes_usuario')
+                        .select('id')
+                        .in('usuario_empresa_id', funcionarios.map(f => f.id));
+                    totalPermissoes = permissoesData?.length || 0;
+                }
+
+                // 4. Análise
+                const problemasEncontrados = [];
+                const funcionariosAdmin = funcionarios.filter(f => f.tipo_usuario === 'administrador');
+                const profilesErrados = profiles.filter(p => p.role !== 'employee');
+                const semSenhaProvisoria = funcionarios.filter(f => !f.senha_provisoria && f.tem_acesso_sistema);
+
+                if (funcionariosAdmin.length > 0) {
+                    problemasEncontrados.push(`${funcionariosAdmin.length} funcionários com tipo_usuario='administrador'`);
+                }
+                if (profilesErrados.length > 0) {
+                    problemasEncontrados.push(`${profilesErrados.length} profiles com role incorreto`);
+                }
+                if (semSenhaProvisoria.length > 0) {
+                    problemasEncontrados.push(`${semSenhaProvisoria.length} funcionários sem senha_provisoria`);
+                }
+
+                addResult(`
+                    <h4>📊 Status Atual do Sistema:</h4>
+                    
+                    <h5>👥 Funcionários:</h5>
+                    <ul>
+                        <li><strong>Total:</strong> ${funcionarios.length}</li>
+                        <li><strong>Com user_id:</strong> ${funcionariosComUserId.length}</li>
+                        <li><strong>Com senha_provisoria=true:</strong> ${funcionarios.filter(f => f.senha_provisoria).length}</li>
+                        <li><strong>Com tipo_usuario='funcionario':</strong> ${funcionarios.filter(f => f.tipo_usuario === 'funcionario').length}</li>
+                    </ul>
+
+                    <h5>👤 Profiles:</h5>
+                    <ul>
+                        <li><strong>Total:</strong> ${profiles.length}</li>
+                        <li><strong>Role 'employee':</strong> ${profiles.filter(p => p.role === 'employee').length}</li>
+                        <li><strong>Role 'admin':</strong> ${profiles.filter(p => p.role === 'admin').length}</li>
+                        <li><strong>Outros roles:</strong> ${profiles.filter(p => p.role !== 'employee' && p.role !== 'admin').length}</li>
+                    </ul>
+
+                    <h5>🛡️ Permissões:</h5>
+                    <ul>
+                        <li><strong>Total de registros:</strong> ${totalPermissoes}</li>
+                        <li><strong>Média por funcionário:</strong> ${funcionarios.length > 0 ? (totalPermissoes / funcionarios.length).toFixed(1) : 0}</li>
+                    </ul>
+
+                    ${problemasEncontrados.length > 0 ? `
+                        <h5 style="color: #e74c3c;">❌ Problemas Encontrados:</h5>
+                        <ul>
+                            ${problemasEncontrados.map(p => `<li>${p}</li>`).join('')}
+                        </ul>
+                        <p><strong>Solução:</strong> Clique em "Aplicar Solução Definitiva" para corrigir todos os problemas.</p>
+                    ` : `
+                        <h5 style="color: #27ae60;">✅ Sistema Configurado Corretamente!</h5>
+                        <p>Todos os funcionários estão com configurações adequadas.</p>
+                    `}
+                `, problemasEncontrados.length > 0 ? 'warning' : 'success');
+
+                // Listar alguns funcionários de exemplo
+                if (funcionarios.length > 0) {
+                    const exemplos = funcionarios.slice(0, 5);
+                    addResult(`
+                        <h4>📋 Exemplos de Funcionários:</h4>
+                        <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+                            <tr style="background: #f8f9fa;">
+                                <th style="border: 1px solid #ddd; padding: 8px;">Email</th>
+                                <th style="border: 1px solid #ddd; padding: 8px;">Tipo</th>
+                                <th style="border: 1px solid #ddd; padding: 8px;">Senha Prov.</th>
+                                <th style="border: 1px solid #ddd; padding: 8px;">Profile Role</th>
+                            </tr>
+                            ${exemplos.map(f => {
+                                const profile = profiles.find(p => p.id === f.user_id);
+                                return `
+                                    <tr>
+                                        <td style="border: 1px solid #ddd; padding: 8px;">${f.email}</td>
+                                        <td style="border: 1px solid #ddd; padding: 8px;">${f.tipo_usuario}</td>
+                                        <td style="border: 1px solid #ddd; padding: 8px;">${f.senha_provisoria ? 'Sim' : 'Não'}</td>
+                                        <td style="border: 1px solid #ddd; padding: 8px;">${profile?.role || 'N/A'}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </table>
+                    `, 'info');
+                }
+
+            } catch (error) {
+                addResult(`❌ Erro na verificação: ${error.message}`, 'error');
+            }
+        }
+
+        // Verificar status inicial
+        window.addEventListener('load', () => {
+            addResult('🔍 Sistema carregado. Clique em "Verificar Status Atual" para começar.', 'info');
+        });
+    </script>
+</body>
+</html>

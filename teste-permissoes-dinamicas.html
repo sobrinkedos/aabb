@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Teste Permissões Dinâmicas</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .success { background-color: #d4edda; border: 2px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .error { background-color: #f8d7da; border: 2px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .info { background-color: #d1ecf1; border: 2px solid #bee5eb; color: #0c5460; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 8px; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        .user-card { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin: 10px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+        .step { background: #f8f9fa; border-left: 4px solid #007bff; padding: 15px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="test-section">
+        <h1>🧪 Teste Permissões Dinâmicas</h1>
+        <p>Testar se o sistema está buscando e aplicando permissões específicas do banco de dados</p>
+        
+        <div class="info">
+            <strong>✅ Correções Aplicadas:</strong><br>
+            1. Sistema agora busca permissões específicas mesmo em modo fallback<br>
+            2. Quando há permissões específicas, usa APENAS elas (não as padrões do role)<br>
+            3. Logs detalhados para debug
+        </div>
+        
+        <button onclick="testarPermissoesDinamicas()" id="btn-teste">🧪 Testar Sistema de Permissões</button>
+        
+        <div id="resultado-teste"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wznycskqsavpmejwpksp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bnljc2txc2F2cG1landwa3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2MzA2NjUsImV4cCI6MjA3MjIwNjY2NX0.uYXbBwQDo1pLeBrmtZnBR2M3a3_TsYDa637pcKSVC_8';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function testarPermissoesDinamicas() {
+            try {
+                document.getElementById('resultado-teste').innerHTML = `
+                    <div class="info">🔄 Testando sistema de permissões dinâmicas...</div>
+                `;
+
+                // Passo 1: Login como admin
+                console.log('🔐 Fazendo login como admin...');
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                    email: 'riltons@gmail.com',
+                    password: '000000'
+                });
+
+                if (authError) {
+                    throw new Error(`Erro no login: ${authError.message}`);
+                }
+
+                const empresaId = '9e445c5a-a382-444d-94f8-9d126ed6414e';
+                console.log('✅ Login realizado como admin');
+
+                let html = `<div class="step"><h3>Passo 1: Login Admin ✅</h3></div>`;
+
+                // Passo 2: Buscar todos os usuários empresa
+                console.log('👥 Buscando usuários empresa...');
+                const { data: usuariosEmpresa, error: usuariosError } = await supabase
+                    .from('usuarios_empresa')
+                    .select('*')
+                    .eq('empresa_id', empresaId)
+                    .eq('status', 'ativo')
+                    .order('nome_completo');
+
+                if (usuariosError) {
+                    throw new Error(`Erro ao buscar usuários: ${usuariosError.message}`);
+                }
+
+                html += `
+                    <div class="step">
+                        <h3>Passo 2: Usuários Encontrados ✅</h3>
+                        <p>Total: ${usuariosEmpresa?.length || 0} usuários ativos</p>
+                    </div>
+                `;
+
+                // Passo 3: Para cada usuário, buscar suas permissões
+                if (usuariosEmpresa && usuariosEmpresa.length > 0) {
+                    html += `<h3>👥 Análise de Permissões por Usuário:</h3>`;
+                    
+                    for (const usuario of usuariosEmpresa.slice(0, 10)) { // Limitar a 10 para não sobrecarregar
+                        console.log(`🔍 Analisando usuário: ${usuario.nome_completo}`);
+                        
+                        // Buscar permissões específicas
+                        const { data: permissoes, error: permError } = await supabase
+                            .from('permissoes_usuario')
+                            .select('modulo, permissoes')
+                            .eq('usuario_empresa_id', usuario.id);
+
+                        if (permError) {
+                            console.warn(`Erro ao buscar permissões para ${usuario.nome_completo}:`, permError);
+                        }
+
+                        const temPermissoesEspecificas = permissoes && permissoes.length > 0;
+                        
+                        html += `
+                            <div class="user-card">
+                                <h4>👤 ${usuario.nome_completo}</h4>
+                                <p><strong>Email:</strong> ${usuario.email}</p>
+                                <p><strong>Cargo:</strong> ${usuario.cargo}</p>
+                                <p><strong>Tipo:</strong> ${usuario.tipo_usuario}</p>
+                                <p><strong>Permissões Específicas:</strong> 
+                                    <span style="background: ${temPermissoesEspecificas ? '#d4edda' : '#f8d7da'}; padding: 2px 5px; border-radius: 3px;">
+                                        ${temPermissoesEspecificas ? `✅ ${permissoes.length} módulos configurados` : '❌ Nenhuma (usa padrões do role)'}
+                                    </span>
+                                </p>
+                        `;
+
+                        if (temPermissoesEspecificas) {
+                            html += `
+                                <details>
+                                    <summary>📋 Ver Permissões Específicas</summary>
+                                    <table>
+                                        <tr><th>Módulo</th><th>Permissões</th></tr>
+                            `;
+                            
+                            permissoes.forEach(perm => {
+                                html += `
+                                    <tr>
+                                        <td><strong>${perm.modulo}</strong></td>
+                                        <td><pre>${JSON.stringify(perm.permissoes, null, 2)}</pre></td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            html += `</table></details>`;
+                        }
+                        
+                        html += `</div>`;
+                    }
+                }
+
+                // Passo 4: Criar um usuário de teste com permissões específicas
+                html += `
+                    <div class="step">
+                        <h3>Passo 4: Teste de Permissões Específicas</h3>
+                        <p>Vamos criar um usuário de teste com permissões específicas apenas para "gestao_caixa"</p>
+                    </div>
+                `;
+
+                // Criar usuário de teste
+                const testUserData = {
+                    user_id: 'test-user-' + Date.now(),
+                    empresa_id: empresaId,
+                    nome_completo: 'Usuário Teste Permissões',
+                    email: 'teste.permissoes@exemplo.com',
+                    cargo: 'Operador de Caixa Teste',
+                    tipo_usuario: 'funcionario',
+                    status: 'ativo',
+                    ativo: true,
+                    tem_acesso_sistema: true
+                };
+
+                const { data: testUser, error: testUserError } = await supabase
+                    .from('usuarios_empresa')
+                    .insert(testUserData)
+                    .select()
+                    .single();
+
+                if (testUserError) {
+                    console.warn('Erro ao criar usuário teste:', testUserError);
+                    html += `<div class="error">❌ Erro ao criar usuário teste: ${testUserError.message}</div>`;
+                } else {
+                    // Criar permissão específica para o usuário teste
+                    const testPermission = {
+                        usuario_empresa_id: testUser.id,
+                        modulo: 'gestao_caixa',
+                        permissoes: {
+                            visualizar: true,
+                            criar: true,
+                            editar: true,
+                            excluir: false,
+                            administrar: false
+                        }
+                    };
+
+                    const { error: permError } = await supabase
+                        .from('permissoes_usuario')
+                        .insert(testPermission);
+
+                    if (permError) {
+                        console.warn('Erro ao criar permissão teste:', permError);
+                    } else {
+                        html += `
+                            <div class="success">
+                                ✅ <strong>Usuário teste criado com sucesso!</strong><br>
+                                👤 Nome: ${testUser.nome_completo}<br>
+                                📧 Email: ${testUser.email}<br>
+                                🔑 Permissão: Apenas "gestao_caixa" com visualizar/criar/editar
+                            </div>
+                        `;
+                    }
+
+                    // Limpar usuário teste após o teste
+                    setTimeout(async () => {
+                        await supabase.from('permissoes_usuario').delete().eq('usuario_empresa_id', testUser.id);
+                        await supabase.from('usuarios_empresa').delete().eq('id', testUser.id);
+                        console.log('🧹 Usuário teste removido');
+                    }, 5000);
+                }
+
+                // Conclusão
+                html += `
+                    <div class="step">
+                        <h3>🎯 Como o Sistema Funciona Agora:</h3>
+                        <ol>
+                            <li><strong>Busca permissões específicas:</strong> Sistema sempre verifica a tabela permissoes_usuario</li>
+                            <li><strong>Prioriza específicas:</strong> Se encontrar permissões específicas, usa APENAS elas</li>
+                            <li><strong>Fallback para role:</strong> Se não encontrar específicas, usa padrões do role</li>
+                            <li><strong>Logs detalhados:</strong> Console mostra exatamente quais permissões estão sendo aplicadas</li>
+                        </ol>
+                    </div>
+                `;
+
+                html += `
+                    <div class="info">
+                        <h4>🔍 Para Verificar se Funciona:</h4>
+                        <ol>
+                            <li>Faça login como um usuário que tem permissões específicas</li>
+                            <li>Abra o console (F12) e procure por logs como:</li>
+                            <ul>
+                                <li><code>✅ X permissões específicas carregadas: [módulos]</code></li>
+                                <li><code>🎯 Usando APENAS permissões específicas do usuário</code></li>
+                                <li><code>📋 Módulo 'gestao_caixa' configurado: {...}</code></li>
+                            </ul>
+                            <li>Verifique se o menu mostra apenas os módulos permitidos</li>
+                        </ol>
+                    </div>
+                `;
+
+                document.getElementById('resultado-teste').innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('resultado-teste').innerHTML = `
+                    <div class="error">❌ Erro no teste: ${error.message}</div>
+                `;
+                console.error('❌ Erro no teste:', error);
+            }
+        }
+    </script>
+</body>
+</html>
