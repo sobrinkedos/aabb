@@ -796,7 +796,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     // Buscar estoque anterior para registrar movimentação
     const { data: itemAnterior } = await supabase
       .from('inventory_items')
-      .select('current_stock')
+      .select('current_stock, cost')
       .eq('id', updatedItem.id)
       .single();
     
@@ -804,10 +804,18 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     const estoqueNovo = updatedItem.currentStock;
     const diferencaEstoque = estoqueNovo - estoqueAnterior;
     
+    console.log('📊 Análise da atualização:', {
+      estoqueAnterior,
+      estoqueNovo,
+      diferencaEstoque,
+      formula: `${estoqueNovo} - ${estoqueAnterior} = ${diferencaEstoque}`
+    });
+    
+    // NÃO atualizar current_stock aqui - será atualizado pelo trigger da movimentação
     const itemToUpdate: any = {
         name: updatedItem.name,
         category_id: updatedItem.categoryId,
-        current_stock: updatedItem.currentStock,
+        // current_stock: updatedItem.currentStock, // REMOVIDO - será atualizado pelo trigger
         min_stock: updatedItem.minStock,
         unit: updatedItem.unit,
         cost: updatedItem.cost,
@@ -838,23 +846,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       
       // Registrar movimentação se houve mudança no estoque
       if (diferencaEstoque !== 0) {
-        console.log('📊 Registrando movimentação de estoque:', {
+        console.log('📊 Registrando movimentação:', {
           diferenca: diferencaEstoque,
           anterior: estoqueAnterior,
-          novo: estoqueNovo
+          novo: estoqueNovo,
+          tipo: diferencaEstoque > 0 ? 'entrada' : 'saída'
         });
         
         const movementType = diferencaEstoque > 0 ? 'entrada_ajuste' : 'saida_ajuste';
         const quantity = Math.abs(diferencaEstoque);
         
-        // Buscar custo anterior para comparação
-        const { data: itemAnteriorCompleto } = await supabase
-          .from('inventory_items')
-          .select('cost')
-          .eq('id', updatedItem.id)
-          .single();
-        
-        const custoAnterior = itemAnteriorCompleto?.cost;
+        const custoAnterior = itemAnterior?.cost;
         const custoNovo = updatedItem.cost;
         
         // Criar nota detalhada
@@ -862,6 +864,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         if (custoAnterior && custoNovo && custoAnterior !== custoNovo) {
           notaDetalhada += ` | Custo alterado: R$ ${Number(custoAnterior).toFixed(2)} → R$ ${Number(custoNovo).toFixed(2)}`;
         }
+        
+        console.log('📝 Processando como ajuste normal');
         
         try {
           const { error: movementError } = await supabase.rpc('register_inventory_movement', {
