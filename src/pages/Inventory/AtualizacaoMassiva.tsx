@@ -94,6 +94,14 @@ const AtualizacaoMassiva: React.FC = () => {
       console.log('🚀 Iniciando atualização massiva...');
       console.log('📋 Itens selecionados:', itensSelecionados);
 
+      // Buscar usuário
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Você precisa estar logado para atualizar o estoque.');
+        setSalvando(false);
+        return;
+      }
+
       // Buscar dados atualizados do banco antes de salvar
       const { data: itensAtuais, error: fetchError } = await supabase
         .from('inventory_items')
@@ -108,6 +116,14 @@ const AtualizacaoMassiva: React.FC = () => {
       }
 
       console.log('✅ Itens do banco:', itensAtuais);
+
+      // Pegar empresa_id do primeiro item
+      const empresaId = itensAtuais?.[0]?.empresa_id;
+      if (!empresaId) {
+        alert('Erro ao identificar a empresa dos itens.');
+        setSalvando(false);
+        return;
+      }
 
       const promises = itensSelecionados.map(async (itemCompra) => {
         // Usar dados do banco, não do estado local
@@ -149,6 +165,44 @@ const AtualizacaoMassiva: React.FC = () => {
       await Promise.all(promises);
 
       console.log('✅ Todos os itens foram atualizados com sucesso!');
+
+      // Registrar movimentações de estoque (sem alterar o estoque, apenas para histórico)
+      console.log('📝 Registrando movimentações no histórico...');
+      const movimentacoesPromises = itensSelecionados.map(async (itemCompra) => {
+        const itemAtual = itensAtuais?.find(i => i.id === itemCompra.id);
+        if (!itemAtual) return;
+
+        const estoqueAnterior = itemAtual.current_stock;
+        const estoqueNovo = estoqueAnterior + itemCompra.quantidadeComprada;
+
+        try {
+          // Inserir diretamente na tabela de movimentações (sem trigger)
+          const { error: movError } = await supabase
+            .from('inventory_movements')
+            .insert({
+              inventory_item_id: itemCompra.id,
+              movement_type: 'entrada_compra',
+              quantity: itemCompra.quantidadeComprada,
+              unit_cost: itemCompra.valorUnitario > 0 ? itemCompra.valorUnitario : (itemAtual.cost || 0),
+              stock_before: estoqueAnterior,
+              stock_after: estoqueNovo,
+              notes: `Atualização massiva - Compra de ${itemCompra.quantidadeComprada} ${itemAtual.unit}`,
+              created_by: user.id,
+              empresa_id: empresaId,
+              created_at: new Date().toISOString()
+            });
+
+          if (movError) {
+            console.error('⚠️ Erro ao registrar movimentação:', movError);
+          } else {
+            console.log(`✅ Movimentação registrada para ${itemAtual.name}`);
+          }
+        } catch (error) {
+          console.error('⚠️ Erro ao registrar movimentação:', error);
+        }
+      });
+
+      await Promise.all(movimentacoesPromises);
 
       // Limpar seleções após salvar
       setItensCompra({});
