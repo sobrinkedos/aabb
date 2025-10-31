@@ -1,42 +1,76 @@
 import React from 'react';
-import { Bell, Search, Database } from 'lucide-react';
+import { Bell, Search, Database, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useEnvironmentContext } from '../../contexts/EnvironmentContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onMenuClick: () => void;
+  onDesktopMenuToggle: () => void;
+  isDesktopSidebarOpen: boolean;
+}
+
+const Header: React.FC<HeaderProps> = ({ onMenuClick, onDesktopMenuToggle, isDesktopSidebarOpen }) => {
   const { notifications, clearNotifications } = useApp();
   const { environment, isConnected, config } = useEnvironmentContext();
   const [showNotifications, setShowNotifications] = React.useState(false);
   const [showEnvironmentInfo, setShowEnvironmentInfo] = React.useState(false);
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <header className="bg-white border-b border-gray-200 px-3 sm:px-4 md:px-6 py-3 md:py-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h2 className="text-xl font-semibold text-gray-800">
-            {new Date().toLocaleDateString('pt-BR', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          {/* Botão de menu mobile */}
+          <button
+            onClick={onMenuClick}
+            className="lg:hidden p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Abrir menu"
+          >
+            <Menu size={24} />
+          </button>
+
+          {/* Botão de toggle desktop */}
+          <button
+            onClick={onDesktopMenuToggle}
+            className="hidden lg:block p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label={isDesktopSidebarOpen ? "Esconder menu" : "Mostrar menu"}
+            title={isDesktopSidebarOpen ? "Esconder menu lateral" : "Mostrar menu lateral"}
+          >
+            {isDesktopSidebarOpen ? <PanelLeftClose size={24} /> : <PanelLeftOpen size={24} />}
+          </button>
+          
+          <h2 className="text-sm sm:text-base md:text-xl font-semibold text-gray-800 truncate">
+            <span className="hidden md:inline">
+              {new Date().toLocaleDateString('pt-BR', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </span>
+            <span className="md:hidden">
+              {new Date().toLocaleDateString('pt-BR', { 
+                day: 'numeric',
+                month: 'short'
+              })}
+            </span>
           </h2>
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           {/* Indicador de Ambiente */}
           <div className="relative">
             <button
               onClick={() => setShowEnvironmentInfo(!showEnvironmentInfo)}
-              className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 environment === 'production' 
                   ? 'bg-red-100 text-red-700 hover:bg-red-200' 
                   : 'bg-green-100 text-green-700 hover:bg-green-200'
               }`}
             >
               <Database size={12} />
-              <span>{environment === 'production' ? 'PRODUÇÃO' : 'DESENVOLVIMENTO'}</span>
+              <span className="hidden sm:inline">{environment === 'production' ? 'PRODUÇÃO' : 'DESENVOLVIMENTO'}</span>
+              <span className="sm:hidden">{environment === 'production' ? 'PROD' : 'DEV'}</span>
               <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
             </button>
 
@@ -74,12 +108,12 @@ const Header: React.FC = () => {
             </AnimatePresence>
           </div>
 
-          <div className="relative">
+          <div className="relative hidden md:block">
             <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Buscar..."
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-32 lg:w-auto"
             />
           </div>
 
@@ -102,7 +136,7 @@ const Header: React.FC = () => {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+                  className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
                 >
                   <div className="p-4 border-b border-gray-200 flex justify-between items-center">
                     <h3 className="font-semibold text-gray-800">Notificações</h3>
