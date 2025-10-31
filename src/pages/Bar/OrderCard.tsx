@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Clock, User, MapPin } from 'lucide-react';
+import { Clock, User, MapPin, Printer } from 'lucide-react';
 import { Order, MenuItem } from '../../types';
 import { useApp } from '../../contexts/AppContext';
 import { format } from 'date-fns';
@@ -69,6 +69,137 @@ const OrderCard: React.FC<OrderCardProps> = ({
   // Verificar se o pedido é de comanda (aguardando pagamento)
   const isComandaOrder = (order: Order): boolean => {
     return order.id.startsWith('comanda-');
+  };
+
+  // Função para imprimir o pedido
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const itemsHtml = order.items.map((item) => {
+      const menuItem = menuItems.find(mi => mi.id === item.menuItemId);
+      const itemName = menuItem?.name || item.menuItem?.name || `Item ${item.menuItemId.slice(-4)}`;
+      return `
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.quantity}x</td>
+          <td style="padding: 8px; border-bottom: 1px solid #ddd;">${itemName}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">R$ ${(item.price * item.quantity).toFixed(2)}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Pedido ${orderNumber || order.id.slice(-6)}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+              max-width: 800px;
+              margin: 0 auto;
+            }
+            h1 {
+              text-align: center;
+              color: #333;
+              margin-bottom: 20px;
+            }
+            .header {
+              margin-bottom: 20px;
+              padding-bottom: 10px;
+              border-bottom: 2px solid #333;
+            }
+            .info {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 10px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 20px 0;
+            }
+            th {
+              background-color: #f0f0f0;
+              padding: 10px;
+              text-align: left;
+              border-bottom: 2px solid #333;
+            }
+            .total {
+              text-align: right;
+              font-size: 18px;
+              font-weight: bold;
+              margin-top: 20px;
+              padding-top: 10px;
+              border-top: 2px solid #333;
+            }
+            .notes {
+              background-color: #fff9e6;
+              padding: 10px;
+              margin: 20px 0;
+              border-left: 4px solid #ffc107;
+            }
+            .status {
+              display: inline-block;
+              padding: 5px 15px;
+              border-radius: 20px;
+              font-weight: bold;
+            }
+            .status-pending { background-color: #fff3cd; color: #856404; }
+            .status-preparing { background-color: #cfe2ff; color: #084298; }
+            .status-ready { background-color: #d1e7dd; color: #0f5132; }
+            .status-delivered { background-color: #e2e3e5; color: #41464b; }
+            @media print {
+              body { padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>ClubManager - Pedido</h1>
+          <div class="header">
+            <div class="info">
+              <strong>${order.tableNumber ? `Mesa ${order.tableNumber}` : 'Balcão'}</strong>
+              <span>Pedido #${orderNumber || order.id.slice(-6)}</span>
+            </div>
+            <div class="info">
+              <span>Data: ${format(order.createdAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+              <span class="status status-${order.status}">${getStatusText(order.status)}</span>
+            </div>
+            ${isBalcaoOrder(order) ? '<div style="color: green; font-weight: bold;">✓ PAGO</div>' : ''}
+            ${isComandaOrder(order) ? '<div style="color: orange; font-weight: bold;">AGUARDANDO PAGAMENTO</div>' : ''}
+          </div>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>Qtd</th>
+                <th>Item</th>
+                <th style="text-align: right;">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+          
+          ${order.notes ? `<div class="notes"><strong>Observações:</strong><br>${order.notes}</div>` : ''}
+          
+          <div class="total">
+            Total: R$ ${order.total.toFixed(2)}
+          </div>
+          
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
   };
 
   return (
@@ -147,35 +278,47 @@ const OrderCard: React.FC<OrderCardProps> = ({
         </span>
       </div>
 
-      {/* Botão de Ação Principal */}
-      {nextStatus && (
+      {/* Botões de Ação */}
+      <div className="space-y-2">
+        {/* Botão de Imprimir */}
         <button
-          onClick={() => updateOrderStatus(order.id, nextStatus)}
-          className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
-            isBalcaoOrder(order)
-              ? order.status === 'pending'
-                ? 'bg-green-600 text-white hover:bg-green-700'
-                : order.status === 'preparing'
-                ? 'bg-green-700 text-white hover:bg-green-800'
-                : 'bg-green-800 text-white hover:bg-green-900'
-              : isComandaOrder(order)
-              ? order.status === 'pending'
-                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                : order.status === 'preparing'
-                ? 'bg-yellow-700 text-white hover:bg-yellow-800'
-                : 'bg-yellow-800 text-white hover:bg-yellow-900'
-              : order.status === 'pending'
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : order.status === 'preparing'
-              ? 'bg-blue-700 text-white hover:bg-blue-800'
-              : 'bg-blue-800 text-white hover:bg-blue-900'
-          }`}
+          onClick={handlePrint}
+          className="w-full py-2 rounded-lg text-sm font-medium transition-colors bg-gray-600 text-white hover:bg-gray-700 flex items-center justify-center gap-2"
         >
-          {nextStatus === 'preparing' && 'Iniciar Preparo'}
-          {nextStatus === 'ready' && 'Marcar como Pronto'}
-          {nextStatus === 'delivered' && 'Marcar como Entregue'}
+          <Printer size={16} />
+          Imprimir Pedido
         </button>
-      )}
+
+        {/* Botão de Ação Principal */}
+        {nextStatus && (
+          <button
+            onClick={() => updateOrderStatus(order.id, nextStatus)}
+            className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
+              isBalcaoOrder(order)
+                ? order.status === 'pending'
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : order.status === 'preparing'
+                  ? 'bg-green-700 text-white hover:bg-green-800'
+                  : 'bg-green-800 text-white hover:bg-green-900'
+                : isComandaOrder(order)
+                ? order.status === 'pending'
+                  ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                  : order.status === 'preparing'
+                  ? 'bg-yellow-700 text-white hover:bg-yellow-800'
+                  : 'bg-yellow-800 text-white hover:bg-yellow-900'
+                : order.status === 'pending'
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : order.status === 'preparing'
+                ? 'bg-blue-700 text-white hover:bg-blue-800'
+                : 'bg-blue-800 text-white hover:bg-blue-900'
+            }`}
+          >
+            {nextStatus === 'preparing' && 'Iniciar Preparo'}
+            {nextStatus === 'ready' && 'Marcar como Pronto'}
+            {nextStatus === 'delivered' && 'Marcar como Entregue'}
+          </button>
+        )}
+      </div>
     </motion.div>
   );
 };
