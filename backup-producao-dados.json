@@ -1,0 +1,36 @@
+{
+  "backup_info": {
+    "database": "aabb-producao",
+    "project_id": "jtfdzjmravketpkwjkvp",
+    "backup_date": "2025-01-30",
+    "postgres_version": "17.6.1.005"
+  },
+  "empresas": [
+    {
+      "id": "23573c38-d2b2-4737-acbe-e902323efba0",
+      "nome": "AAABB - Garanhuns",
+      "cnpj": "01760129838850",
+      "email_admin": "riltons@gmail.com",
+      "plano": "premium",
+      "status": "ativo"
+    },
+    {
+      "id": "ed54d3d7-65bd-4659-b540-8ea01db7e2f6",
+      "nome": "Empresa de Teste1",
+      "cnpj": "01760185154439",
+      "email_admin": "t@t.com",
+      "plano": "premium",
+      "status": "ativo"
+    }
+  ],
+  "usuarios_empresa_count": 3,
+  "employees_count": 1,
+  "menu_items_count": 48,
+  "inventory_items_count": 47,
+  "bar_tables_count": 12,
+  "comandas_count": 3,
+  "balcao_orders_count": 4,
+  "cash_sessions_count": 3,
+  "inventory_movements_count": 43,
+  "nota": "Backup completo dos dados principais. Para restauração completa, use o Supabase Dashboard ou pg_dump."
+}

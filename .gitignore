@@ -9,3 +9,4 @@ docs/
 backups/
 *.dump
 *.sql.gz
+.vercel
