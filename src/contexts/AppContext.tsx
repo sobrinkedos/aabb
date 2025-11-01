@@ -1255,7 +1255,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       console.log(`📦 ${balcaoData?.length || 0} itens de balcão encontrados`);
 
-      // Agrupar itens por comanda E por timestamp de adição para criar pedidos separados
+      // Agrupar itens por comanda (todos os itens da mesma comanda em um único pedido)
       const orderMap = new Map<string, Order>();
       
       // Processar pedidos de comandas
@@ -1263,10 +1263,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         const comandaId = item.comanda?.id;
         if (!comandaId) return;
 
-        // Criar chave única baseada na comanda + timestamp (agrupando por minuto)
-        const addedAt = new Date(item.added_at);
-        const timeKey = `${addedAt.getUTCFullYear()}-${addedAt.getUTCMonth()}-${addedAt.getUTCDate()}-${addedAt.getUTCHours()}-${addedAt.getUTCMinutes()}`;
-        const orderKey = `comanda-${comandaId}-${timeKey}`;
+        // Criar chave única baseada apenas na comanda (agrupar todos os itens)
+        const orderKey = `comanda-${comandaId}`;
 
         if (!orderMap.has(orderKey)) {
           orderMap.set(orderKey, {
