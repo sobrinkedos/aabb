@@ -198,6 +198,9 @@ export function calcularTotalComTaxaEDesconto(
  */
 
 export function formatarMoeda(valor: number): string {
+  if (valor === null || valor === undefined || isNaN(valor)) {
+    return 'R$ 0,00';
+  }
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
@@ -223,9 +226,18 @@ export function formatarDataHora(data: string): string {
 }
 
 export function formatarTempo(inicio: string, fim?: string): string {
+  if (!inicio) return '0min';
+  
   const start = new Date(inicio);
   const end = fim ? new Date(fim) : new Date();
+  
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return '0min';
+  }
+  
   const diff = end.getTime() - start.getTime();
+  
+  if (diff < 0) return '0min';
   
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
