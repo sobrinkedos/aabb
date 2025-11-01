@@ -100,10 +100,10 @@ export const selectTotalComandaAtiva = createSelector([selectItensComandaAtiva],
 
 // Estatísticas de comandas
 export const selectComandasStats = createSelector([selectComandas], (comandas) => ({
-  total: comandas.length,
-  abertas: comandas.filter((c) => c.status === COMANDA_STATUS.OPEN).length,
-  aguardandoPagamento: comandas.filter((c) => c.status === COMANDA_STATUS.PENDING_PAYMENT).length,
-  totalVendas: comandas.reduce((sum, c) => sum + c.total, 0),
+  total: comandas?.length || 0,
+  abertas: comandas?.filter((c) => c.status === COMANDA_STATUS.OPEN).length || 0,
+  aguardandoPagamento: comandas?.filter((c) => c.status === COMANDA_STATUS.PENDING_PAYMENT).length || 0,
+  totalVendas: comandas?.reduce((sum, c) => sum + (c.total || 0), 0) || 0,
 }));
 
 // ============================================================================
