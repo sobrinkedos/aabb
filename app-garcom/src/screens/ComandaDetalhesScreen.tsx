@@ -46,6 +46,55 @@ export default function ComandaDetalhesScreen({ route, navigation }: any) {
     }
   }, [comandaId, dispatch]);
 
+  // Recarregar quando a tela receber foco
+  useEffect(() => {
+    const unsubscribe = navigation?.addListener?.('focus', () => {
+      if (comandaId) {
+        dispatch(fetchComandaComItens(comandaId));
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, comandaId, dispatch]);
+
+  const handleEnviarPedido = async () => {
+    const itensRascunho = itens.filter(item => item.status === 'draft');
+    
+    if (itensRascunho.length === 0) {
+      Alert.alert('Aviso', 'Não há itens no pedido para enviar');
+      return;
+    }
+
+    Alert.alert(
+      'Enviar Pedido',
+      `Enviar ${itensRascunho.length} ${itensRascunho.length === 1 ? 'item' : 'itens'} para os monitores?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Enviar',
+          onPress: async () => {
+            try {
+              // Atualizar status de todos os itens em rascunho para 'pending'
+              // Agora sim aparecem nos monitores
+              await Promise.all(
+                itensRascunho.map(item =>
+                  dispatch(atualizarStatusItem({ itemId: item.id, status: 'pending' })).unwrap()
+                )
+              );
+
+              // Recarregar comanda
+              await dispatch(fetchComandaComItens(comandaId));
+              
+              Alert.alert('✓ Pedido enviado', 'Os itens agora estão visíveis nos monitores');
+            } catch (error: any) {
+              Alert.alert('Erro', error || 'Erro ao enviar pedido');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleFecharComanda = (paymentMethod: string) => {
     Alert.alert(
       'Fechar Comanda',
@@ -125,13 +174,27 @@ export default function ComandaDetalhesScreen({ route, navigation }: any) {
         </View>
         
         <View style={styles.actions}>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => navigation?.navigate('AdicionarItem', { comandaId })}
-          >
-            <Text style={styles.addButtonText}>+ Adicionar Item</Text>
-          </TouchableOpacity>
+          {/* Primeira linha: Adicionar Item e Enviar Pedido */}
+          <View style={styles.actionsRow}>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => navigation?.navigate('Cardapio', { comandaId })}
+            >
+              <Text style={styles.addButtonText}>+ Adicionar Item</Text>
+            </TouchableOpacity>
+            
+            {/* Mostrar botão Enviar Pedido se houver itens em rascunho */}
+            {itens.some(item => item.status === 'draft') && (
+              <TouchableOpacity
+                style={styles.sendButton}
+                onPress={handleEnviarPedido}
+              >
+                <Text style={styles.sendButtonText}>📤 Enviar Pedido</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           
+          {/* Segunda linha: Fechar Comanda (largura total) */}
           <TouchableOpacity
             style={styles.closeButton}
             onPress={() => setShowPaymentModal(true)}
@@ -173,15 +236,18 @@ export default function ComandaDetalhesScreen({ route, navigation }: any) {
   );
 }
 
-function ItemCard({ item, onUpdateStatus }: { item: ItemComanda; onUpdateStatus: (status: ItemComanda['status']) => void }) {
+function ItemCard({ item, onUpdateStatus }: { item: ItemComanda & { menu_item_name?: string }; onUpdateStatus: (status: ItemComanda['status']) => void }) {
   const subtotal = item.quantity * item.price;
-  const statusColor = item.status === 'delivered' ? '#4CAF50' : 
+  const statusColor = item.status === 'draft' ? '#9E9E9E' :
+                      item.status === 'delivered' ? '#4CAF50' : 
                       item.status === 'cancelled' ? '#F44336' : '#FF9800';
 
   return (
     <View style={styles.itemCard}>
       <View style={styles.itemHeader}>
-        <Text style={styles.itemName}>{item.menu_item_id}</Text>
+        <Text style={styles.itemName}>
+          {item.menu_item_name || `Item #${item.menu_item_id.slice(0, 8)}`}
+        </Text>
         <Text style={[styles.itemStatus, { color: statusColor }]}>
           {ItemStatusLabel[item.status]}
         </Text>
@@ -322,6 +388,9 @@ const styles = StyleSheet.create({
     color: UI_CONFIG.COLORS.PRIMARY,
   },
   actions: {
+    gap: UI_CONFIG.SPACING.SM,
+  },
+  actionsRow: {
     flexDirection: 'row',
     gap: UI_CONFIG.SPACING.SM,
   },
@@ -338,8 +407,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
-  closeButton: {
+  sendButton: {
     flex: 1,
+    height: 50,
+    backgroundColor: '#FF9800',
+    borderRadius: UI_CONFIG.BORDER_RADIUS.MD,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  closeButton: {
+    width: '100%',
     height: 50,
     backgroundColor: UI_CONFIG.COLORS.PRIMARY,
     borderRadius: UI_CONFIG.BORDER_RADIUS.MD,

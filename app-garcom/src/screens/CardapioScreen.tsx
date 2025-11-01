@@ -57,8 +57,19 @@ export default function CardapioScreen({ navigation, route }: any) {
   };
 
   const handleItemPress = (item: MenuItem) => {
+    console.log('[CardapioScreen] Item clicado:', item);
+    console.log('[CardapioScreen] ComandaId:', comandaId);
+    
+    if (!item || !item.id) {
+      console.error('[CardapioScreen] Item inválido!');
+      return;
+    }
+    
     if (comandaId) {
+      console.log('[CardapioScreen] Navegando para AdicionarItem com:', { comandaId, item });
       navigation?.navigate('AdicionarItem', { comandaId, item });
+    } else {
+      console.warn('[CardapioScreen] Sem comandaId, não pode adicionar item');
     }
   };
 

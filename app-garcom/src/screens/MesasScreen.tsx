@@ -149,6 +149,7 @@ export default function MesasScreen({ navigation }: MesasScreenProps) {
           mesa={mesaSelecionada}
           onClose={handleCloseDetails}
           onChangeStatus={() => setShowStatusModal(true)}
+          navigation={navigation}
         />
       )}
 
@@ -216,9 +217,83 @@ interface MesaDetailsPanelProps {
   mesa: MesaComDetalhes;
   onClose: () => void;
   onChangeStatus: () => void;
+  navigation?: any;
 }
 
-function MesaDetailsPanel({ mesa, onClose, onChangeStatus }: MesaDetailsPanelProps) {
+function MesaDetailsPanel({ mesa, onClose, onChangeStatus, navigation }: MesaDetailsPanelProps) {
+  const dispatch = useAppDispatch();
+
+  const handleOcuparMesa = () => {
+    // Navegar para criar nova comanda
+    onClose();
+    navigation?.navigate('NovaComanda', { mesaId: mesa.id, mesaNumber: mesa.number });
+  };
+
+  const handleVerComanda = () => {
+    if (mesa.current_comanda_id) {
+      onClose();
+      navigation?.navigate('ComandaDetalhes', { comandaId: mesa.current_comanda_id });
+    }
+  };
+
+  const handleLiberarMesa = async () => {
+    Alert.alert(
+      'Liberar Mesa',
+      `Deseja liberar a mesa ${mesa.number}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Liberar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await dispatch(
+                atualizarStatusMesa({
+                  mesaId: mesa.id,
+                  status: 'available',
+                })
+              ).unwrap();
+              Alert.alert('Sucesso', 'Mesa liberada com sucesso');
+              onClose();
+            } catch (error: any) {
+              Alert.alert('Erro', error || 'Erro ao liberar mesa');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleReservarMesa = async () => {
+    try {
+      await dispatch(
+        atualizarStatusMesa({
+          mesaId: mesa.id,
+          status: 'reserved',
+        })
+      ).unwrap();
+      Alert.alert('Sucesso', 'Mesa reservada com sucesso');
+      onClose();
+    } catch (error: any) {
+      Alert.alert('Erro', error || 'Erro ao reservar mesa');
+    }
+  };
+
+  const handleMarcarLimpeza = async () => {
+    try {
+      await dispatch(
+        atualizarStatusMesa({
+          mesaId: mesa.id,
+          status: 'cleaning',
+        })
+      ).unwrap();
+      Alert.alert('Sucesso', 'Mesa marcada para limpeza');
+      onClose();
+    } catch (error: any) {
+      Alert.alert('Erro', error || 'Erro ao marcar mesa para limpeza');
+    }
+  };
+
   return (
     <View style={styles.detailsPanel}>
       <View style={styles.detailsHeader}>
@@ -233,32 +308,94 @@ function MesaDetailsPanel({ mesa, onClose, onChangeStatus }: MesaDetailsPanelPro
 
       <View style={styles.detailsContent}>
         <DetailRow label="Capacidade" value={`${mesa.capacity} pessoas`} />
-        {mesa.people_count && mesa.people_count > 0 && (
-          <DetailRow label="Ocupação Atual" value={`${mesa.people_count} pessoas`} />
+        
+        {mesa.status === 'occupied' && (
+          <>
+            {mesa.people_count && mesa.people_count > 0 && (
+              <DetailRow label="Ocupação Atual" value={`${mesa.people_count} pessoas`} />
+            )}
+            {mesa.current_total && mesa.current_total > 0 && (
+              <DetailRow label="Total da Comanda" value={`R$ ${mesa.current_total.toFixed(2)}`} />
+            )}
+            {mesa.occupied_since && (
+              <DetailRow
+                label="Tempo de Ocupação"
+                value={formatarTempo(mesa.occupied_since)}
+              />
+            )}
+          </>
         )}
-        {mesa.current_total && mesa.current_total > 0 && (
-          <DetailRow label="Total da Comanda" value={`R$ ${mesa.current_total.toFixed(2)}`} />
-        )}
-        {mesa.occupied_since && (
-          <DetailRow
-            label="Tempo de Ocupação"
-            value={formatarTempo(mesa.occupied_since)}
-          />
-        )}
+        
         {mesa.notes && <DetailRow label="Observações" value={mesa.notes} />}
       </View>
 
       <View style={styles.detailsActions}>
-        <TouchableOpacity style={styles.actionButton} onPress={onChangeStatus}>
-          <Text style={styles.actionButtonText}>Alterar Status</Text>
-        </TouchableOpacity>
+        {/* Mesa Disponível */}
+        {mesa.status === 'available' && (
+          <>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.primaryActionButton]} 
+              onPress={handleOcuparMesa}
+            >
+              <Text style={[styles.actionButtonText, styles.primaryActionButtonText]}>
+                Ocupar Mesa
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={handleReservarMesa}
+            >
+              <Text style={styles.actionButtonText}>Reservar</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
-        {mesa.current_comanda_id && (
-          <TouchableOpacity style={[styles.actionButton, styles.primaryActionButton]}>
-            <Text style={[styles.actionButtonText, styles.primaryActionButtonText]}>
-              Ver Comanda
-            </Text>
-          </TouchableOpacity>
+        {/* Mesa Ocupada */}
+        {mesa.status === 'occupied' && (
+          <>
+            {mesa.current_comanda_id && (
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.primaryActionButton]} 
+                onPress={handleVerComanda}
+              >
+                <Text style={[styles.actionButtonText, styles.primaryActionButtonText]}>
+                  Ver Comanda
+                </Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={handleLiberarMesa}
+            >
+              <Text style={styles.actionButtonText}>Liberar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={handleMarcarLimpeza}
+            >
+              <Text style={styles.actionButtonText}>Limpeza</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {/* Mesa Reservada ou em Limpeza */}
+        {(mesa.status === 'reserved' || mesa.status === 'cleaning') && (
+          <>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.primaryActionButton]} 
+              onPress={handleLiberarMesa}
+            >
+              <Text style={[styles.actionButtonText, styles.primaryActionButtonText]}>
+                Liberar Mesa
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={onChangeStatus}
+            >
+              <Text style={styles.actionButtonText}>Alterar Status</Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
     </View>
@@ -427,12 +564,14 @@ const styles = StyleSheet.create({
   },
   detailsActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     padding: UI_CONFIG.SPACING.LG,
     gap: UI_CONFIG.SPACING.SM,
     borderTopWidth: 1,
     borderTopColor: UI_CONFIG.COLORS.TEXT_SECONDARY + '20',
   },
   actionButton: {
+    minWidth: '48%',
     flex: 1,
     backgroundColor: 'transparent',
     borderWidth: 1,
@@ -442,7 +581,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   actionButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: UI_CONFIG.COLORS.PRIMARY,
   },

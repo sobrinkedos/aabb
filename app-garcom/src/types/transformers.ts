@@ -69,7 +69,11 @@ export function transformComandaComDetalhesFromDB(data: any): ComandaComDetalhes
     ...transformComandaFromDB(data),
     table_number: data.table_number,
     employee_name: data.employee_name,
-    items: data.items ? data.items.map(transformItemComandaFromDB) : undefined,
+    items: data.items ? data.items.map((item: any) => ({
+      ...transformItemComandaFromDB(item),
+      menu_item_name: item.menu_item_name,
+      menu_item_category: item.menu_item_category,
+    })) : undefined,
     items_count: data.items_count,
     pending_items: data.pending_items,
   };
@@ -131,7 +135,7 @@ export function transformMesaToDB(mesa: Partial<Mesa>): any {
   };
 }
 
-export function transformComandaToDB(comanda: Partial<Comanda>): any {
+export function transformComandaToDB(comanda: Partial<Comanda> & { empresa_id?: string }): any {
   return {
     table_id: comanda.table_id,
     customer_id: comanda.customer_id,
@@ -144,10 +148,11 @@ export function transformComandaToDB(comanda: Partial<Comanda>): any {
     closed_at: comanda.closed_at,
     payment_method: comanda.payment_method,
     notes: comanda.notes,
+    empresa_id: comanda.empresa_id,
   };
 }
 
-export function transformItemComandaToDB(item: Partial<ItemComanda>): any {
+export function transformItemComandaToDB(item: Partial<ItemComanda> & { empresa_id?: string }): any {
   return {
     comanda_id: item.comanda_id,
     menu_item_id: item.menu_item_id,
@@ -158,6 +163,7 @@ export function transformItemComandaToDB(item: Partial<ItemComanda>): any {
     prepared_at: item.prepared_at,
     delivered_at: item.delivered_at,
     notes: item.notes,
+    empresa_id: item.empresa_id,
   };
 }
 

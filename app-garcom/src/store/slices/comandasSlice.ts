@@ -103,11 +103,29 @@ export const criarComanda = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const novaComanda: Partial<Comanda> = {
+      // Buscar empresa_id do usuário logado
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      const { data: usuarioEmpresa, error: userError } = await supabase
+        .from('usuarios_empresa')
+        .select('empresa_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (userError || !usuarioEmpresa) {
+        throw new Error('Usuário não vinculado a nenhuma empresa');
+      }
+
+      const novaComanda: Partial<Comanda> & { empresa_id?: string } = {
         ...comanda,
         status: 'open',
         total: 0,
         opened_at: new Date().toISOString(),
+        empresa_id: usuarioEmpresa.empresa_id,
       };
 
       const { data, error } = await supabase
@@ -142,6 +160,8 @@ export const adicionarItemComanda = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
+      console.log('[adicionarItemComanda] Buscando item do menu:', menuItemId);
+      
       // Buscar preço atual do item
       const { data: menuItem, error: menuError } = await supabase
         .from('menu_items')
@@ -149,17 +169,43 @@ export const adicionarItemComanda = createAsyncThunk(
         .eq('id', menuItemId)
         .single();
 
-      if (menuError) throw menuError;
+      console.log('[adicionarItemComanda] Menu item:', menuItem, 'Error:', menuError);
 
-      const novoItem: Partial<ItemComanda> = {
+      if (menuError) {
+        throw new Error(`Erro ao buscar item do menu: ${menuError.message}`);
+      }
+
+      if (!menuItem) {
+        throw new Error('Item do menu não encontrado');
+      }
+
+      if (menuItem.price === null || menuItem.price === undefined) {
+        throw new Error('Preço do item não definido');
+      }
+
+      // Buscar empresa_id da comanda
+      const { data: comanda, error: comandaError } = await supabase
+        .from('comandas')
+        .select('empresa_id')
+        .eq('id', comandaId)
+        .single();
+
+      if (comandaError || !comanda) {
+        throw new Error('Comanda não encontrada');
+      }
+
+      const novoItem: Partial<ItemComanda> & { empresa_id?: string } = {
         comanda_id: comandaId,
         menu_item_id: menuItemId,
         quantity,
-        price: menuItem.price,
-        status: 'pending',
+        price: parseFloat(menuItem.price.toString()),
+        status: 'draft', // Rascunho - não aparece nos monitores ainda
         notes,
         added_at: new Date().toISOString(),
+        empresa_id: comanda.empresa_id,
       };
+
+      console.log('[adicionarItemComanda] Inserindo item:', novoItem);
 
       const { data, error } = await supabase
         .from('comanda_items')
@@ -167,10 +213,15 @@ export const adicionarItemComanda = createAsyncThunk(
         .select()
         .single();
 
-      if (error) throw error;
+      console.log('[adicionarItemComanda] Item inserido:', data, 'Error:', error);
+
+      if (error) {
+        throw new Error(`Erro ao inserir item: ${error.message}`);
+      }
 
       return { comandaId, item: transformItemComandaFromDB(data) };
     } catch (error: any) {
+      console.error('[adicionarItemComanda] Erro:', error);
       return rejectWithValue(error.message || 'Erro ao adicionar item');
     }
   }

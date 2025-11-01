@@ -29,6 +29,19 @@ export default function AdicionarItemScreen({ route, navigation }: any) {
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  console.log('[AdicionarItemScreen] Params:', { comandaId, item });
+
+  // Verificar se o item existe
+  if (!item || !item.id) {
+    Alert.alert('Erro', 'Item inválido', [
+      {
+        text: 'OK',
+        onPress: () => navigation?.goBack(),
+      },
+    ]);
+    return null;
+  }
+
   const subtotal = quantity * item.price;
 
   const handleSubmit = async () => {
@@ -36,6 +49,13 @@ export default function AdicionarItemScreen({ route, navigation }: any) {
       Alert.alert('Erro', 'Este item não está disponível no momento');
       return;
     }
+    
+    console.log('[AdicionarItemScreen] Adicionando item:', {
+      comandaId,
+      menuItemId: item.id,
+      quantity,
+      notes,
+    });
 
     setIsSubmitting(true);
 
@@ -49,15 +69,11 @@ export default function AdicionarItemScreen({ route, navigation }: any) {
         })
       ).unwrap();
 
-      Alert.alert('Sucesso', 'Item adicionado à comanda', [
-        {
-          text: 'OK',
-          onPress: () => navigation?.goBack(),
-        },
-      ]);
+      // Navegar de volta para a tela da comanda
+      // Usar navigate em vez de goBack para garantir que vai para ComandaDetalhes
+      navigation?.navigate('ComandaDetalhes', { comandaId });
     } catch (error: any) {
       Alert.alert('Erro', error || 'Erro ao adicionar item');
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -148,7 +164,7 @@ export default function AdicionarItemScreen({ route, navigation }: any) {
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.submitButtonText}>
-            {item.available ? 'Adicionar à Comanda' : 'Item Indisponível'}
+            {item.available ? 'Adicionar ao Pedido' : 'Item Indisponível'}
           </Text>
         )}
       </TouchableOpacity>

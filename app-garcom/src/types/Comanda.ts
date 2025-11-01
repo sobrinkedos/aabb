@@ -32,7 +32,7 @@ export interface ItemComanda {
   menu_item_id: string;
   quantity: number;
   price: number; // Preço no momento do pedido
-  status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  status: 'draft' | 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
   added_at: string;
   prepared_at?: string;
   delivered_at?: string;
@@ -91,6 +91,7 @@ export const ComandaStatusLabel: Record<Comanda['status'], string> = {
 };
 
 export const ItemStatusLabel: Record<ItemComanda['status'], string> = {
+  draft: 'Rascunho',
   pending: 'Pendente',
   preparing: 'Preparando',
   ready: 'Pronto',
