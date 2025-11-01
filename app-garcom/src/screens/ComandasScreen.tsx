@@ -31,9 +31,9 @@ import { UI_CONFIG } from '../utils/constants';
 
 export default function ComandasScreen({ navigation }: any) {
   const dispatch = useAppDispatch();
-  const comandas = useAppSelector(selectComandas);
+  const comandas = useAppSelector(selectComandas) || [];
   const isLoading = useAppSelector(selectComandasLoading);
-  const stats = useAppSelector(selectComandasStats);
+  const stats = useAppSelector(selectComandasStats) || { abertas: 0, aguardandoPagamento: 0, totalVendas: 0 };
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -83,13 +83,23 @@ export default function ComandasScreen({ navigation }: any) {
     );
   };
 
-  const renderItem = ({ item }: { item: ComandaComDetalhes }) => (
-    <ComandaCard
-      comanda={item}
-      onPress={() => handleComandaPress(item)}
-      onCancel={() => handleCancelarComanda(item)}
-    />
-  );
+  const renderItem = ({ item }: { item: ComandaComDetalhes }) => {
+    if (!item || !item.id) return null;
+    return (
+      <ComandaCard
+        comanda={item}
+        onPress={() => handleComandaPress(item)}
+        onCancel={() => handleCancelarComanda(item)}
+      />
+    );
+  };
+
+  // Garantir que stats tem valores válidos
+  const safeStats = {
+    abertas: stats?.abertas ?? 0,
+    aguardandoPagamento: stats?.aguardandoPagamento ?? 0,
+    totalVendas: stats?.totalVendas ?? 0,
+  };
 
   return (
     <View style={styles.container}>
@@ -102,7 +112,7 @@ export default function ComandasScreen({ navigation }: any) {
           <View>
             <Text style={styles.title}>Comandas</Text>
             <Text style={styles.subtitle}>
-              {stats.abertas || 0} abertas • R$ {(stats.totalVendas || 0).toFixed(2)} em vendas
+              {safeStats.abertas} abertas • R$ {safeStats.totalVendas.toFixed(2)} em vendas
             </Text>
           </View>
         </View>
@@ -111,15 +121,15 @@ export default function ComandasScreen({ navigation }: any) {
 
       {/* Stats Cards */}
       <View style={styles.statsContainer}>
-        <StatCard label="Abertas" value={stats.abertas} color="#4CAF50" />
+        <StatCard label="Abertas" value={safeStats.abertas} color="#4CAF50" />
         <StatCard
           label="Aguardando"
-          value={stats.aguardandoPagamento}
+          value={safeStats.aguardandoPagamento}
           color="#FF9800"
         />
         <StatCard
           label="Total"
-          value={`R$ ${stats.totalVendas.toFixed(0)}`}
+          value={`R$ ${safeStats.totalVendas.toFixed(0)}`}
           color="#2196F3"
         />
       </View>
