@@ -37,6 +37,8 @@ import TestBarTablesConnection from './components/debug/TestBarTablesConnection'
 import InitializeBarTables from './components/debug/InitializeBarTables';
 import { EnvironmentProvider } from './contexts/EnvironmentContext';
 import EnvironmentSettings from './components/Environment/EnvironmentSettings';
+import { PWAUpdatePrompt } from './components/PWA/PWAUpdatePrompt';
+import { PWAInstallPrompt } from './components/PWA/PWAInstallPrompt';
 
 import './utils/debug-transactions';
 
@@ -91,6 +93,9 @@ function App() {
       <EnvironmentProvider>
         <Router>
           <AuthProvider>
+          {/* PWA Components */}
+          <PWAUpdatePrompt />
+          <PWAInstallPrompt />
           <Routes>
             <Route path="/login" element={<LoginPageWrapper />} />
             <Route path="/register" element={<RegisterPageWrapper />} />
