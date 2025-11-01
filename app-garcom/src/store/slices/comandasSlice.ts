@@ -191,15 +191,15 @@ export const adicionarItemComanda = createAsyncThunk(
       if (menuItem.item_type === 'direct' && menuItem.direct_inventory_item_id) {
         const { data: inventoryItem, error: inventoryError } = await supabase
           .from('inventory_items')
-          .select('quantity')
+          .select('current_stock')
           .eq('id', menuItem.direct_inventory_item_id)
           .single();
 
         if (inventoryError) {
           console.error('[adicionarItemComanda] Erro ao verificar estoque:', inventoryError);
         } else if (inventoryItem) {
-          if (inventoryItem.quantity < quantity) {
-            throw new Error(`Estoque insuficiente. Disponível: ${inventoryItem.quantity} unidade(s)`);
+          if (inventoryItem.current_stock < quantity) {
+            throw new Error(`Estoque insuficiente. Disponível: ${inventoryItem.current_stock} unidade(s)`);
           }
         }
       }
