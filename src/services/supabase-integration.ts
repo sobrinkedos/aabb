@@ -466,7 +466,20 @@ export class SupabaseIntegration {
    */
   async processPendingPayment(pendingId: string, transactionId: string): Promise<boolean> {
     try {
-      const { error } = await supabase
+      // 1. Buscar a pendência para obter o command_id (comanda_id)
+      const { data: pending, error: pendingError } = await supabase
+        .from('payment_reconciliation')
+        .select('command_id')
+        .eq('id', pendingId)
+        .single();
+
+      if (pendingError || !pending) {
+        console.error('Erro ao buscar pendência:', pendingError);
+        return false;
+      }
+
+      // 2. Atualizar status da pendência
+      const { error: updatePendingError } = await supabase
         .from('payment_reconciliation')
         .update({
           status: 'processed',
@@ -476,8 +489,24 @@ export class SupabaseIntegration {
         })
         .eq('id', pendingId);
 
-      if (error) {
-        console.error('Erro ao processar pendência:', error);
+      if (updatePendingError) {
+        console.error('Erro ao processar pendência:', updatePendingError);
+        return false;
+      }
+
+      // 3. Atualizar status da comanda para 'closed' e definir closed_at
+      // Isso vai disparar o trigger que libera a mesa automaticamente
+      const { error: updateComandaError } = await supabase
+        .from('comandas')
+        .update({
+          status: 'closed',
+          closed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', pending.command_id);
+
+      if (updateComandaError) {
+        console.error('Erro ao fechar comanda:', updateComandaError);
         return false;
       }
 

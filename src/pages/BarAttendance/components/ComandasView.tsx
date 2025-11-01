@@ -682,10 +682,11 @@ const ComandasView: React.FC = () => {
                   await fecharComanda(closeModalComanda.id, paymentMethod, observations);
                   setShowCloseModal(false);
                   setCloseModalComanda(null);
+                  alert('Comanda enviada ao caixa para pagamento!');
                   refetch();
                 } catch (error) {
-                  console.error('Erro ao fechar comanda:', error);
-                  alert('Erro ao fechar comanda. Tente novamente.');
+                  console.error('Erro ao enviar comanda:', error);
+                  alert('Erro ao enviar comanda para o caixa. Tente novamente.');
                 } finally {
                   setIsClosingComanda(false);
                 }

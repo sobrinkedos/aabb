@@ -267,12 +267,14 @@ export const fecharComanda = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
+      // Enviar comanda para o caixa com status pending_payment
+      // A comanda NÃO é considerada paga neste momento
       const { data, error } = await supabase
         .from('comandas')
         .update({
-          status: 'closed',
-          closed_at: new Date().toISOString(),
+          status: 'pending_payment',
           payment_method: paymentMethod,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', comandaId)
         .select()
@@ -282,7 +284,7 @@ export const fecharComanda = createAsyncThunk(
 
       return transformComandaFromDB(data);
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Erro ao fechar comanda');
+      return rejectWithValue(error.message || 'Erro ao enviar comanda para caixa');
     }
   }
 );

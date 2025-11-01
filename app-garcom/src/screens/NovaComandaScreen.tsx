@@ -20,17 +20,18 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { selectUser } from '../store/selectors';
 import { selectMesasDisponiveis } from '../store/selectors';
 import { criarComanda } from '../store/slices/comandasSlice';
-import { fetchMesas } from '../store/slices/mesasSlice';
+import { fetchMesas, atualizarStatusMesa } from '../store/slices/mesasSlice';
 import { abrirComandaFormSchema, AbrirComandaFormData } from '../types/validators';
 import { UI_CONFIG } from '../utils/constants';
 
-export default function NovaComandaScreen({ navigation }: any) {
+export default function NovaComandaScreen({ navigation, route }: any) {
+  const { mesaId, mesaNumber } = route.params || {};
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectUser);
   const mesasDisponiveis = useAppSelector(selectMesasDisponiveis);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedMesaId, setSelectedMesaId] = useState<string | undefined>();
+  const [selectedMesaId, setSelectedMesaId] = useState<string | undefined>(mesaId);
 
   const {
     control,
@@ -49,6 +50,14 @@ export default function NovaComandaScreen({ navigation }: any) {
     dispatch(fetchMesas());
   }, [dispatch]);
 
+  // Pré-selecionar mesa se veio dos parâmetros
+  useEffect(() => {
+    if (mesaId) {
+      setSelectedMesaId(mesaId);
+      setValue('table_id', mesaId);
+    }
+  }, [mesaId, setValue]);
+
   // Selecionar mesa
   const handleSelectMesa = (mesaId: string) => {
     setSelectedMesaId(mesaId);
@@ -65,7 +74,7 @@ export default function NovaComandaScreen({ navigation }: any) {
     setIsSubmitting(true);
 
     try {
-      await dispatch(
+      const comanda = await dispatch(
         criarComanda({
           table_id: data.table_id,
           customer_name: data.customer_name,
@@ -75,12 +84,18 @@ export default function NovaComandaScreen({ navigation }: any) {
         })
       ).unwrap();
 
-      Alert.alert('Sucesso', 'Comanda criada com sucesso', [
-        {
-          text: 'OK',
-          onPress: () => navigation?.goBack(),
-        },
-      ]);
+      // Se tem mesa selecionada, atualizar status para ocupada
+      if (data.table_id) {
+        await dispatch(
+          atualizarStatusMesa({
+            mesaId: data.table_id,
+            status: 'occupied',
+          })
+        ).unwrap();
+      }
+
+      // Navegar para a tela de detalhes da comanda
+      navigation?.navigate('ComandaDetalhes', { comandaId: comanda.id });
     } catch (error: any) {
       Alert.alert('Erro', error || 'Erro ao criar comanda');
     } finally {
@@ -100,9 +115,13 @@ export default function NovaComandaScreen({ navigation }: any) {
 
       {/* Seleção de Mesa */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Mesa (Opcional)</Text>
+        <Text style={styles.sectionTitle}>
+          Mesa {mesaNumber ? `(${mesaNumber} selecionada)` : '(Opcional)'}
+        </Text>
         <Text style={styles.sectionSubtitle}>
-          Selecione uma mesa ou deixe em branco para pedido no balcão
+          {mesaNumber 
+            ? 'Você pode alterar a mesa ou deixar em branco para pedido no balcão'
+            : 'Selecione uma mesa ou deixe em branco para pedido no balcão'}
         </Text>
 
         <ScrollView

@@ -404,7 +404,7 @@ export const useBarAttendance = (): UseBarAttendanceReturn => {
     try {
       atualizarEstado({ loading: true, error: null });
 
-      // Buscar comanda para obter mesa associada
+      // Buscar comanda para obter mesa associada e total
       const { data: comanda, error: comandaError } = await supabase
         .from('comandas')
         .select('table_id, total')
@@ -413,7 +413,8 @@ export const useBarAttendance = (): UseBarAttendanceReturn => {
 
       if (comandaError) throw comandaError;
 
-      // Enviar comanda para o caixa (pending_payment) em vez de fechar diretamente
+      // Enviar comanda para o caixa com status pending_payment
+      // A comanda NÃO é considerada paga neste momento
       const { error: updateError } = await supabase
         .from('comandas')
         .update({
@@ -426,8 +427,9 @@ export const useBarAttendance = (): UseBarAttendanceReturn => {
 
       if (updateError) throw updateError;
 
-      // NÃO liberar a mesa ainda - só será liberada após pagamento no caixa
-      // A mesa permanece ocupada até o pagamento ser processado
+      // A mesa permanece ocupada até o pagamento ser processado no caixa
+      // Quando o caixa processar o pagamento, a comanda será marcada como 'closed'
+      // e a mesa será liberada automaticamente
 
       await carregarDadosIniciais();
 

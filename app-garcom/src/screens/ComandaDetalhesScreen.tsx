@@ -8,7 +8,7 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
@@ -106,7 +106,7 @@ export default function ComandaDetalhesScreen({ route, navigation }: any) {
           onPress: async () => {
             try {
               await dispatch(fecharComanda({ comandaId, paymentMethod })).unwrap();
-              Alert.alert('Sucesso', 'Comanda fechada', [
+              Alert.alert('Sucesso', 'Comanda enviada ao caixa para pagamento', [
                 { text: 'OK', onPress: () => navigation?.goBack() },
               ]);
             } catch (error: any) {
@@ -118,11 +118,7 @@ export default function ComandaDetalhesScreen({ route, navigation }: any) {
     );
   };
 
-  const renderItem = ({ item }: { item: ItemComanda }) => (
-    <ItemCard item={item} onUpdateStatus={(status) => 
-      dispatch(atualizarStatusItem({ itemId: item.id, status }))
-    } />
-  );
+
 
   if (isLoading && !comanda) {
     return (
@@ -154,17 +150,67 @@ export default function ComandaDetalhesScreen({ route, navigation }: any) {
       </View>
 
       {/* Itens */}
-      <FlatList
-        data={itens}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={
+      <ScrollView contentContainerStyle={styles.listContainer}>
+        {itens.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>Nenhum item na comanda</Text>
           </View>
-        }
-      />
+        ) : (
+          <>
+            {/* Seção de Itens em Rascunho */}
+            {itens.some(item => item.status === 'draft') && (
+              <>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionHeaderContent}>
+                    <Text style={styles.sectionTitle}>📝 Itens em Rascunho</Text>
+                    <Text style={styles.sectionSubtitle}>
+                      {itens.filter(i => i.status === 'draft').length} {itens.filter(i => i.status === 'draft').length === 1 ? 'item' : 'itens'} • Não enviado
+                    </Text>
+                  </View>
+                </View>
+                
+                {itens
+                  .filter(item => item.status === 'draft')
+                  .map((item) => (
+                    <ItemCard
+                      key={item.id}
+                      item={item}
+                      onUpdateStatus={(status) => 
+                        dispatch(atualizarStatusItem({ itemId: item.id, status }))
+                      }
+                    />
+                  ))}
+              </>
+            )}
+            
+            {/* Seção de Itens Enviados */}
+            {itens.some(item => item.status !== 'draft') && (
+              <>
+                <View style={[styles.sectionHeader, styles.sectionHeaderEnviados]}>
+                  <View style={styles.sectionHeaderContent}>
+                    <Text style={styles.sectionTitle}>✓ Itens Enviados</Text>
+                    <Text style={styles.sectionSubtitle}>
+                      {itens.filter(i => i.status !== 'draft').length} {itens.filter(i => i.status !== 'draft').length === 1 ? 'item' : 'itens'} • Em preparo/entregue
+                    </Text>
+                  </View>
+                </View>
+                
+                {itens
+                  .filter(item => item.status !== 'draft')
+                  .map((item) => (
+                    <ItemCard
+                      key={item.id}
+                      item={item}
+                      onUpdateStatus={(status) => 
+                        dispatch(atualizarStatusItem({ itemId: item.id, status }))
+                      }
+                    />
+                  ))}
+              </>
+            )}
+          </>
+        )}
+      </ScrollView>
 
       {/* Footer com Total */}
       <View style={styles.footer}>
@@ -308,6 +354,32 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: UI_CONFIG.SPACING.MD,
+  },
+  sectionHeader: {
+    backgroundColor: '#FFF3E0',
+    padding: UI_CONFIG.SPACING.MD,
+    marginBottom: UI_CONFIG.SPACING.SM,
+    borderRadius: UI_CONFIG.BORDER_RADIUS.MD,
+    borderLeftWidth: 4,
+    borderLeftColor: '#9E9E9E',
+  },
+  sectionHeaderEnviados: {
+    backgroundColor: '#E8F5E9',
+    borderLeftColor: '#4CAF50',
+    marginTop: UI_CONFIG.SPACING.LG,
+  },
+  sectionHeaderContent: {
+    flexDirection: 'column',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: UI_CONFIG.COLORS.TEXT_PRIMARY,
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: UI_CONFIG.COLORS.TEXT_SECONDARY,
   },
   itemCard: {
     backgroundColor: UI_CONFIG.COLORS.SURFACE,
