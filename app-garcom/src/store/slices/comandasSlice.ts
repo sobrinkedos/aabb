@@ -162,10 +162,10 @@ export const adicionarItemComanda = createAsyncThunk(
     try {
       console.log('[adicionarItemComanda] Buscando item do menu:', menuItemId);
       
-      // Buscar preço atual do item
+      // Buscar item do menu com informações de estoque
       const { data: menuItem, error: menuError } = await supabase
         .from('menu_items')
-        .select('price')
+        .select('price, item_type, direct_inventory_item_id, available')
         .eq('id', menuItemId)
         .single();
 
@@ -179,8 +179,29 @@ export const adicionarItemComanda = createAsyncThunk(
         throw new Error('Item do menu não encontrado');
       }
 
+      if (!menuItem.available) {
+        throw new Error('Item não está disponível no momento');
+      }
+
       if (menuItem.price === null || menuItem.price === undefined) {
         throw new Error('Preço do item não definido');
+      }
+
+      // Verificar estoque para itens diretos do inventário
+      if (menuItem.item_type === 'direct' && menuItem.direct_inventory_item_id) {
+        const { data: inventoryItem, error: inventoryError } = await supabase
+          .from('inventory_items')
+          .select('quantity')
+          .eq('id', menuItem.direct_inventory_item_id)
+          .single();
+
+        if (inventoryError) {
+          console.error('[adicionarItemComanda] Erro ao verificar estoque:', inventoryError);
+        } else if (inventoryItem) {
+          if (inventoryItem.quantity < quantity) {
+            throw new Error(`Estoque insuficiente. Disponível: ${inventoryItem.quantity} unidade(s)`);
+          }
+        }
       }
 
       // Buscar empresa_id da comanda

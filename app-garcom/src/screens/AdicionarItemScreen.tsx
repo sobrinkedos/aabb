@@ -73,7 +73,17 @@ export default function AdicionarItemScreen({ route, navigation }: any) {
       // Usar navigate em vez de goBack para garantir que vai para ComandaDetalhes
       navigation?.navigate('ComandaDetalhes', { comandaId });
     } catch (error: any) {
-      Alert.alert('Erro', error || 'Erro ao adicionar item');
+      // Verificar se é erro de estoque
+      const errorMessage = error || 'Erro ao adicionar item';
+      if (errorMessage.includes('estoque') || errorMessage.includes('stock')) {
+        Alert.alert(
+          'Estoque Insuficiente',
+          'Este item não possui estoque disponível no momento.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Erro', errorMessage);
+      }
       setIsSubmitting(false);
     }
   };
