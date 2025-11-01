@@ -42,8 +42,9 @@ export class SupabaseService {
 
   static async getUserProfile(userId: string) {
     try {
+      // Buscar da tabela profiles (tabela correta do banco)
       const { data, error } = await supabase
-        .from('usuarios')
+        .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
@@ -52,7 +53,13 @@ export class SupabaseService {
         throw error;
       }
 
-      return data;
+      // Buscar email do auth.users
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      return {
+        ...data,
+        email: user?.email || '',
+      };
     } catch (error) {
       console.error('Erro ao buscar perfil do usuário:', error);
       throw error;
@@ -62,7 +69,7 @@ export class SupabaseService {
   static async updateUserProfile(userId: string, updates: Partial<Record<string, unknown>>) {
     try {
       const { data, error } = await supabase
-        .from('usuarios')
+        .from('profiles')
         .update(updates)
         .eq('id', userId)
         .select()

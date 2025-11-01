@@ -1,4 +1,4 @@
 // Exportações dos serviços
-// export * from './SincronizacaoService';
+export { default as sincronizacaoService } from './SincronizacaoService';
 // export * from './NotificacaoService';
 export * from './SupabaseService';
