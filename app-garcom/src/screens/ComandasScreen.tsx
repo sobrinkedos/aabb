@@ -96,13 +96,13 @@ export default function ComandasScreen({ navigation }: any) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backIcon}>
+          <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backButton}>
             <Text style={styles.backIcon}>‹</Text>
           </TouchableOpacity>
           <View>
             <Text style={styles.title}>Comandas</Text>
             <Text style={styles.subtitle}>
-              {stats.abertas} abertas • R$ {stats.totalVendas.toFixed(2)} em vendas
+              {stats.abertas || 0} abertas • R$ {(stats.totalVendas || 0).toFixed(2)} em vendas
             </Text>
           </View>
         </View>
@@ -161,7 +161,7 @@ interface StatCardProps {
 function StatCard({ label, value, color }: StatCardProps) {
   return (
     <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statValue}>{String(value)}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
@@ -183,7 +183,7 @@ function ComandaCard({ comanda, onPress, onCancel }: ComandaCardProps) {
       <View style={styles.comandaHeader}>
         <View>
           <Text style={styles.comandaMesa}>
-            {comanda.table_number ? `Mesa ${comanda.table_number}` : 'Balcão'}
+            {comanda.table_number ? `Mesa ${String(comanda.table_number)}` : 'Balcão'}
           </Text>
           <Text style={styles.comandaCliente}>
             {comanda.customer_name || 'Cliente não identificado'}
@@ -191,22 +191,22 @@ function ComandaCard({ comanda, onPress, onCancel }: ComandaCardProps) {
         </View>
         <View style={styles.comandaStatus}>
           <Text style={styles.comandaStatusText}>
-            {ComandaStatusLabel[comanda.status]}
+            {ComandaStatusLabel[comanda.status] || comanda.status || 'Aberta'}
           </Text>
         </View>
       </View>
 
       {/* Info */}
       <View style={styles.comandaInfo}>
-        <InfoBadge icon="⏱️" text={tempoAberta} />
-        <InfoBadge icon="👥" text={`${comanda.people_count} pessoas`} />
+        <InfoBadge icon="⏱️" text={tempoAberta || '0min'} />
+        <InfoBadge icon="👥" text={`${comanda.people_count || 0} pessoas`} />
         {comanda.items_count && comanda.items_count > 0 && (
           <InfoBadge icon="📝" text={`${comanda.items_count} itens`} />
         )}
         {hasPendingItems && (
           <InfoBadge
             icon="⏳"
-            text={`${comanda.pending_items} pendentes`}
+            text={`${comanda.pending_items || 0} pendentes`}
             color="#FF9800"
           />
         )}
@@ -216,7 +216,7 @@ function ComandaCard({ comanda, onPress, onCancel }: ComandaCardProps) {
       <View style={styles.comandaFooter}>
         <View>
           <Text style={styles.comandaTotalLabel}>Total</Text>
-          <Text style={styles.comandaTotalValue}>{formatarMoeda(comanda.total)}</Text>
+          <Text style={styles.comandaTotalValue}>{formatarMoeda(comanda.total || 0)}</Text>
         </View>
 
         <View style={styles.comandaActions}>
@@ -245,7 +245,7 @@ function InfoBadge({ icon, text, color }: InfoBadgeProps) {
   return (
     <View style={[styles.infoBadge, color && { backgroundColor: color + '20' }]}>
       <Text style={styles.infoBadgeIcon}>{icon}</Text>
-      <Text style={[styles.infoBadgeText, color && { color }]}>{text}</Text>
+      <Text style={[styles.infoBadgeText, color && { color }]}>{String(text)}</Text>
     </View>
   );
 }
