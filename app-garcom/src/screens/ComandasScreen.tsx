@@ -101,6 +101,15 @@ export default function ComandasScreen({ navigation }: any) {
     totalVendas: stats?.totalVendas ?? 0,
   };
 
+  // Mostrar loading enquanto carrega dados iniciais
+  if (isLoading && comandas.length === 0) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <Text style={styles.loadingText}>Carregando comandas...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -272,6 +281,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: UI_CONFIG.COLORS.BACKGROUND,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: UI_CONFIG.COLORS.TEXT_SECONDARY,
   },
   header: {
     flexDirection: 'row',
