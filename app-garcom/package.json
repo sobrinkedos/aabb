@@ -4,13 +4,15 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
+    "start:clear": "expo start -c",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json}\"",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "install:redesign": "npm install && npm run start:clear"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -23,6 +25,7 @@
     "@supabase/supabase-js": "^2.57.4",
     "@tanstack/react-query": "^5.89.0",
     "expo": "~54.0.7",
+    "expo-linear-gradient": "~14.0.2",
     "expo-local-authentication": "~17.0.7",
     "expo-secure-store": "~15.0.7",
     "expo-status-bar": "~3.0.8",
@@ -39,6 +42,7 @@
     "@types/react": "~19.1.0",
     "@typescript-eslint/eslint-plugin": "^8.44.0",
     "@typescript-eslint/parser": "^8.44.0",
+    "babel-preset-expo": "^54.0.6",
     "eslint": "^9.35.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
