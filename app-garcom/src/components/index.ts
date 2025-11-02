@@ -4,12 +4,12 @@ export { default as AuthGuard } from './AuthGuard';
 // export * from './GerenciadorComanda';
 // export * from './CardapioMobile';
 
-// Novos componentes modernos
-export { Button } from './Button';
+// Novos componentes modernos - Temporariamente desabilitados
+// export { Button } from './Button';
 export { Card } from './Card';
 export { IconButton } from './IconButton';
-export { Input } from './Input';
+// export { Input } from './Input';
 export { Icon, Icons } from './Icon';
-export { ScreenTransition } from './ScreenTransition';
-export { Badge } from './Badge';
-export { Loading } from './Loading';
+// export { ScreenTransition } from './ScreenTransition';
+// export { Badge } from './Badge';
+// export { Loading } from './Loading';
