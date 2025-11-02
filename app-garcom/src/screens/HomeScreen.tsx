@@ -6,15 +6,15 @@ import {
   Alert,
   ScrollView,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MotiView } from 'moti';
 import { RootState, AppDispatch } from '../store/store';
 import { signOut } from '../store/slices/authSlice';
 import SyncStatusIndicator from '../components/SyncStatusIndicator';
 import { theme } from '../theme';
-import { Card, IconButton, Icons, Badge, ScreenTransition } from '../components';
+import { Card, IconButton, Icons } from '../components';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - theme.spacing.lg * 3) / 2;
@@ -96,8 +96,7 @@ export default function HomeScreen({ navigation }: any) {
   ];
 
   return (
-    <ScreenTransition type="fade">
-      <View style={styles.container}>
+    <View style={styles.container}>
         {/* Header com gradiente */}
         <LinearGradient
           colors={theme.colors.primary.gradient}
@@ -105,12 +104,7 @@ export default function HomeScreen({ navigation }: any) {
           end={{ x: 1, y: 1 }}
           style={styles.header}
         >
-          <MotiView
-            from={{ opacity: 0, translateY: -20 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ type: 'timing', duration: 600 }}
-          >
-            <View style={styles.headerContent}>
+          <View style={styles.headerContent}>
               <View style={styles.headerLeft}>
                 <Text style={styles.greeting}>Olá,</Text>
                 <Text style={styles.userName}>{user?.name || user?.email || 'Garçom'}</Text>
@@ -124,7 +118,6 @@ export default function HomeScreen({ navigation }: any) {
                 />
               </View>
             </View>
-          </MotiView>
         </LinearGradient>
 
         <ScrollView
@@ -134,12 +127,7 @@ export default function HomeScreen({ navigation }: any) {
         >
           {/* Cards de Estatísticas */}
           <View style={styles.statsContainer}>
-            <MotiView
-              from={{ opacity: 0, translateX: -50 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              transition={{ type: 'spring', delay: 200 }}
-              style={styles.statCard}
-            >
+            <View style={styles.statCard}>
               <Card variant="elevated">
                 <View style={styles.statContent}>
                   <View style={[styles.statIcon, { backgroundColor: theme.colors.warning.light }]}>
@@ -151,14 +139,9 @@ export default function HomeScreen({ navigation }: any) {
                   </View>
                 </View>
               </Card>
-            </MotiView>
+            </View>
 
-            <MotiView
-              from={{ opacity: 0, translateX: 50 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              transition={{ type: 'spring', delay: 300 }}
-              style={styles.statCard}
-            >
+            <View style={styles.statCard}>
               <Card variant="elevated">
                 <View style={styles.statContent}>
                   <View style={[styles.statIcon, { backgroundColor: theme.colors.success.light }]}>
@@ -170,31 +153,15 @@ export default function HomeScreen({ navigation }: any) {
                   </View>
                 </View>
               </Card>
-            </MotiView>
+            </View>
           </View>
 
           {/* Menu de Ações */}
-          <MotiView
-            from={{ opacity: 0, translateY: 20 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ type: 'timing', delay: 400 }}
-          >
-            <Text style={styles.sectionTitle}>Menu Principal</Text>
-          </MotiView>
+          <Text style={styles.sectionTitle}>Menu Principal</Text>
 
           <View style={styles.menuGrid}>
-            {menuItems.map((item, index) => (
-              <MotiView
-                key={item.id}
-                from={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{
-                  type: 'spring',
-                  delay: 500 + index * 100,
-                  damping: 15,
-                }}
-                style={styles.menuCard}
-              >
+            {menuItems.map((item) => (
+              <View key={item.id} style={styles.menuCard}>
                 <Card
                   onPress={() => navigation?.navigate(item.screen)}
                   style={styles.menuCardInner}
@@ -210,16 +177,11 @@ export default function HomeScreen({ navigation }: any) {
                     <Text style={styles.menuDescription}>{item.description}</Text>
                   </LinearGradient>
                 </Card>
-              </MotiView>
+              </View>
             ))}
           </View>
 
           {/* Card de Status do Sistema */}
-          <MotiView
-            from={{ opacity: 0, translateY: 20 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ type: 'timing', delay: 900 }}
-          >
             <Card variant="elevated" style={styles.statusCard}>
               <View style={styles.statusHeader}>
                 <Icons.checkmarkCircle size={24} color={theme.colors.success.main} />
@@ -244,12 +206,10 @@ export default function HomeScreen({ navigation }: any) {
                 </View>
               </View>
             </Card>
-          </MotiView>
 
           <View style={{ height: theme.spacing.xl }} />
         </ScrollView>
       </View>
-    </ScreenTransition>
   );
 }
 
