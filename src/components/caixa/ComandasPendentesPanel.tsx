@@ -34,8 +34,16 @@ const ComandasPendentesPanel: React.FC = () => {
       // Finalizar comanda como paga
       await finalizarComandasPagas([comanda.id], comanda.payment_method || 'dinheiro');
       
+      const valorFinal = comanda.service_charge && comanda.service_charge_amount 
+        ? comanda.service_charge_amount 
+        : comanda.total || 0;
+      
+      const mensagemGarcom = comanda.service_charge 
+        ? `\nSubtotal: ${formatCurrency(comanda.total || 0)}\n10% Garçom: ${formatCurrency((comanda.service_charge_amount || 0) - (comanda.total || 0))}\nTotal Final: ${formatCurrency(valorFinal)}`
+        : `\nTotal: ${formatCurrency(valorFinal)}`;
+      
       console.log('Pagamento confirmado para comanda:', comanda.id);
-      alert(`Pagamento confirmado!\n\nComanda: ${comanda.customer_name || 'Cliente'}\nTotal: ${formatCurrency(comanda.total || 0)}\nMétodo: ${comanda.payment_method || 'Não informado'}`);
+      alert(`Pagamento confirmado!\n\nComanda: ${comanda.customer_name || 'Cliente'}${mensagemGarcom}\nMétodo: ${comanda.payment_method || 'Não informado'}`);
       
     } catch (error) {
       console.error('Erro ao confirmar pagamento:', error);
@@ -77,7 +85,12 @@ const ComandasPendentesPanel: React.FC = () => {
           <div className="flex items-center space-x-2">
             <CurrencyDollarIcon className="h-6 w-6 text-yellow-600" />
             <span className="text-lg font-semibold text-yellow-600">
-              {formatCurrency(comandasPendentes.reduce((sum, c) => sum + (c.total || 0), 0))}
+              {formatCurrency(comandasPendentes.reduce((sum, c) => {
+                const valorFinal = (c as any).service_charge && (c as any).service_charge_amount 
+                  ? (c as any).service_charge_amount 
+                  : (c.total || 0);
+                return sum + Number(valorFinal);
+              }, 0))}
             </span>
           </div>
         </div>
@@ -154,9 +167,23 @@ const ComandasPendentesPanel: React.FC = () => {
               {/* Ações */}
               <div className="ml-6 flex flex-col items-end space-y-3">
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-green-600">
-                    {formatCurrency(comanda.total || 0)}
-                  </div>
+                  {(comanda as any).service_charge && (comanda as any).service_charge_amount ? (
+                    <>
+                      <div className="text-sm text-gray-500 line-through">
+                        {formatCurrency(comanda.total || 0)}
+                      </div>
+                      <div className="text-xs text-green-600 font-medium">
+                        + 10% Garçom
+                      </div>
+                      <div className="text-2xl font-bold text-green-600">
+                        {formatCurrency((comanda as any).service_charge_amount)}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-2xl font-bold text-green-600">
+                      {formatCurrency(comanda.total || 0)}
+                    </div>
+                  )}
                   <div className="text-sm text-gray-500">
                     Total da Comanda
                   </div>
@@ -185,7 +212,12 @@ const ComandasPendentesPanel: React.FC = () => {
             <strong>{comandasPendentes.length}</strong> comanda{comandasPendentes.length !== 1 ? 's' : ''} pendente{comandasPendentes.length !== 1 ? 's' : ''}
           </div>
           <div className="text-lg font-semibold text-green-600">
-            Total: {formatCurrency(comandasPendentes.reduce((sum, c) => sum + (c.total || 0), 0))}
+            Total: {formatCurrency(comandasPendentes.reduce((sum, c) => {
+              const valorFinal = (c as any).service_charge && (c as any).service_charge_amount 
+                ? (c as any).service_charge_amount 
+                : (c.total || 0);
+              return sum + Number(valorFinal);
+            }, 0))}
           </div>
         </div>
       </div>
