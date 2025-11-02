@@ -361,6 +361,8 @@ export interface Comanda {
   opened_at: string;
   closed_at?: string;
   payment_method?: string;
+  service_charge?: boolean;
+  service_charge_amount?: number;
   notes?: string;
   created_at: string;
   updated_at: string;
