@@ -178,10 +178,14 @@ interface StatCardProps {
 }
 
 function StatCard({ label, value, color }: StatCardProps) {
+  // Garantir que value é sempre uma string válida
+  const displayValue = value !== null && value !== undefined ? String(value) : '0';
+  const displayLabel = label || '';
+  
   return (
     <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <Text style={styles.statValue}>{String(value)}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statValue}>{displayValue}</Text>
+      <Text style={styles.statLabel}>{displayLabel}</Text>
     </View>
   );
 }
@@ -198,11 +202,16 @@ function ComandaCard({ comanda, onPress, onCancel }: ComandaCardProps) {
     return null;
   }
 
-  const tempoAberta = formatarTempo(comanda.opened_at);
+  // Garantir que todos os valores são strings válidas
+  const tempoAberta = String(formatarTempo(comanda.opened_at) || '0min');
   const hasPendingItems = (comanda.pending_items || 0) > 0;
   const mesaTexto = comanda.table_number ? `Mesa ${String(comanda.table_number)}` : 'Balcão';
-  const clienteTexto = comanda.customer_name || 'Cliente não identificado';
-  const statusTexto = ComandaStatusLabel[comanda.status] || String(comanda.status) || 'Aberta';
+  const clienteTexto = String(comanda.customer_name || 'Cliente não identificado');
+  const statusTexto = String(ComandaStatusLabel[comanda.status] || comanda.status || 'Aberta');
+  const peopleCount = Number(comanda.people_count) || 0;
+  const itemsCount = Number(comanda.items_count) || 0;
+  const pendingItems = Number(comanda.pending_items) || 0;
+  const total = Number(comanda.total) || 0;
 
   return (
     <TouchableOpacity style={styles.comandaCard} onPress={onPress} activeOpacity={0.7}>
@@ -225,15 +234,15 @@ function ComandaCard({ comanda, onPress, onCancel }: ComandaCardProps) {
 
       {/* Info */}
       <View style={styles.comandaInfo}>
-        <InfoBadge icon="⏱️" text={String(tempoAberta || '0min')} />
-        <InfoBadge icon="👥" text={String(`${comanda.people_count || 0} pessoas`)} />
-        {comanda.items_count && comanda.items_count > 0 && (
-          <InfoBadge icon="📝" text={String(`${comanda.items_count} itens`)} />
+        <InfoBadge icon="⏱️" text={tempoAberta} />
+        <InfoBadge icon="👥" text={`${peopleCount} pessoas`} />
+        {itemsCount > 0 && (
+          <InfoBadge icon="📝" text={`${itemsCount} itens`} />
         )}
         {hasPendingItems && (
           <InfoBadge
             icon="⏳"
-            text={String(`${comanda.pending_items || 0} pendentes`)}
+            text={`${pendingItems} pendentes`}
             color="#FF9800"
           />
         )}
@@ -243,7 +252,7 @@ function ComandaCard({ comanda, onPress, onCancel }: ComandaCardProps) {
       <View style={styles.comandaFooter}>
         <View>
           <Text style={styles.comandaTotalLabel}>Total</Text>
-          <Text style={styles.comandaTotalValue}>{String(formatarMoeda(comanda.total || 0))}</Text>
+          <Text style={styles.comandaTotalValue}>{formatarMoeda(total)}</Text>
         </View>
 
         <View style={styles.comandaActions}>
@@ -269,10 +278,14 @@ interface InfoBadgeProps {
 }
 
 function InfoBadge({ icon, text, color }: InfoBadgeProps) {
+  // Garantir que icon e text são sempre strings válidas
+  const displayIcon = icon || '';
+  const displayText = text !== null && text !== undefined ? String(text) : '';
+  
   return (
     <View style={[styles.infoBadge, color && { backgroundColor: color + '20' }]}>
-      <Text style={styles.infoBadgeIcon}>{icon}</Text>
-      <Text style={[styles.infoBadgeText, color && { color }]}>{String(text)}</Text>
+      <Text style={styles.infoBadgeIcon}>{displayIcon}</Text>
+      <Text style={[styles.infoBadgeText, color && { color }]}>{displayText}</Text>
     </View>
   );
 }
