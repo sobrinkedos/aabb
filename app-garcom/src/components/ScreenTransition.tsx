@@ -6,7 +6,7 @@
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, Dimensions, Animated, Easing } from 'react-native';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface ScreenTransitionProps {
   children: React.ReactNode;
@@ -17,7 +17,7 @@ interface ScreenTransitionProps {
 export function ScreenTransition({ 
   children, 
   screenKey,
-  direction = 'right' 
+  direction = 'up' 
 }: ScreenTransitionProps) {
   const translateX = useRef(new Animated.Value(
     direction === 'right' ? SCREEN_WIDTH : 
@@ -25,8 +25,8 @@ export function ScreenTransition({
   )).current;
   
   const translateY = useRef(new Animated.Value(
-    direction === 'up' ? -SCREEN_WIDTH : 
-    direction === 'down' ? SCREEN_WIDTH : 0
+    direction === 'up' ? SCREEN_HEIGHT : // De baixo para cima (vem de baixo)
+    direction === 'down' ? -SCREEN_HEIGHT : 0 // De cima para baixo (vem de cima)
   )).current;
   
   const opacity = useRef(new Animated.Value(0)).current;
@@ -38,8 +38,8 @@ export function ScreenTransition({
       direction === 'left' ? -SCREEN_WIDTH : 0
     );
     translateY.setValue(
-      direction === 'up' ? -SCREEN_WIDTH : 
-      direction === 'down' ? SCREEN_WIDTH : 0
+      direction === 'up' ? SCREEN_HEIGHT : // De baixo para cima
+      direction === 'down' ? -SCREEN_HEIGHT : 0 // De cima para baixo
     );
     opacity.setValue(0);
 

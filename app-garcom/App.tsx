@@ -38,6 +38,7 @@ function AppContent() {
   const [screenParams, setScreenParams] = useState<any>({});
   const [previousScreen, setPreviousScreen] = useState('Home');
   const [navigationHistory, setNavigationHistory] = useState<string[]>(['Home']);
+  const [isGoingBack, setIsGoingBack] = useState(false);
 
   const navigation = {
     navigate: (screen: string, params?: any) => {
@@ -45,6 +46,7 @@ function AppContent() {
       setCurrentScreen(screen);
       setScreenParams(params || {});
       setNavigationHistory(prev => [...prev, screen]);
+      setIsGoingBack(false);
     },
     goBack: () => {
       const history = [...navigationHistory];
@@ -54,16 +56,15 @@ function AppContent() {
       setCurrentScreen(previousScreen);
       setScreenParams({});
       setNavigationHistory(history);
+      setIsGoingBack(true);
     },
   };
 
   const renderScreen = () => {
     const props = { navigation, route: { params: screenParams } };
     
-    // Determinar direção da animação
-    const isGoingBack = navigationHistory.length > 0 && 
-      navigationHistory[navigationHistory.length - 1] !== currentScreen;
-    const direction = isGoingBack ? 'left' : 'right';
+    // Determinar direção da animação: de baixo para cima ao avançar, de cima para baixo ao voltar
+    const direction = isGoingBack ? 'down' : 'up';
     
     const screenContent = (() => {
       switch (currentScreen) {
