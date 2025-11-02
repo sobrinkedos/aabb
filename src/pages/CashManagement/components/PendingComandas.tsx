@@ -106,7 +106,15 @@ export const PendingComandas: React.FC<PendingComandasProps> = ({
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-lg font-bold text-gray-900">{formatCurrency(comanda.total)}</p>
+                {comanda.service_charge && comanda.service_charge_amount ? (
+                  <>
+                    <p className="text-xs text-gray-500 line-through">{formatCurrency(comanda.total)}</p>
+                    <p className="text-xs text-green-600 font-medium">+ 10% Garçom</p>
+                    <p className="text-lg font-bold text-gray-900">{formatCurrency(comanda.service_charge_amount)}</p>
+                  </>
+                ) : (
+                  <p className="text-lg font-bold text-gray-900">{formatCurrency(comanda.total)}</p>
+                )}
                 <p className="text-xs text-gray-600">Total da comanda</p>
               </div>
               <button
