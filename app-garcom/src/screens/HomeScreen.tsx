@@ -2,25 +2,41 @@ import React from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   Alert,
   ScrollView,
+  Dimensions,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MotiView } from 'moti';
 import { RootState, AppDispatch } from '../store/store';
 import { signOut } from '../store/slices/authSlice';
 import SyncStatusIndicator from '../components/SyncStatusIndicator';
-import { UI_CONFIG } from '../utils/constants';
+import { theme } from '../theme';
+import { Card, IconButton, Icons, Badge, ScreenTransition } from '../components';
+
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - theme.spacing.lg * 3) / 2;
+
+interface MenuItem {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  screen: string;
+  color: string;
+  gradient: string[];
+}
 
 export default function HomeScreen({ navigation }: any) {
   const dispatch = useDispatch<AppDispatch>();
-  const { user, isLoading } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
+  const { items: mesas } = useSelector((state: RootState) => state.mesas);
+  const { items: comandas } = useSelector((state: RootState) => state.comandas);
 
-  // Verificar se navigation existe
-  if (!navigation) {
-    console.error('Navigation prop is undefined in HomeScreen');
-  }
+  const mesasOcupadas = mesas.filter((m) => m.status === 'ocupada').length;
+  const comandasAbertas = comandas.filter((c) => c.status === 'aberta').length;
 
   const handleSignOut = () => {
     Alert.alert(
@@ -40,103 +56,219 @@ export default function HomeScreen({ navigation }: any) {
     );
   };
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     {
-      title: '🗺️ Mesas',
-      description: 'Visualizar e gerenciar mesas',
+      id: 'mesas',
+      title: 'Mesas',
+      description: 'Gerenciar mesas',
+      icon: <Icons.grid size={32} color="white" />,
       screen: 'Mesas',
-      color: '#4CAF50',
+      color: theme.colors.success.main,
+      gradient: [theme.colors.success.main, theme.colors.success.dark],
     },
     {
-      title: '📋 Comandas',
-      description: 'Gerenciar comandas ativas',
+      id: 'comandas',
+      title: 'Comandas',
+      description: 'Comandas ativas',
+      icon: <Icons.receipt size={32} color="white" />,
       screen: 'Comandas',
-      color: '#2196F3',
+      color: theme.colors.info.main,
+      gradient: [theme.colors.info.main, theme.colors.info.dark],
     },
     {
-      title: '🍽️ Cardápio',
-      description: 'Ver itens do cardápio',
+      id: 'cardapio',
+      title: 'Cardápio',
+      description: 'Ver cardápio',
+      icon: <Icons.restaurant size={32} color="white" />,
       screen: 'Cardapio',
-      color: '#FF9800',
+      color: theme.colors.warning.main,
+      gradient: [theme.colors.warning.main, theme.colors.warning.dark],
     },
     {
-      title: '🎨 Componentes Modernos',
-      description: 'Ver galeria de componentes do redesign',
+      id: 'showcase',
+      title: 'Componentes',
+      description: 'Ver redesign',
+      icon: <Icons.Icon name="color-palette" size={32} color="white" />,
       screen: 'ComponentShowcase',
-      color: '#9C27B0',
+      color: theme.colors.secondary.main,
+      gradient: [theme.colors.secondary.main, theme.colors.secondary.dark],
     },
   ];
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.title}>App Garçom</Text>
-          <Text style={styles.subtitle}>
-            Olá, {user?.name || 'Garçom'}
-          </Text>
-        </View>
-        <View style={styles.headerRight}>
-          <SyncStatusIndicator />
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleSignOut}
-            disabled={isLoading}
+    <ScreenTransition type="fade">
+      <View style={styles.container}>
+        {/* Header com gradiente */}
+        <LinearGradient
+          colors={theme.colors.primary.gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          <MotiView
+            from={{ opacity: 0, translateY: -20 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'timing', duration: 600 }}
           >
-            <Text style={styles.logoutIcon}>🚪</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Menu */}
-      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.sectionTitle}>Menu Principal</Text>
-        
-        {menuItems.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[styles.menuItem, { borderLeftColor: item.color }]}
-            onPress={() => navigation?.navigate(item.screen)}
-          >
-            <View style={styles.menuItemContent}>
-              <Text style={styles.menuItemTitle}>{item.title}</Text>
-              <Text style={styles.menuItemDescription}>{item.description}</Text>
+            <View style={styles.headerContent}>
+              <View style={styles.headerLeft}>
+                <Text style={styles.greeting}>Olá,</Text>
+                <Text style={styles.userName}>{user?.name || user?.email || 'Garçom'}</Text>
+              </View>
+              <View style={styles.headerRight}>
+                <SyncStatusIndicator />
+                <IconButton
+                  icon={<Icons.Icon name="log-out" size={24} color="white" />}
+                  onPress={handleSignOut}
+                  variant="ghost"
+                />
+              </View>
             </View>
-            <Text style={styles.menuItemArrow}>›</Text>
-          </TouchableOpacity>
-        ))}
+          </MotiView>
+        </LinearGradient>
 
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>✅ Sistema Configurado</Text>
-          <Text style={styles.infoText}>
-            • Login com email e senha{'\n'}
-            • Autenticação biométrica{'\n'}
-            • Sincronização offline{'\n'}
-            • Proteção de rotas{'\n'}
-            • Validação de formulários
-          </Text>
-        </View>
-      </ScrollView>
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Cards de Estatísticas */}
+          <View style={styles.statsContainer}>
+            <MotiView
+              from={{ opacity: 0, translateX: -50 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              transition={{ type: 'spring', delay: 200 }}
+              style={styles.statCard}
+            >
+              <Card variant="elevated">
+                <View style={styles.statContent}>
+                  <View style={[styles.statIcon, { backgroundColor: theme.colors.warning.light }]}>
+                    <Icons.grid size={24} color={theme.colors.warning.dark} />
+                  </View>
+                  <View style={styles.statInfo}>
+                    <Text style={styles.statValue}>{mesasOcupadas}</Text>
+                    <Text style={styles.statLabel}>Mesas Ocupadas</Text>
+                  </View>
+                </View>
+              </Card>
+            </MotiView>
 
+            <MotiView
+              from={{ opacity: 0, translateX: 50 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              transition={{ type: 'spring', delay: 300 }}
+              style={styles.statCard}
+            >
+              <Card variant="elevated">
+                <View style={styles.statContent}>
+                  <View style={[styles.statIcon, { backgroundColor: theme.colors.success.light }]}>
+                    <Icons.receipt size={24} color={theme.colors.success.dark} />
+                  </View>
+                  <View style={styles.statInfo}>
+                    <Text style={styles.statValue}>{comandasAbertas}</Text>
+                    <Text style={styles.statLabel}>Comandas Abertas</Text>
+                  </View>
+                </View>
+              </Card>
+            </MotiView>
+          </View>
 
-    </View>
+          {/* Menu de Ações */}
+          <MotiView
+            from={{ opacity: 0, translateY: 20 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'timing', delay: 400 }}
+          >
+            <Text style={styles.sectionTitle}>Menu Principal</Text>
+          </MotiView>
+
+          <View style={styles.menuGrid}>
+            {menuItems.map((item, index) => (
+              <MotiView
+                key={item.id}
+                from={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{
+                  type: 'spring',
+                  delay: 500 + index * 100,
+                  damping: 15,
+                }}
+                style={styles.menuCard}
+              >
+                <Card
+                  onPress={() => navigation?.navigate(item.screen)}
+                  style={styles.menuCardInner}
+                >
+                  <LinearGradient
+                    colors={item.gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.menuGradient}
+                  >
+                    <View style={styles.menuIcon}>{item.icon}</View>
+                    <Text style={styles.menuTitle}>{item.title}</Text>
+                    <Text style={styles.menuDescription}>{item.description}</Text>
+                  </LinearGradient>
+                </Card>
+              </MotiView>
+            ))}
+          </View>
+
+          {/* Card de Status do Sistema */}
+          <MotiView
+            from={{ opacity: 0, translateY: 20 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'timing', delay: 900 }}
+          >
+            <Card variant="elevated" style={styles.statusCard}>
+              <View style={styles.statusHeader}>
+                <Icons.checkmarkCircle size={24} color={theme.colors.success.main} />
+                <Text style={styles.statusTitle}>Sistema Configurado</Text>
+              </View>
+              <View style={styles.statusList}>
+                <View style={styles.statusItem}>
+                  <Icons.checkmark size={16} color={theme.colors.success.main} />
+                  <Text style={styles.statusText}>Login com email e senha</Text>
+                </View>
+                <View style={styles.statusItem}>
+                  <Icons.checkmark size={16} color={theme.colors.success.main} />
+                  <Text style={styles.statusText}>Autenticação biométrica</Text>
+                </View>
+                <View style={styles.statusItem}>
+                  <Icons.checkmark size={16} color={theme.colors.success.main} />
+                  <Text style={styles.statusText}>Sincronização offline</Text>
+                </View>
+                <View style={styles.statusItem}>
+                  <Icons.checkmark size={16} color={theme.colors.success.main} />
+                  <Text style={styles.statusText}>Proteção de rotas</Text>
+                </View>
+              </View>
+            </Card>
+          </MotiView>
+
+          <View style={{ height: theme.spacing.xl }} />
+        </ScrollView>
+      </View>
+    </ScreenTransition>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: UI_CONFIG.COLORS.BACKGROUND,
+    backgroundColor: theme.colors.background.secondary,
   },
   header: {
+    paddingTop: theme.spacing.xl + 20,
+    paddingBottom: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
+    borderBottomLeftRadius: theme.borderRadius.xxl,
+    borderBottomRightRadius: theme.borderRadius.xxl,
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: UI_CONFIG.SPACING.LG,
-    backgroundColor: UI_CONFIG.COLORS.SURFACE,
-    borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.COLORS.TEXT_SECONDARY + '20',
   },
   headerLeft: {
     flex: 1,
@@ -144,90 +276,130 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: UI_CONFIG.SPACING.MD,
+    gap: theme.spacing.sm,
   },
-  logoutButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: UI_CONFIG.COLORS.ERROR + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
+  greeting: {
+    fontSize: 16,
+    color: theme.colors.text.inverse,
+    opacity: 0.9,
   },
-  logoutIcon: {
-    fontSize: 20,
-  },
-  title: {
-    fontSize: 24,
+  userName: {
+    fontSize: 28,
     fontWeight: 'bold',
-    color: UI_CONFIG.COLORS.TEXT_PRIMARY,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: UI_CONFIG.COLORS.TEXT_SECONDARY,
-    marginTop: 4,
+    color: theme.colors.text.inverse,
+    marginTop: theme.spacing.xs,
   },
   content: {
     flex: 1,
   },
   scrollContent: {
-    padding: UI_CONFIG.SPACING.LG,
+    paddingBottom: theme.spacing.xl,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: UI_CONFIG.COLORS.TEXT_PRIMARY,
-    marginBottom: UI_CONFIG.SPACING.MD,
-  },
-  menuItem: {
+  statsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: UI_CONFIG.COLORS.SURFACE,
-    borderRadius: UI_CONFIG.BORDER_RADIUS.MD,
-    padding: UI_CONFIG.SPACING.LG,
-    marginBottom: UI_CONFIG.SPACING.MD,
-    borderLeftWidth: 4,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    paddingHorizontal: theme.spacing.lg,
+    marginTop: -theme.spacing.xl,
+    gap: theme.spacing.md,
   },
-  menuItemContent: {
+  statCard: {
     flex: 1,
   },
-  menuItemTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: UI_CONFIG.COLORS.TEXT_PRIMARY,
-    marginBottom: 4,
+  statContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  menuItemDescription: {
-    fontSize: 14,
-    color: UI_CONFIG.COLORS.TEXT_SECONDARY,
+  statIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: theme.borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.md,
   },
-  menuItemArrow: {
-    fontSize: 32,
-    color: UI_CONFIG.COLORS.TEXT_SECONDARY,
-    marginLeft: UI_CONFIG.SPACING.MD,
+  statInfo: {
+    flex: 1,
   },
-  infoCard: {
-    backgroundColor: UI_CONFIG.COLORS.SUCCESS + '10',
-    borderRadius: UI_CONFIG.BORDER_RADIUS.MD,
-    padding: UI_CONFIG.SPACING.LG,
-    marginTop: UI_CONFIG.SPACING.LG,
-    borderWidth: 1,
-    borderColor: UI_CONFIG.COLORS.SUCCESS + '40',
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: theme.colors.text.primary,
   },
-  infoTitle: {
+  statLabel: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.xs,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: theme.colors.text.primary,
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  menuGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: theme.spacing.lg,
+    gap: theme.spacing.md,
+  },
+  menuCard: {
+    width: CARD_WIDTH,
+  },
+  menuCardInner: {
+    padding: 0,
+    overflow: 'hidden',
+  },
+  menuGradient: {
+    padding: theme.spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 140,
+  },
+  menuIcon: {
+    marginBottom: theme.spacing.md,
+  },
+  menuTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: UI_CONFIG.COLORS.SUCCESS,
-    marginBottom: UI_CONFIG.SPACING.SM,
+    color: theme.colors.text.inverse,
+    textAlign: 'center',
+    marginBottom: theme.spacing.xs,
   },
-  infoText: {
+  menuDescription: {
+    fontSize: 12,
+    color: theme.colors.text.inverse,
+    opacity: 0.9,
+    textAlign: 'center',
+  },
+  statusCard: {
+    marginHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.xl,
+    backgroundColor: theme.colors.success.light + '15',
+    borderLeftWidth: 4,
+    borderLeftColor: theme.colors.success.main,
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  statusTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.success.dark,
+    marginLeft: theme.spacing.sm,
+  },
+  statusList: {
+    gap: theme.spacing.sm,
+  },
+  statusItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusText: {
     fontSize: 14,
-    color: UI_CONFIG.COLORS.TEXT_PRIMARY,
-    lineHeight: 22,
+    color: theme.colors.text.primary,
+    marginLeft: theme.spacing.sm,
   },
 });
