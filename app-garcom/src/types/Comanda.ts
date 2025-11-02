@@ -11,6 +11,8 @@ export interface Comanda {
   opened_at: string;
   closed_at?: string;
   payment_method?: string;
+  service_charge?: boolean; // 10% do garçom incluído
+  service_charge_amount?: number; // Total com 10% do garçom
   notes?: string;
   created_at: string;
   updated_at: string;

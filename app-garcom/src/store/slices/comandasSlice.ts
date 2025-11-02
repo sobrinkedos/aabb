@@ -284,19 +284,40 @@ export const atualizarStatusItem = createAsyncThunk(
 export const fecharComanda = createAsyncThunk(
   'comandas/fechar',
   async (
-    { comandaId, paymentMethod }: { comandaId: string; paymentMethod: string },
+    { 
+      comandaId, 
+      paymentMethod, 
+      incluirGarcom = false, 
+      totalComGarcom 
+    }: { 
+      comandaId: string; 
+      paymentMethod: string; 
+      incluirGarcom?: boolean; 
+      totalComGarcom?: number;
+    },
     { rejectWithValue }
   ) => {
     try {
       // Enviar comanda para o caixa com status pending_payment
       // A comanda NÃO é considerada paga neste momento
+      const updateData: any = {
+        status: 'pending_payment',
+        payment_method: paymentMethod,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Adicionar informações dos 10% do garçom se incluído
+      if (incluirGarcom && totalComGarcom) {
+        updateData.service_charge = true;
+        updateData.service_charge_amount = totalComGarcom;
+      } else {
+        updateData.service_charge = false;
+        updateData.service_charge_amount = null;
+      }
+
       const { data, error } = await supabase
         .from('comandas')
-        .update({
-          status: 'pending_payment',
-          payment_method: paymentMethod,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', comandaId)
         .select()
         .single();
