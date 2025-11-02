@@ -65,13 +65,22 @@ export default function HomeScreen({ navigation }: any) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerLeft}>
           <Text style={styles.title}>App Garçom</Text>
           <Text style={styles.subtitle}>
             Olá, {user?.name || 'Garçom'}
           </Text>
         </View>
-        <SyncStatusIndicator />
+        <View style={styles.headerRight}>
+          <SyncStatusIndicator />
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleSignOut}
+            disabled={isLoading}
+          >
+            <Text style={styles.logoutIcon}>🚪</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Menu */}
@@ -104,18 +113,7 @@ export default function HomeScreen({ navigation }: any) {
         </View>
       </ScrollView>
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.signOutButton}
-          onPress={handleSignOut}
-          disabled={isLoading}
-        >
-          <Text style={styles.signOutButtonText}>
-            Sair do App
-          </Text>
-        </TouchableOpacity>
-      </View>
+
     </View>
   );
 }
@@ -133,6 +131,25 @@ const styles = StyleSheet.create({
     backgroundColor: UI_CONFIG.COLORS.SURFACE,
     borderBottomWidth: 1,
     borderBottomColor: UI_CONFIG.COLORS.TEXT_SECONDARY + '20',
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: UI_CONFIG.SPACING.MD,
+  },
+  logoutButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: UI_CONFIG.COLORS.ERROR + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoutIcon: {
+    fontSize: 20,
   },
   title: {
     fontSize: 24,
@@ -206,23 +223,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: UI_CONFIG.COLORS.TEXT_PRIMARY,
     lineHeight: 22,
-  },
-  footer: {
-    padding: UI_CONFIG.SPACING.LG,
-    backgroundColor: UI_CONFIG.COLORS.SURFACE,
-    borderTopWidth: 1,
-    borderTopColor: UI_CONFIG.COLORS.TEXT_SECONDARY + '20',
-  },
-  signOutButton: {
-    height: 50,
-    backgroundColor: UI_CONFIG.COLORS.ERROR,
-    borderRadius: UI_CONFIG.BORDER_RADIUS.MD,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  signOutButtonText: {
-    color: UI_CONFIG.COLORS.SURFACE,
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
