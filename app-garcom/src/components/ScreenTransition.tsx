@@ -1,62 +1,88 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { MotiView } from 'moti';
-import { theme } from '../theme';
+/**
+ * Componente de Transição de Tela
+ * 
+ * Adiciona animações suaves de slide entre telas
+ */
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, Dimensions, Animated, Easing } from 'react-native';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface ScreenTransitionProps {
   children: React.ReactNode;
-  type?: 'fade' | 'slide' | 'scale' | 'slideUp';
+  screenKey: string;
+  direction?: 'left' | 'right' | 'up' | 'down';
 }
 
-export const ScreenTransition: React.FC<ScreenTransitionProps> = ({
-  children,
-  type = 'fade',
-}) => {
-  const getAnimation = () => {
-    switch (type) {
-      case 'fade':
-        return {
-          from: { opacity: 0 },
-          animate: { opacity: 1 },
-        };
-      case 'slide':
-        return {
-          from: { opacity: 0, translateX: 50 },
-          animate: { opacity: 1, translateX: 0 },
-        };
-      case 'scale':
-        return {
-          from: { opacity: 0, scale: 0.9 },
-          animate: { opacity: 1, scale: 1 },
-        };
-      case 'slideUp':
-        return {
-          from: { opacity: 0, translateY: 50 },
-          animate: { opacity: 1, translateY: 0 },
-        };
-      default:
-        return {
-          from: { opacity: 0 },
-          animate: { opacity: 1 },
-        };
-    }
-  };
+export function ScreenTransition({ 
+  children, 
+  screenKey,
+  direction = 'right' 
+}: ScreenTransitionProps) {
+  const translateX = useRef(new Animated.Value(
+    direction === 'right' ? SCREEN_WIDTH : 
+    direction === 'left' ? -SCREEN_WIDTH : 0
+  )).current;
+  
+  const translateY = useRef(new Animated.Value(
+    direction === 'up' ? -SCREEN_WIDTH : 
+    direction === 'down' ? SCREEN_WIDTH : 0
+  )).current;
+  
+  const opacity = useRef(new Animated.Value(0)).current;
 
-  const animation = getAnimation();
+  useEffect(() => {
+    // Reset valores
+    translateX.setValue(
+      direction === 'right' ? SCREEN_WIDTH : 
+      direction === 'left' ? -SCREEN_WIDTH : 0
+    );
+    translateY.setValue(
+      direction === 'up' ? -SCREEN_WIDTH : 
+      direction === 'down' ? SCREEN_WIDTH : 0
+    );
+    opacity.setValue(0);
+
+    // Animar entrada
+    Animated.parallel([
+      Animated.timing(translateX, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 250,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [screenKey]);
 
   return (
-    <MotiView
-      {...animation}
-      transition={{
-        type: 'timing',
-        duration: 400,
-      }}
-      style={styles.container}
+    <Animated.View 
+      style={[
+        styles.container, 
+        {
+          transform: [
+            { translateX },
+            { translateY },
+          ],
+          opacity,
+        }
+      ]}
     >
       {children}
-    </MotiView>
+    </Animated.View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

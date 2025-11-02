@@ -21,6 +21,7 @@ import AdicionarItemScreen from './src/screens/AdicionarItemScreen';
 import ComponentShowcaseScreen from './src/screens/ComponentShowcaseScreen';
 import ProdutoDetalhesScreen from './src/screens/ProdutoDetalhesScreen';
 import AuthGuard from './src/components/AuthGuard';
+import { ScreenTransition } from './src/components';
 
 // Criar instância do QueryClient
 const queryClient = new QueryClient({
@@ -35,41 +36,67 @@ const queryClient = new QueryClient({
 function AppContent() {
   const [currentScreen, setCurrentScreen] = useState('Home');
   const [screenParams, setScreenParams] = useState<any>({});
+  const [previousScreen, setPreviousScreen] = useState('Home');
+  const [navigationHistory, setNavigationHistory] = useState<string[]>(['Home']);
 
   const navigation = {
     navigate: (screen: string, params?: any) => {
+      setPreviousScreen(currentScreen);
       setCurrentScreen(screen);
       setScreenParams(params || {});
+      setNavigationHistory(prev => [...prev, screen]);
     },
     goBack: () => {
-      setCurrentScreen('Home');
+      const history = [...navigationHistory];
+      history.pop(); // Remove tela atual
+      const previousScreen = history[history.length - 1] || 'Home';
+      setPreviousScreen(currentScreen);
+      setCurrentScreen(previousScreen);
       setScreenParams({});
+      setNavigationHistory(history);
     },
   };
 
   const renderScreen = () => {
     const props = { navigation, route: { params: screenParams } };
     
-    switch (currentScreen) {
-      case 'Mesas':
-        return <MesasScreen {...props} />;
-      case 'Comandas':
-        return <ComandasScreen {...props} />;
-      case 'Cardapio':
-        return <CardapioScreen {...props} />;
-      case 'NovaComanda':
-        return <NovaComandaScreen {...props} />;
-      case 'ComandaDetalhes':
-        return <ComandaDetalhesScreen {...props} />;
-      case 'AdicionarItem':
-        return <AdicionarItemScreen {...props} />;
-      case 'ComponentShowcase':
-        return <ComponentShowcaseScreen {...props} />;
-      case 'ProdutoDetalhes':
-        return <ProdutoDetalhesScreen {...props} />;
-      default:
-        return <HomeScreen navigation={navigation} />;
-    }
+    // Determinar direção da animação
+    const isGoingBack = navigationHistory.length > 0 && 
+      navigationHistory[navigationHistory.length - 1] !== currentScreen;
+    const direction = isGoingBack ? 'left' : 'right';
+    
+    const screenContent = (() => {
+      switch (currentScreen) {
+        case 'Mesas':
+          return <MesasScreen {...props} />;
+        case 'Comandas':
+          return <ComandasScreen {...props} />;
+        case 'Cardapio':
+          return <CardapioScreen {...props} />;
+        case 'NovaComanda':
+          return <NovaComandaScreen {...props} />;
+        case 'ComandaDetalhes':
+          return <ComandaDetalhesScreen {...props} />;
+        case 'AdicionarItem':
+          return <AdicionarItemScreen {...props} />;
+        case 'ComponentShowcase':
+          return <ComponentShowcaseScreen {...props} />;
+        case 'ProdutoDetalhes':
+          return <ProdutoDetalhesScreen {...props} />;
+        default:
+          return <HomeScreen navigation={navigation} />;
+      }
+    })();
+
+    return (
+      <ScreenTransition 
+        key={currentScreen + screenParams?.comandaId + screenParams?.itemId} 
+        screenKey={currentScreen}
+        direction={direction}
+      >
+        {screenContent}
+      </ScreenTransition>
+    );
   };
 
   return (
