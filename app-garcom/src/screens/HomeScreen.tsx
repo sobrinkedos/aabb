@@ -59,6 +59,12 @@ export default function HomeScreen({ navigation }: any) {
       screen: 'Cardapio',
       color: '#FF9800',
     },
+    {
+      title: '🎨 Componentes Modernos',
+      description: 'Ver galeria de componentes do redesign',
+      screen: 'ComponentShowcase',
+      color: '#9C27B0',
+    },
   ];
 
   return (

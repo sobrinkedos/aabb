@@ -17,6 +17,7 @@ import NovaComandaScreen from './src/screens/NovaComandaScreen';
 import ComandaDetalhesScreen from './src/screens/ComandaDetalhesScreen';
 import CardapioScreen from './src/screens/CardapioScreen';
 import AdicionarItemScreen from './src/screens/AdicionarItemScreen';
+import ComponentShowcaseScreen from './src/screens/ComponentShowcaseScreen';
 import AuthGuard from './src/components/AuthGuard';
 
 // Criar instância do QueryClient
@@ -60,6 +61,8 @@ function AppContent() {
         return <ComandaDetalhesScreen {...props} />;
       case 'AdicionarItem':
         return <AdicionarItemScreen {...props} />;
+      case 'ComponentShowcase':
+        return <ComponentShowcaseScreen {...props} />;
       default:
         return <HomeScreen navigation={navigation} />;
     }
