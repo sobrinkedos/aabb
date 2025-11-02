@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle, Pressable } from 'react-native';
-import { MotiView } from 'moti';
 import { theme } from '../theme';
 
 interface CardProps {
@@ -40,14 +39,9 @@ export const Card: React.FC<CardProps> = ({
   };
 
   const content = (
-    <MotiView
-      from={animated ? { opacity: 0, scale: 0.9 } : undefined}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ type: 'timing', duration: 300 }}
-      style={[getCardStyle(), style]}
-    >
+    <View style={[getCardStyle(), style]}>
       {children}
-    </MotiView>
+    </View>
   );
 
   if (onPress) {
