@@ -10,7 +10,7 @@ import { UI_CONFIG } from './src/utils/constants';
 
 // Screens
 import LoginScreen from './src/screens/LoginScreen';
-import HomeScreen from './src/screens/HomeScreen';
+import HomeScreen from './src/screens/HomeScreenSimple';
 import MesasScreen from './src/screens/MesasScreen';
 import ComandasScreen from './src/screens/ComandasScreen';
 import NovaComandaScreen from './src/screens/NovaComandaScreen';
