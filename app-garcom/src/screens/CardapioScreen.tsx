@@ -146,11 +146,27 @@ export default function CardapioScreen({ navigation, route }: any) {
   );
 }
 
-function ItemCard({ item, onPress }: { item: MenuItem; onPress: () => void }) {
+function ItemCard({ item, onPress }: { item: any; onPress: () => void }) {
+  const currentStock = item.current_stock ?? null;
+  const isDirectItem = item.item_type === 'direct' && item.direct_inventory_item_id;
+  const isOutOfStock = isDirectItem && currentStock === 0;
+  const isLowStock = isDirectItem && currentStock > 0 && currentStock < 5;
+  
   return (
-    <TouchableOpacity style={styles.itemCard} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity 
+      style={[styles.itemCard, isOutOfStock && styles.itemCardDisabled]} 
+      onPress={isOutOfStock ? undefined : onPress} 
+      activeOpacity={isOutOfStock ? 1 : 0.7}
+      disabled={isOutOfStock}
+    >
       {item.image_url && (
         <Image source={{ uri: item.image_url }} style={styles.itemImage} />
+      )}
+      
+      {isOutOfStock && (
+        <View style={styles.outOfStockOverlay}>
+          <Text style={styles.outOfStockText}>SEM ESTOQUE</Text>
+        </View>
       )}
       
       <View style={styles.itemContent}>
@@ -164,10 +180,16 @@ function ItemCard({ item, onPress }: { item: MenuItem; onPress: () => void }) {
           </Text>
         )}
         
+        {isLowStock && (
+          <View style={styles.lowStockBadge}>
+            <Text style={styles.lowStockText}>⚠️ Restam {currentStock} un.</Text>
+          </View>
+        )}
+        
         <View style={styles.itemFooter}>
           <Text style={styles.itemPrice}>{formatarMoeda(item.price)}</Text>
           
-          {!item.available && (
+          {!item.available && !isOutOfStock && (
             <View style={styles.unavailableBadge}>
               <Text style={styles.unavailableText}>Indisponível</Text>
             </View>
@@ -245,6 +267,40 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+  },
+  itemCardDisabled: {
+    opacity: 0.6,
+    backgroundColor: '#f5f5f5',
+  },
+  outOfStockOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  outOfStockText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  lowStockBadge: {
+    backgroundColor: '#FFF3CD',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+  },
+  lowStockText: {
+    fontSize: 11,
+    color: '#856404',
+    fontWeight: '600',
   },
   itemImage: {
     width: '100%',

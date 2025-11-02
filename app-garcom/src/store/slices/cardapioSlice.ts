@@ -22,13 +22,21 @@ export const fetchCardapio = createAsyncThunk(
     try {
       const { data, error } = await supabase
         .from('menu_items')
-        .select('*')
+        .select(`
+          *,
+          inventory_items!menu_items_direct_inventory_item_id_fkey(current_stock)
+        `)
         .eq('available', true)
         .order('name');
 
       if (error) throw error;
 
-      return data.map(transformMenuItemFromDB);
+      return data.map((item: any) => ({
+        ...transformMenuItemFromDB(item),
+        current_stock: item.inventory_items?.current_stock,
+        item_type: item.item_type,
+        direct_inventory_item_id: item.direct_inventory_item_id
+      }));
     } catch (error: any) {
       return rejectWithValue(error.message || 'Erro ao buscar cardápio');
     }
