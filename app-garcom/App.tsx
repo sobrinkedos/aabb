@@ -5,8 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import { store, persistor } from './src/store/store';
-import { UI_CONFIG } from './src/utils/constants';
+import { theme } from './src/theme';
 
 // Screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -70,7 +71,7 @@ function AppContent() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="auto" />
+      <StatusBar style="light" backgroundColor={theme.colors.primary.main} />
       <AuthGuard fallback={<LoginScreen />}>
         <View style={styles.container}>
           {/* Conteúdo da tela */}
@@ -84,9 +85,11 @@ function AppContent() {
               style={[styles.tabButton, currentScreen === 'Home' && styles.tabButtonActive]}
               onPress={() => navigation.navigate('Home')}
             >
-              <Text style={[styles.tabIcon, currentScreen === 'Home' && styles.tabIconActive]}>
-                🏠
-              </Text>
+              <Ionicons 
+                name={currentScreen === 'Home' ? 'home' : 'home-outline'} 
+                size={24} 
+                color={currentScreen === 'Home' ? theme.colors.primary.main : theme.colors.text.secondary}
+              />
               <Text style={[styles.tabLabel, currentScreen === 'Home' && styles.tabLabelActive]}>
                 Início
               </Text>
@@ -96,9 +99,11 @@ function AppContent() {
               style={[styles.tabButton, currentScreen === 'Mesas' && styles.tabButtonActive]}
               onPress={() => navigation.navigate('Mesas')}
             >
-              <Text style={[styles.tabIcon, currentScreen === 'Mesas' && styles.tabIconActive]}>
-                🗺️
-              </Text>
+              <Ionicons 
+                name={currentScreen === 'Mesas' ? 'grid' : 'grid-outline'} 
+                size={24} 
+                color={currentScreen === 'Mesas' ? theme.colors.primary.main : theme.colors.text.secondary}
+              />
               <Text style={[styles.tabLabel, currentScreen === 'Mesas' && styles.tabLabelActive]}>
                 Mesas
               </Text>
@@ -108,9 +113,11 @@ function AppContent() {
               style={[styles.tabButton, currentScreen === 'Comandas' && styles.tabButtonActive]}
               onPress={() => navigation.navigate('Comandas')}
             >
-              <Text style={[styles.tabIcon, currentScreen === 'Comandas' && styles.tabIconActive]}>
-                📋
-              </Text>
+              <Ionicons 
+                name={currentScreen === 'Comandas' ? 'receipt' : 'receipt-outline'} 
+                size={24} 
+                color={currentScreen === 'Comandas' ? theme.colors.primary.main : theme.colors.text.secondary}
+              />
               <Text style={[styles.tabLabel, currentScreen === 'Comandas' && styles.tabLabelActive]}>
                 Comandas
               </Text>
@@ -120,9 +127,11 @@ function AppContent() {
               style={[styles.tabButton, currentScreen === 'Cardapio' && styles.tabButtonActive]}
               onPress={() => navigation.navigate('Cardapio')}
             >
-              <Text style={[styles.tabIcon, currentScreen === 'Cardapio' && styles.tabIconActive]}>
-                🍽️
-              </Text>
+              <Ionicons 
+                name={currentScreen === 'Cardapio' ? 'restaurant' : 'restaurant-outline'} 
+                size={24} 
+                color={currentScreen === 'Cardapio' ? theme.colors.primary.main : theme.colors.text.secondary}
+              />
               <Text style={[styles.tabLabel, currentScreen === 'Cardapio' && styles.tabLabelActive]}>
                 Cardápio
               </Text>
@@ -149,7 +158,7 @@ export default function App() {
 function LoadingScreen() {
   return (
     <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color={UI_CONFIG.COLORS.PRIMARY} />
+      <ActivityIndicator size="large" color={theme.colors.primary.main} />
       <Text style={styles.loadingText}>Carregando...</Text>
     </View>
   );
@@ -158,7 +167,7 @@ function LoadingScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: UI_CONFIG.COLORS.BACKGROUND,
+    backgroundColor: theme.colors.background.secondary,
   },
   container: {
     flex: 1,
@@ -168,52 +177,43 @@ const styles = StyleSheet.create({
   },
   bottomNav: {
     flexDirection: 'row',
-    backgroundColor: UI_CONFIG.COLORS.SURFACE,
+    backgroundColor: theme.colors.background.primary,
     borderTopWidth: 1,
-    borderTopColor: UI_CONFIG.COLORS.TEXT_SECONDARY + '20',
+    borderTopColor: theme.colors.border.light,
     paddingBottom: 8,
-    paddingTop: 8,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    paddingTop: 12,
+    ...theme.shadows.lg,
   },
   tabButton: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 4,
+    gap: 4,
   },
   tabButtonActive: {
-    backgroundColor: UI_CONFIG.COLORS.PRIMARY + '10',
-    borderRadius: 8,
+    backgroundColor: theme.colors.primary.main + '10',
+    borderRadius: theme.borderRadius.lg,
     marginHorizontal: 4,
-  },
-  tabIcon: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  tabIconActive: {
-    transform: [{ scale: 1.1 }],
   },
   tabLabel: {
     fontSize: 11,
-    color: UI_CONFIG.COLORS.TEXT_SECONDARY,
+    color: theme.colors.text.secondary,
     fontWeight: '500',
+    marginTop: 2,
   },
   tabLabelActive: {
-    color: UI_CONFIG.COLORS.PRIMARY,
+    color: theme.colors.primary.main,
     fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: UI_CONFIG.COLORS.BACKGROUND,
+    backgroundColor: theme.colors.background.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
-    marginTop: UI_CONFIG.SPACING.MD,
+    marginTop: theme.spacing.md,
     fontSize: 16,
-    color: UI_CONFIG.COLORS.TEXT_SECONDARY,
+    color: theme.colors.text.secondary,
   },
 });
