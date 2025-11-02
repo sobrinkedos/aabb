@@ -32,8 +32,8 @@ interface MenuItem {
 export default function HomeScreen({ navigation }: any) {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
-  const { items: mesas } = useSelector((state: RootState) => state.mesas);
-  const { items: comandas } = useSelector((state: RootState) => state.comandas);
+  const { items: mesas = [] } = useSelector((state: RootState) => state.mesas);
+  const { items: comandas = [] } = useSelector((state: RootState) => state.comandas);
 
   const mesasOcupadas = mesas.filter((m) => m.status === 'ocupada').length;
   const comandasAbertas = comandas.filter((c) => c.status === 'aberta').length;
