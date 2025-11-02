@@ -102,22 +102,30 @@ export default function CardapioScreen({ navigation, route }: any) {
       {/* Categorias */}
       <FlatList
         horizontal
-        data={categorias}
+        data={[{ id: 'all', name: 'Todos' }, ...categorias]}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={[
               styles.categoryChip,
-              categoriaSelected === item.id && styles.categoryChipActive,
+              (item.id === 'all' && !categoriaSelected) || categoriaSelected === item.id
+                ? styles.categoryChipActive
+                : null,
             ]}
-            onPress={() =>
-              dispatch(setSelectedCategory(categoriaSelected === item.id ? undefined : item.id))
-            }
+            onPress={() => {
+              if (item.id === 'all') {
+                dispatch(setSelectedCategory(undefined));
+              } else {
+                dispatch(setSelectedCategory(categoriaSelected === item.id ? undefined : item.id));
+              }
+            }}
           >
             <Text
               style={[
                 styles.categoryChipText,
-                categoriaSelected === item.id && styles.categoryChipTextActive,
+                (item.id === 'all' && !categoriaSelected) || categoriaSelected === item.id
+                  ? styles.categoryChipTextActive
+                  : null,
               ]}
             >
               {item.name}
