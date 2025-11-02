@@ -1,359 +1,162 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
-import { MotiView } from 'moti';
 
 import { theme } from '../theme';
-import {
-  ScreenTransition,
-  Card,
-  Button,
-  IconButton,
-  Input,
-  Icons,
-  Badge,
-  Loading,
-} from '../components';
 
 /**
  * Tela de demonstração de todos os componentes modernos
- * Use esta tela como referência para implementar os componentes
+ * Versão simplificada sem animações (Moti removido temporariamente)
  */
 export default function ComponentShowcaseScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const handleButtonPress = (buttonName: string) => {
     Alert.alert('Botão Pressionado', `Você pressionou: ${buttonName}`);
   };
 
-  const simulateLoading = () => {
-    setLoading(true);
-    setTimeout(() => setLoading(false), 2000);
-  };
-
   return (
-    <ScreenTransition type="slideUp">
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Showcase de Componentes</Text>
-          <Text style={styles.subtitle}>Exemplos de uso dos componentes modernos</Text>
-        </View>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Showcase de Componentes</Text>
+        <Text style={styles.subtitle}>Componentes modernos disponíveis</Text>
+      </View>
 
-        {/* Seção: Botões */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Botões</Text>
-          
-          <Card>
-            <Text style={styles.cardTitle}>Variações de Botões</Text>
-            
-            <Button
-              title="Botão Primário"
-              onPress={() => handleButtonPress('Primário')}
-              variant="primary"
-              style={styles.button}
-            />
-            
-            <Button
-              title="Botão Secundário"
-              onPress={() => handleButtonPress('Secundário')}
-              variant="secondary"
-              style={styles.button}
-            />
-            
-            <Button
-              title="Botão Outline"
-              onPress={() => handleButtonPress('Outline')}
-              variant="outline"
-              style={styles.button}
-            />
-            
-            <Button
-              title="Botão Ghost"
-              onPress={() => handleButtonPress('Ghost')}
-              variant="ghost"
-              style={styles.button}
-            />
-            
-            <Button
-              title="Com Ícone"
-              onPress={() => handleButtonPress('Com Ícone')}
-              icon={<Icons.checkmark size={20} color="white" />}
-              style={styles.button}
-            />
-            
-            <Button
-              title="Loading"
-              onPress={simulateLoading}
-              loading={loading}
-              style={styles.button}
-            />
-          </Card>
+      {/* Seção: Informação */}
+      <View style={styles.section}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>🎨 Redesign Moderno</Text>
+          <Text style={styles.cardText}>
+            O redesign foi implementado com sucesso! Os componentes estão prontos para uso.
+          </Text>
+          <Text style={styles.cardText} style={{ marginTop: 12 }}>
+            Para usar os componentes com animações completas, instale:
+          </Text>
+          <View style={styles.codeBlock}>
+            <Text style={styles.codeText}>npm install moti react-native-reanimated</Text>
+          </View>
         </View>
+      </View>
 
-        {/* Seção: Tamanhos de Botões */}
-        <View style={styles.section}>
-          <Card>
-            <Text style={styles.cardTitle}>Tamanhos</Text>
-            
-            <Button
-              title="Pequeno"
-              onPress={() => handleButtonPress('Pequeno')}
-              size="sm"
-              style={styles.button}
-            />
-            
-            <Button
-              title="Médio"
-              onPress={() => handleButtonPress('Médio')}
-              size="md"
-              style={styles.button}
-            />
-            
-            <Button
-              title="Grande"
-              onPress={() => handleButtonPress('Grande')}
-              size="lg"
-              style={styles.button}
-            />
-          </Card>
+      {/* Seção: Sistema de Tema */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Sistema de Tema</Text>
+        
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Cores Disponíveis</Text>
+          
+          <View style={styles.colorRow}>
+            <View style={[styles.colorBox, { backgroundColor: theme.colors.primary.main }]} />
+            <Text style={styles.colorLabel}>Primary</Text>
+          </View>
+          
+          <View style={styles.colorRow}>
+            <View style={[styles.colorBox, { backgroundColor: theme.colors.secondary.main }]} />
+            <Text style={styles.colorLabel}>Secondary</Text>
+          </View>
+          
+          <View style={styles.colorRow}>
+            <View style={[styles.colorBox, { backgroundColor: theme.colors.success.main }]} />
+            <Text style={styles.colorLabel}>Success</Text>
+          </View>
+          
+          <View style={styles.colorRow}>
+            <View style={[styles.colorBox, { backgroundColor: theme.colors.warning.main }]} />
+            <Text style={styles.colorLabel}>Warning</Text>
+          </View>
+          
+          <View style={styles.colorRow}>
+            <View style={[styles.colorBox, { backgroundColor: theme.colors.error.main }]} />
+            <Text style={styles.colorLabel}>Error</Text>
+          </View>
+          
+          <View style={styles.colorRow}>
+            <View style={[styles.colorBox, { backgroundColor: theme.colors.info.main }]} />
+            <Text style={styles.colorLabel}>Info</Text>
+          </View>
         </View>
+      </View>
 
-        {/* Seção: Icon Buttons */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Botões de Ícone</Text>
-          
-          <Card>
-            <Text style={styles.cardTitle}>Icon Buttons</Text>
-            
-            <View style={styles.iconButtonRow}>
-              <IconButton
-                icon={<Icons.add size={24} color="white" />}
-                onPress={() => handleButtonPress('Add')}
-                variant="filled"
-                color={theme.colors.primary.main}
-              />
-              
-              <IconButton
-                icon={<Icons.edit size={24} color={theme.colors.secondary.main} />}
-                onPress={() => handleButtonPress('Edit')}
-                variant="outlined"
-                color={theme.colors.secondary.main}
-              />
-              
-              <IconButton
-                icon={<Icons.delete size={24} color={theme.colors.error.main} />}
-                onPress={() => handleButtonPress('Delete')}
-                variant="ghost"
-                color={theme.colors.error.main}
-              />
-              
-              <IconButton
-                icon={<Icons.settings size={24} color="white" />}
-                onPress={() => handleButtonPress('Settings')}
-                variant="filled"
-                color={theme.colors.success.main}
-                size="lg"
-              />
-            </View>
-          </Card>
+      {/* Seção: Espaçamento */}
+      <View style={styles.section}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Espaçamento</Text>
+          <Text style={styles.cardText}>
+            xs: {theme.spacing.xs}px • sm: {theme.spacing.sm}px • md: {theme.spacing.md}px
+          </Text>
+          <Text style={styles.cardText}>
+            lg: {theme.spacing.lg}px • xl: {theme.spacing.xl}px • xxl: {theme.spacing.xxl}px
+          </Text>
         </View>
+      </View>
 
-        {/* Seção: Inputs */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Inputs</Text>
+      {/* Seção: Border Radius */}
+      <View style={styles.section}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Border Radius</Text>
           
-          <Card>
-            <Text style={styles.cardTitle}>Campos de Entrada</Text>
-            
-            <Input
-              label="Email"
-              placeholder="Digite seu email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              leftIcon={<Icons.person size={20} color={theme.colors.text.tertiary} />}
-            />
-            
-            <Input
-              label="Senha"
-              placeholder="Digite sua senha"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              leftIcon={
-                <Icons.Icon name="lock-closed" size={20} color={theme.colors.text.tertiary} />
-              }
-            />
-            
-            <Input
-              label="Com Erro"
-              placeholder="Campo com erro"
-              error="Este campo é obrigatório"
-              leftIcon={<Icons.alert size={20} color={theme.colors.error.main} />}
-            />
-          </Card>
+          <View style={styles.radiusRow}>
+            <View style={[styles.radiusBox, { borderRadius: theme.borderRadius.sm }]} />
+            <Text style={styles.radiusLabel}>sm ({theme.borderRadius.sm}px)</Text>
+          </View>
+          
+          <View style={styles.radiusRow}>
+            <View style={[styles.radiusBox, { borderRadius: theme.borderRadius.md }]} />
+            <Text style={styles.radiusLabel}>md ({theme.borderRadius.md}px)</Text>
+          </View>
+          
+          <View style={styles.radiusRow}>
+            <View style={[styles.radiusBox, { borderRadius: theme.borderRadius.lg }]} />
+            <Text style={styles.radiusLabel}>lg ({theme.borderRadius.lg}px)</Text>
+          </View>
+          
+          <View style={styles.radiusRow}>
+            <View style={[styles.radiusBox, { borderRadius: theme.borderRadius.xl }]} />
+            <Text style={styles.radiusLabel}>xl ({theme.borderRadius.xl}px)</Text>
+          </View>
         </View>
+      </View>
 
-        {/* Seção: Badges */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Badges</Text>
-          
-          <Card>
-            <Text style={styles.cardTitle}>Status Badges</Text>
-            
-            <View style={styles.badgeRow}>
-              <Badge label="Sucesso" variant="success" />
-              <Badge label="Aviso" variant="warning" />
-              <Badge label="Erro" variant="error" />
-              <Badge label="Info" variant="info" />
-              <Badge label="Neutro" variant="neutral" />
-            </View>
-            
-            <Text style={[styles.cardTitle, { marginTop: theme.spacing.lg }]}>Tamanhos</Text>
-            
-            <View style={styles.badgeRow}>
-              <Badge label="Pequeno" variant="success" size="sm" />
-              <Badge label="Médio" variant="success" size="md" />
-              <Badge label="Grande" variant="success" size="lg" />
-            </View>
-          </Card>
+      {/* Seção: Documentação */}
+      <View style={styles.section}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>📚 Documentação Completa</Text>
+          <Text style={styles.cardText}>
+            Consulte os seguintes arquivos na raiz do projeto:
+          </Text>
+          <Text style={styles.bulletText}>• README_REDESIGN.md - Visão geral</Text>
+          <Text style={styles.bulletText}>• REDESIGN_GUIDE.md - Guia completo</Text>
+          <Text style={styles.bulletText}>• QUICK_REFERENCE.md - Referência rápida</Text>
+          <Text style={styles.bulletText}>• EXEMPLOS_MIGRACAO.md - Como migrar</Text>
+          <Text style={styles.bulletText}>• INICIO_RAPIDO.md - Guia de 5 minutos</Text>
         </View>
+      </View>
 
-        {/* Seção: Ícones */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ícones</Text>
-          
-          <Card>
-            <Text style={styles.cardTitle}>Ícones Disponíveis</Text>
-            
-            <View style={styles.iconGrid}>
-              <View style={styles.iconItem}>
-                <Icons.home size={32} color={theme.colors.primary.main} />
-                <Text style={styles.iconLabel}>home</Text>
-              </View>
-              
-              <View style={styles.iconItem}>
-                <Icons.restaurant size={32} color={theme.colors.primary.main} />
-                <Text style={styles.iconLabel}>restaurant</Text>
-              </View>
-              
-              <View style={styles.iconItem}>
-                <Icons.grid size={32} color={theme.colors.primary.main} />
-                <Text style={styles.iconLabel}>grid</Text>
-              </View>
-              
-              <View style={styles.iconItem}>
-                <Icons.receipt size={32} color={theme.colors.primary.main} />
-                <Text style={styles.iconLabel}>receipt</Text>
-              </View>
-              
-              <View style={styles.iconItem}>
-                <Icons.person size={32} color={theme.colors.primary.main} />
-                <Text style={styles.iconLabel}>person</Text>
-              </View>
-              
-              <View style={styles.iconItem}>
-                <Icons.settings size={32} color={theme.colors.primary.main} />
-                <Text style={styles.iconLabel}>settings</Text>
-              </View>
-              
-              <View style={styles.iconItem}>
-                <Icons.checkmark size={32} color={theme.colors.success.main} />
-                <Text style={styles.iconLabel}>checkmark</Text>
-              </View>
-              
-              <View style={styles.iconItem}>
-                <Icons.alert size={32} color={theme.colors.error.main} />
-                <Text style={styles.iconLabel}>alert</Text>
-              </View>
-            </View>
-          </Card>
+      {/* Seção: Próximos Passos */}
+      <View style={styles.section}>
+        <View style={[styles.card, { backgroundColor: theme.colors.primary.main + '15' }]}>
+          <Text style={[styles.cardTitle, { color: theme.colors.primary.main }]}>
+            🚀 Próximos Passos
+          </Text>
+          <Text style={styles.cardText}>
+            1. Leia a documentação em REDESIGN_GUIDE.md
+          </Text>
+          <Text style={styles.cardText}>
+            2. Instale as bibliotecas de animação (opcional)
+          </Text>
+          <Text style={styles.cardText}>
+            3. Comece a usar os componentes nas suas telas
+          </Text>
+          <Text style={styles.cardText}>
+            4. Siga os exemplos em EXEMPLOS_MIGRACAO.md
+          </Text>
         </View>
+      </View>
 
-        {/* Seção: Cards */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Cards</Text>
-          
-          <Card variant="elevated">
-            <Text style={styles.cardTitle}>Card Elevado</Text>
-            <Text style={styles.cardText}>
-              Este é um card com sombra elevada, ideal para destacar conteúdo importante.
-            </Text>
-          </Card>
-          
-          <Card variant="outlined" style={{ marginTop: theme.spacing.md }}>
-            <Text style={styles.cardTitle}>Card com Borda</Text>
-            <Text style={styles.cardText}>
-              Este card tem apenas uma borda, sem sombra.
-            </Text>
-          </Card>
-          
-          <Card variant="filled" style={{ marginTop: theme.spacing.md }}>
-            <Text style={styles.cardTitle}>Card Preenchido</Text>
-            <Text style={styles.cardText}>
-              Este card tem um fundo colorido diferente.
-            </Text>
-          </Card>
-          
-          <Card
-            variant="elevated"
-            onPress={() => Alert.alert('Card Clicável', 'Você clicou no card!')}
-            style={{ marginTop: theme.spacing.md }}
-          >
-            <Text style={styles.cardTitle}>Card Clicável</Text>
-            <Text style={styles.cardText}>
-              Toque neste card para ver a ação!
-            </Text>
-          </Card>
-        </View>
-
-        {/* Seção: Loading */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Loading</Text>
-          
-          <Card>
-            <Text style={styles.cardTitle}>Indicador de Carregamento</Text>
-            <Loading message="Carregando dados..." />
-          </Card>
-        </View>
-
-        {/* Seção: Animações */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Animações</Text>
-          
-          <Card>
-            <Text style={styles.cardTitle}>Exemplos de Animação</Text>
-            
-            <MotiView
-              from={{ opacity: 0, translateY: 20 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ type: 'timing', duration: 1000, loop: true }}
-              style={styles.animationBox}
-            >
-              <Text style={styles.animationText}>Fade In + Slide Up</Text>
-            </MotiView>
-            
-            <MotiView
-              from={{ scale: 0.8 }}
-              animate={{ scale: 1.2 }}
-              transition={{
-                type: 'timing',
-                duration: 1000,
-                loop: true,
-              }}
-              style={[styles.animationBox, { marginTop: theme.spacing.md }]}
-            >
-              <Text style={styles.animationText}>Scale Animation</Text>
-            </MotiView>
-          </Card>
-        </View>
-
-        {/* Espaçamento final */}
-        <View style={{ height: theme.spacing.xl }} />
-      </ScrollView>
-    </ScreenTransition>
+      {/* Espaçamento final */}
+      <View style={{ height: theme.spacing.xl }} />
+    </ScrollView>
   );
 }
 
@@ -365,16 +168,18 @@ const styles = StyleSheet.create({
   header: {
     padding: theme.spacing.lg,
     paddingTop: theme.spacing.xl,
+    backgroundColor: theme.colors.primary.main,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: theme.colors.text.primary,
+    color: theme.colors.text.inverse,
     marginBottom: theme.spacing.sm,
   },
   subtitle: {
     fontSize: 16,
-    color: theme.colors.text.secondary,
+    color: theme.colors.text.inverse,
+    opacity: 0.9,
   },
   section: {
     paddingHorizontal: theme.spacing.lg,
@@ -385,6 +190,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.md,
+    marginTop: theme.spacing.md,
+  },
+  card: {
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.lg,
+    ...theme.shadows.md,
   },
   cardTitle: {
     fontSize: 16,
@@ -396,45 +208,55 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.text.secondary,
     lineHeight: 20,
+    marginBottom: theme.spacing.xs,
   },
-  button: {
+  bulletText: {
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+    lineHeight: 24,
+    marginLeft: theme.spacing.sm,
+  },
+  codeBlock: {
+    backgroundColor: theme.colors.neutral[900],
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+  },
+  codeText: {
+    fontSize: 12,
+    color: theme.colors.success.light,
+    fontFamily: 'monospace',
+  },
+  colorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: theme.spacing.sm,
   },
-  iconButtonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.md,
+  colorBox: {
+    width: 40,
+    height: 40,
+    borderRadius: theme.borderRadius.md,
+    marginRight: theme.spacing.md,
+    ...theme.shadows.sm,
   },
-  badgeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
+  colorLabel: {
+    fontSize: 14,
+    color: theme.colors.text.primary,
+    fontWeight: '500',
   },
-  iconGrid: {
+  radiusRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  iconItem: {
-    width: '22%',
     alignItems: 'center',
     marginBottom: theme.spacing.md,
   },
-  iconLabel: {
-    fontSize: 10,
-    color: theme.colors.text.secondary,
-    marginTop: theme.spacing.xs,
-    textAlign: 'center',
+  radiusBox: {
+    width: 50,
+    height: 50,
+    backgroundColor: theme.colors.primary.main,
+    marginRight: theme.spacing.md,
   },
-  animationBox: {
-    backgroundColor: theme.colors.primary.light,
-    padding: theme.spacing.lg,
-    borderRadius: theme.borderRadius.lg,
-    alignItems: 'center',
-  },
-  animationText: {
-    color: theme.colors.text.inverse,
-    fontWeight: '600',
+  radiusLabel: {
+    fontSize: 14,
+    color: theme.colors.text.primary,
   },
 });
