@@ -229,8 +229,21 @@ export default function ComandaDetalhesScreen({ route, navigation }: any) {
       {/* Footer com Total */}
       <View style={styles.footer}>
         <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>{formatarMoeda(total)}</Text>
+          {comanda?.service_charge && comanda?.service_charge_amount ? (
+            <>
+              <View>
+                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={styles.subtotalText}>{formatarMoeda(total)}</Text>
+                <Text style={styles.serviceChargeText}>+ 10% Garçom: {formatarMoeda(comanda.service_charge_amount - total)}</Text>
+              </View>
+              <Text style={styles.totalValue}>{formatarMoeda(comanda.service_charge_amount)}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalValue}>{formatarMoeda(total)}</Text>
+            </>
+          )}
         </View>
         
         <View style={styles.actions}>
@@ -493,12 +506,25 @@ const styles = StyleSheet.create({
   totalContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-end',
     marginBottom: UI_CONFIG.SPACING.MD,
   },
   totalLabel: {
     fontSize: 18,
     fontWeight: '600',
     color: UI_CONFIG.COLORS.TEXT_PRIMARY,
+  },
+  subtotalText: {
+    fontSize: 14,
+    color: UI_CONFIG.COLORS.TEXT_SECONDARY,
+    textDecorationLine: 'line-through',
+    marginTop: 2,
+  },
+  serviceChargeText: {
+    fontSize: 12,
+    color: UI_CONFIG.COLORS.SUCCESS,
+    fontWeight: '600',
+    marginTop: 2,
   },
   totalValue: {
     fontSize: 24,
