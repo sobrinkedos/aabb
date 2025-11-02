@@ -29,7 +29,6 @@ import {
 } from '../store/slices/mesasSlice';
 import MapaMesas from '../components/MapaMesas';
 import SyncStatusIndicator from '../components/SyncStatusIndicator';
-import { BackButton } from '../components';
 import { MesaComDetalhes, Mesa, MesaStatusLabel } from '../types';
 import { UI_CONFIG } from '../utils/constants';
 
@@ -99,7 +98,6 @@ export default function MesasScreen({ navigation }: MesasScreenProps) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <BackButton onPress={() => navigation?.goBack()} style={styles.backButton} />
           <View>
             <Text style={styles.title}>Mesas</Text>
             <Text style={styles.subtitle}>
@@ -444,18 +442,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  backIcon: {
-    fontSize: 32,
-    color: UI_CONFIG.COLORS.PRIMARY,
-    fontWeight: 'bold',
   },
   title: {
     fontSize: 20,

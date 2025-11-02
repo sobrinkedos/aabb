@@ -25,7 +25,6 @@ import {
   cancelarComanda,
 } from '../store/slices/comandasSlice';
 import SyncStatusIndicator from '../components/SyncStatusIndicator';
-import { BackButton } from '../components';
 import { ComandaComDetalhes, ComandaStatusLabel } from '../types';
 import { formatarMoeda, formatarTempo } from '../types/transformers';
 import { UI_CONFIG } from '../utils/constants';
@@ -116,7 +115,6 @@ export default function ComandasScreen({ navigation }: any) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <BackButton onPress={() => navigation?.goBack()} style={styles.backButton} />
           <View>
             <Text style={styles.title}>Comandas</Text>
             <Text style={styles.subtitle}>
@@ -315,18 +313,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  backIcon: {
-    fontSize: 32,
-    color: UI_CONFIG.COLORS.PRIMARY,
-    fontWeight: 'bold',
   },
   title: {
     fontSize: 20,
