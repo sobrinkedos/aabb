@@ -29,6 +29,7 @@ import {
 } from '../store/slices/mesasSlice';
 import MapaMesas from '../components/MapaMesas';
 import SyncStatusIndicator from '../components/SyncStatusIndicator';
+import { BackButton } from '../components';
 import { MesaComDetalhes, Mesa, MesaStatusLabel } from '../types';
 import { UI_CONFIG } from '../utils/constants';
 
@@ -98,9 +99,7 @@ export default function MesasScreen({ navigation }: MesasScreenProps) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backButton}>
-            <Text style={styles.backIcon}>‹</Text>
-          </TouchableOpacity>
+          <BackButton onPress={() => navigation?.goBack()} style={styles.backButton} />
           <View>
             <Text style={styles.title}>Mesas</Text>
             <Text style={styles.subtitle}>

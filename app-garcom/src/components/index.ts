@@ -13,3 +13,4 @@ export { Icon, Icons } from './Icon';
 // export { ScreenTransition } from './ScreenTransition';
 // export { Badge } from './Badge';
 // export { Loading } from './Loading';
+export { BackButton } from './BackButton';
