@@ -40,6 +40,7 @@ export default function ComandaDetalhesScreen({ route, navigation }: any) {
   const isLoading = useAppSelector(selectComandasLoading);
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [incluirGarcom, setIncluirGarcom] = useState(true);
 
   useEffect(() => {
     if (comandaId) {
@@ -97,16 +98,26 @@ export default function ComandaDetalhesScreen({ route, navigation }: any) {
   };
 
   const handleFecharComanda = (paymentMethod: string) => {
+    const totalComGarcom = incluirGarcom ? total * 1.1 : total;
+    const mensagem = incluirGarcom 
+      ? `Total: ${formatarMoeda(total)}\n10% Garçom: ${formatarMoeda(total * 0.1)}\nTotal Final: ${formatarMoeda(totalComGarcom)}\n\nConfirmar pagamento via ${PaymentMethodLabel[paymentMethod as keyof typeof PaymentMethodLabel]}?`
+      : `Total: ${formatarMoeda(total)}\n\nConfirmar pagamento via ${PaymentMethodLabel[paymentMethod as keyof typeof PaymentMethodLabel]}?`;
+    
     Alert.alert(
       'Fechar Comanda',
-      `Confirmar pagamento via ${PaymentMethodLabel[paymentMethod as keyof typeof PaymentMethodLabel]}?`,
+      mensagem,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Confirmar',
           onPress: async () => {
             try {
-              await dispatch(fecharComanda({ comandaId, paymentMethod })).unwrap();
+              await dispatch(fecharComanda({ 
+                comandaId, 
+                paymentMethod,
+                incluirGarcom,
+                totalComGarcom 
+              })).unwrap();
               Alert.alert('Sucesso', 'Comanda enviada ao caixa para pagamento', [
                 { text: 'OK', onPress: () => navigation?.goBack() },
               ]);
@@ -257,7 +268,36 @@ export default function ComandaDetalhesScreen({ route, navigation }: any) {
       {showPaymentModal && (
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Forma de Pagamento</Text>
+            <Text style={styles.modalTitle}>Fechar Comanda</Text>
+            
+            {/* Opção de 10% do Garçom */}
+            <TouchableOpacity
+              style={styles.garcomOption}
+              onPress={() => setIncluirGarcom(!incluirGarcom)}
+            >
+              <View style={styles.checkboxContainer}>
+                <View style={[styles.checkbox, incluirGarcom && styles.checkboxChecked]}>
+                  {incluirGarcom && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <View style={styles.garcomTextContainer}>
+                  <Text style={styles.garcomOptionText}>Incluir 10% do Garçom</Text>
+                  <Text style={styles.garcomValueText}>
+                    + {formatarMoeda(total * 0.1)}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            {/* Total */}
+            <View style={styles.totalContainer}>
+              <Text style={styles.totalLabel}>Total a Pagar:</Text>
+              <Text style={styles.totalValue}>
+                {formatarMoeda(incluirGarcom ? total * 1.1 : total)}
+              </Text>
+            </View>
+
+            <Text style={styles.paymentMethodLabel}>Forma de Pagamento:</Text>
+            
             {Object.entries(PAYMENT_METHODS).map(([key, value]) => (
               <TouchableOpacity
                 key={key}
@@ -531,7 +571,74 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: UI_CONFIG.COLORS.TEXT_PRIMARY,
-    marginBottom: UI_CONFIG.SPACING.LG,
+    marginBottom: UI_CONFIG.SPACING.MD,
+    textAlign: 'center',
+  },
+  garcomOption: {
+    marginBottom: UI_CONFIG.SPACING.MD,
+    padding: UI_CONFIG.SPACING.MD,
+    backgroundColor: UI_CONFIG.COLORS.BACKGROUND,
+    borderRadius: UI_CONFIG.BORDER_RADIUS.MD,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: UI_CONFIG.COLORS.PRIMARY,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: UI_CONFIG.SPACING.SM,
+  },
+  checkboxChecked: {
+    backgroundColor: UI_CONFIG.COLORS.PRIMARY,
+  },
+  checkmark: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  garcomTextContainer: {
+    flex: 1,
+  },
+  garcomOptionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: UI_CONFIG.COLORS.TEXT_PRIMARY,
+  },
+  garcomValueText: {
+    fontSize: 14,
+    color: UI_CONFIG.COLORS.SUCCESS,
+    marginTop: 2,
+  },
+  totalContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: UI_CONFIG.SPACING.MD,
+    backgroundColor: UI_CONFIG.COLORS.PRIMARY + '10',
+    borderRadius: UI_CONFIG.BORDER_RADIUS.MD,
+    marginBottom: UI_CONFIG.SPACING.MD,
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: UI_CONFIG.COLORS.TEXT_PRIMARY,
+  },
+  totalValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: UI_CONFIG.COLORS.PRIMARY,
+  },
+  paymentMethodLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: UI_CONFIG.COLORS.TEXT_SECONDARY,
+    marginBottom: UI_CONFIG.SPACING.SM,
     textAlign: 'center',
   },
   paymentOption: {
