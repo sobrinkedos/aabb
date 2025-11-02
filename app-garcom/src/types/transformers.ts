@@ -58,6 +58,8 @@ export function transformComandaFromDB(data: any): Comanda {
     opened_at: data.opened_at,
     closed_at: data.closed_at,
     payment_method: data.payment_method,
+    service_charge: data.service_charge,
+    service_charge_amount: data.service_charge_amount ? parseFloat(data.service_charge_amount) : undefined,
     notes: data.notes,
     created_at: data.created_at,
     updated_at: data.updated_at,
@@ -147,6 +149,8 @@ export function transformComandaToDB(comanda: Partial<Comanda> & { empresa_id?: 
     opened_at: comanda.opened_at,
     closed_at: comanda.closed_at,
     payment_method: comanda.payment_method,
+    service_charge: comanda.service_charge,
+    service_charge_amount: comanda.service_charge_amount,
     notes: comanda.notes,
     empresa_id: comanda.empresa_id,
   };
