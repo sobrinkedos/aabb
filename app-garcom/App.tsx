@@ -19,6 +19,7 @@ import ComandaDetalhesScreen from './src/screens/ComandaDetalhesScreen';
 import CardapioScreen from './src/screens/CardapioScreen';
 import AdicionarItemScreen from './src/screens/AdicionarItemScreen';
 import ComponentShowcaseScreen from './src/screens/ComponentShowcaseScreen';
+import ProdutoDetalhesScreen from './src/screens/ProdutoDetalhesScreen';
 import AuthGuard from './src/components/AuthGuard';
 
 // Criar instância do QueryClient
@@ -64,6 +65,8 @@ function AppContent() {
         return <AdicionarItemScreen {...props} />;
       case 'ComponentShowcase':
         return <ComponentShowcaseScreen {...props} />;
+      case 'ProdutoDetalhes':
+        return <ProdutoDetalhesScreen {...props} />;
       default:
         return <HomeScreen navigation={navigation} />;
     }
