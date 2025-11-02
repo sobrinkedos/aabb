@@ -1,6 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
-import { MotiView } from 'moti';
+import { TouchableOpacity, StyleSheet, ViewStyle, View } from 'react-native';
 import { theme } from '../theme';
 
 interface IconButtonProps {
@@ -59,14 +58,9 @@ export const IconButton: React.FC<IconButtonProps> = ({
 
   return (
     <TouchableOpacity onPress={onPress} disabled={disabled} activeOpacity={0.7}>
-      <MotiView
-        from={{ scale: 1 }}
-        animate={{ scale: disabled ? 0.9 : 1 }}
-        transition={{ type: 'spring', damping: 15 }}
-        style={[getButtonStyle(), disabled && styles.disabled, style]}
-      >
+      <View style={[getButtonStyle(), disabled && styles.disabled, style]}>
         {icon}
-      </MotiView>
+      </View>
     </TouchableOpacity>
   );
 };
