@@ -28,6 +28,7 @@ import {
   setSelectedCategory,
   setSearchQuery,
 } from '../store/slices/cardapioSlice';
+import { BackButton } from '../components';
 import { MenuItem } from '../types';
 import { formatarMoeda } from '../types/transformers';
 import { UI_CONFIG } from '../utils/constants';
@@ -76,12 +77,12 @@ export default function CardapioScreen({ navigation, route }: any) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Cardápio</Text>
-        {comandaId && (
-          <TouchableOpacity onPress={() => navigation?.goBack()}>
-            <Text style={styles.backButton}>Voltar</Text>
-          </TouchableOpacity>
-        )}
+        <View style={styles.headerLeft}>
+          {comandaId && (
+            <BackButton onPress={() => navigation?.goBack()} style={styles.backButton} />
+          )}
+          <Text style={styles.title}>Cardápio</Text>
+        </View>
       </View>
 
       {/* Busca */}
@@ -215,14 +216,18 @@ const styles = StyleSheet.create({
     padding: UI_CONFIG.SPACING.LG,
     backgroundColor: UI_CONFIG.COLORS.SURFACE,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: UI_CONFIG.SPACING.SM,
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: UI_CONFIG.COLORS.TEXT_PRIMARY,
   },
   backButton: {
-    fontSize: 16,
-    color: UI_CONFIG.COLORS.PRIMARY,
+    marginRight: 0,
   },
   searchContainer: {
     padding: UI_CONFIG.SPACING.MD,

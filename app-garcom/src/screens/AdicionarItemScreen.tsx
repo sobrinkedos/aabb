@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useAppDispatch } from '../store/hooks';
 import { adicionarItemComanda } from '../store/slices/comandasSlice';
+import { BackButton } from '../components';
 import { MenuItem } from '../types';
 import { formatarMoeda } from '../types/transformers';
 import { UI_CONFIG } from '../utils/constants';
@@ -92,10 +93,10 @@ export default function AdicionarItemScreen({ route, navigation }: any) {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation?.goBack()}>
-          <Text style={styles.backButton}>‹ Voltar</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Adicionar Item</Text>
+        <View style={styles.headerLeft}>
+          <BackButton onPress={() => navigation?.goBack()} style={styles.backButton} />
+          <Text style={styles.title}>Adicionar Item</Text>
+        </View>
       </View>
 
       {/* Item Info */}
@@ -194,10 +195,13 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: UI_CONFIG.SPACING.LG,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: UI_CONFIG.SPACING.SM,
+  },
   backButton: {
-    fontSize: 16,
-    color: UI_CONFIG.COLORS.PRIMARY,
-    marginBottom: UI_CONFIG.SPACING.SM,
+    marginRight: 0,
   },
   title: {
     fontSize: 28,

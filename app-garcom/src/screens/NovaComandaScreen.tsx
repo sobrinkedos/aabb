@@ -21,6 +21,7 @@ import { selectUser } from '../store/selectors';
 import { selectMesasDisponiveis } from '../store/selectors';
 import { criarComanda } from '../store/slices/comandasSlice';
 import { fetchMesas, atualizarStatusMesa } from '../store/slices/mesasSlice';
+import { BackButton } from '../components';
 import { abrirComandaFormSchema, AbrirComandaFormData } from '../types/validators';
 import { UI_CONFIG } from '../utils/constants';
 
@@ -107,10 +108,10 @@ export default function NovaComandaScreen({ navigation, route }: any) {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>‹ Voltar</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Nova Comanda</Text>
+        <View style={styles.headerLeft}>
+          <BackButton onPress={() => navigation?.goBack()} style={styles.backButton} />
+          <Text style={styles.title}>Nova Comanda</Text>
+        </View>
       </View>
 
       {/* Seleção de Mesa */}
@@ -269,12 +270,13 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: UI_CONFIG.SPACING.XL,
   },
-  backButton: {
-    marginBottom: UI_CONFIG.SPACING.SM,
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: UI_CONFIG.SPACING.SM,
   },
-  backButtonText: {
-    fontSize: 16,
-    color: UI_CONFIG.COLORS.PRIMARY,
+  backButton: {
+    marginRight: 0,
   },
   title: {
     fontSize: 28,

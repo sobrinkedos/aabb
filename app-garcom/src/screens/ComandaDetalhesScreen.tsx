@@ -25,6 +25,7 @@ import {
   atualizarStatusItem,
   fecharComanda,
 } from '../store/slices/comandasSlice';
+import { BackButton } from '../components';
 import { ItemComanda, ItemStatusLabel, PaymentMethodLabel, PAYMENT_METHODS } from '../types';
 import { formatarMoeda, formatarDataHora } from '../types/transformers';
 import { UI_CONFIG } from '../utils/constants';
@@ -140,13 +141,15 @@ export default function ComandaDetalhesScreen({ route, navigation }: any) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation?.goBack()}>
-          <Text style={styles.backButton}>‹ Voltar</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>
-          {comanda.table_number ? `Mesa ${comanda.table_number}` : 'Balcão'}
-        </Text>
-        <Text style={styles.subtitle}>{comanda.customer_name || 'Cliente'}</Text>
+        <View style={styles.headerLeft}>
+          <BackButton onPress={() => navigation?.goBack()} style={styles.backButton} />
+          <View>
+            <Text style={styles.title}>
+              {comanda.table_number ? `Mesa ${comanda.table_number}` : 'Balcão'}
+            </Text>
+            <Text style={styles.subtitle}>{comanda.customer_name || 'Cliente'}</Text>
+          </View>
+        </View>
       </View>
 
       {/* Itens */}
@@ -337,10 +340,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: UI_CONFIG.COLORS.TEXT_SECONDARY + '20',
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: UI_CONFIG.SPACING.SM,
+  },
   backButton: {
-    fontSize: 16,
-    color: UI_CONFIG.COLORS.PRIMARY,
-    marginBottom: UI_CONFIG.SPACING.SM,
+    marginRight: 0,
   },
   title: {
     fontSize: 24,

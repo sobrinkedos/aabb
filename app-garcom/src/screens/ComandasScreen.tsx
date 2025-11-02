@@ -25,6 +25,7 @@ import {
   cancelarComanda,
 } from '../store/slices/comandasSlice';
 import SyncStatusIndicator from '../components/SyncStatusIndicator';
+import { BackButton } from '../components';
 import { ComandaComDetalhes, ComandaStatusLabel } from '../types';
 import { formatarMoeda, formatarTempo } from '../types/transformers';
 import { UI_CONFIG } from '../utils/constants';
@@ -115,9 +116,7 @@ export default function ComandasScreen({ navigation }: any) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backButton}>
-            <Text style={styles.backIcon}>‹</Text>
-          </TouchableOpacity>
+          <BackButton onPress={() => navigation?.goBack()} style={styles.backButton} />
           <View>
             <Text style={styles.title}>Comandas</Text>
             <Text style={styles.subtitle}>
