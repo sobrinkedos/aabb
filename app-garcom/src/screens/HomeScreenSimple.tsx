@@ -46,7 +46,7 @@ export default function HomeScreenSimple({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Header com gradiente */}
+      {/* Header moderno e limpo */}
       <LinearGradient
         colors={theme.colors.primary.gradient}
         start={{ x: 0, y: 0 }}
@@ -54,14 +54,14 @@ export default function HomeScreenSimple({ navigation }: any) {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <View>
+          <View style={styles.headerLeft}>
             <Text style={styles.greeting}>Olá,</Text>
-            <Text style={styles.userName}>{user?.name || user?.email || 'Garçom'}</Text>
+            <Text style={styles.userName}>{user?.name?.split(' ')[0] || 'Garçom'}</Text>
           </View>
           <View style={styles.headerRight}>
             <SyncStatusIndicator />
             <TouchableOpacity onPress={handleSignOut} style={styles.logoutButton}>
-              <Ionicons name="log-out" size={24} color="white" />
+              <Ionicons name="log-out-outline" size={22} color="white" />
             </TouchableOpacity>
           </View>
         </View>
@@ -109,38 +109,50 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: theme.spacing.xl + 20,
-    paddingBottom: theme.spacing.xl,
-    paddingHorizontal: theme.spacing.lg,
-    borderBottomLeftRadius: theme.borderRadius.xxl,
-    borderBottomRightRadius: theme.borderRadius.xxl,
+    paddingBottom: theme.spacing.xxl,
+    paddingHorizontal: theme.spacing.xl,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+  },
+  headerLeft: {
+    flex: 1,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.md,
   },
   logoutButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   greeting: {
-    fontSize: 16,
+    fontSize: 14,
     color: theme.colors.text.inverse,
-    opacity: 0.9,
+    opacity: 0.85,
+    fontWeight: '500',
+    letterSpacing: 0.5,
   },
   userName: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 32,
+    fontWeight: '700',
     color: theme.colors.text.inverse,
-    marginTop: theme.spacing.xs,
+    marginTop: 4,
+    letterSpacing: -0.5,
   },
   content: {
     flex: 1,
