@@ -130,12 +130,31 @@ export const ProcessComandaPaymentModal: React.FC<ProcessComandaPaymentModalProp
 
               {/* Total */}
               <div className="border-t pt-3 mt-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold text-gray-900">Total</span>
-                  <span className="text-2xl font-bold text-green-600">
-                    {formatCurrency(comanda.total || 0)}
-                  </span>
-                </div>
+                {comanda.service_charge && comanda.service_charge_amount ? (
+                  <>
+                    <div className="flex justify-between items-center text-sm text-gray-600 mb-1">
+                      <span>Subtotal</span>
+                      <span className="line-through">{formatCurrency(comanda.total || 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm text-green-600 font-medium mb-2">
+                      <span>+ 10% Garçom</span>
+                      <span>{formatCurrency((comanda.service_charge_amount || 0) - (comanda.total || 0))}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-semibold text-gray-900">Total</span>
+                      <span className="text-2xl font-bold text-green-600">
+                        {formatCurrency(comanda.service_charge_amount)}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-semibold text-gray-900">Total</span>
+                    <span className="text-2xl font-bold text-green-600">
+                      {formatCurrency(comanda.total || 0)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
