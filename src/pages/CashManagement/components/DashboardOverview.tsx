@@ -663,14 +663,6 @@ export const DashboardOverview: React.FC = () => {
         </div>
       </div>
 
-      {/* Movimentação Diária */}
-      <DailyTransactions 
-        transactions={todaysTransactions}
-        onAddWithdrawal={handleAddWithdrawal}
-        onExportReport={handleExportReport}
-        isCashSessionOpen={currentSession?.status === 'open'}
-      />
-
       {/* Comandas Pendentes */}
       <div className="mb-8">
         <PendingComandas
@@ -681,7 +673,7 @@ export const DashboardOverview: React.FC = () => {
       </div>
 
       {/* Pedidos de Balcão Pendentes */}
-      <div id="pending-orders-section" className="bg-white rounded-lg shadow p-6">
+      <div id="pending-orders-section" className="bg-white rounded-lg shadow p-6 mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
             <ShoppingCart className="h-6 w-6 text-blue-600" />
@@ -790,6 +782,14 @@ export const DashboardOverview: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Movimentação Diária */}
+      <DailyTransactions 
+        transactions={todaysTransactions}
+        onAddWithdrawal={handleAddWithdrawal}
+        onExportReport={handleExportReport}
+        isCashSessionOpen={currentSession?.status === 'open'}
+      />
 
       {/* Modals */}
       <OpenCashModal
