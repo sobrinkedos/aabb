@@ -40,8 +40,8 @@ export async function buscarComandasDoDia(
     .from('comandas')
     .select(`
       *,
-      tables:table_id (
-        table_number
+      bar_tables:table_id (
+        number
       ),
       profiles:employee_id (
         name
@@ -59,7 +59,7 @@ export async function buscarComandasDoDia(
 
   return (comandas || []).map((comanda: any) => ({
     ...comanda,
-    table_number: comanda.tables?.table_number,
+    table_number: comanda.bar_tables?.number,
     employee_name: comanda.profiles?.name,
   }));
 }

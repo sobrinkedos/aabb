@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { RootState } from '../store/store';
 import { theme } from '../theme';
-import BackButton from '../components/BackButton';
+import { BackButton } from '../components/BackButton';
 import {
   calcularFechamentoDia,
   gerarResumoAtendimentos,
