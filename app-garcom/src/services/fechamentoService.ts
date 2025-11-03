@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from './SupabaseService';
 import { ComandaComDetalhes } from '../types/Comanda';
 
 export interface FechamentoDia {
