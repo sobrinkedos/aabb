@@ -20,6 +20,7 @@ import CardapioScreen from './src/screens/CardapioScreen';
 import AdicionarItemScreen from './src/screens/AdicionarItemScreen';
 import ComponentShowcaseScreen from './src/screens/ComponentShowcaseScreen';
 import ProdutoDetalhesScreen from './src/screens/ProdutoDetalhesScreen';
+import FechamentoDiaScreen from './src/screens/FechamentoDiaScreen';
 import AuthGuard from './src/components/AuthGuard';
 import { ScreenTransition } from './src/components';
 
@@ -84,6 +85,8 @@ function AppContent() {
           return <ComponentShowcaseScreen {...props} />;
         case 'ProdutoDetalhes':
           return <ProdutoDetalhesScreen {...props} />;
+        case 'FechamentoDia':
+          return <FechamentoDiaScreen {...props} />;
         default:
           return <HomeScreen navigation={navigation} />;
       }

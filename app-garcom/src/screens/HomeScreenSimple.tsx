@@ -53,6 +53,7 @@ export default function HomeScreenSimple({ navigation }: any) {
     { title: 'Mesas', icon: 'grid', screen: 'Mesas', color: theme.colors.success.main },
     { title: 'Comandas', icon: 'receipt', screen: 'Comandas', color: theme.colors.info.main },
     { title: 'Cardápio', icon: 'restaurant', screen: 'Cardapio', color: theme.colors.warning.main },
+    { title: 'Fechamento', icon: 'calculator', screen: 'FechamentoDia', color: theme.colors.info.dark },
     { title: 'Componentes', icon: 'color-palette', screen: 'ComponentShowcase', color: theme.colors.secondary.main },
   ];
 
