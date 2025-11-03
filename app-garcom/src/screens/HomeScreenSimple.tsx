@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,12 @@ import {
   Alert,
   ScrollView,
   TouchableOpacity,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
+import Constants from 'expo-constants';
 import { RootState, AppDispatch } from '../store/store';
 import { signOut } from '../store/slices/authSlice';
 import SyncStatusIndicator from '../components/SyncStatusIndicator';
@@ -18,6 +21,15 @@ import { Ionicons } from '@expo/vector-icons';
 export default function HomeScreenSimple({ navigation }: any) {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
+
+  // Configurar StatusBar quando o componente montar
+  useEffect(() => {
+    StatusBar.setBarStyle('light-content');
+    if (Platform.OS === 'android') {
+      StatusBar.setBackgroundColor('transparent');
+      StatusBar.setTranslucent(true);
+    }
+  }, []);
 
   const handleSignOut = () => {
     Alert.alert(
@@ -46,7 +58,7 @@ export default function HomeScreenSimple({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Header moderno e limpo */}
+      {/* Header moderno e limpo com gradiente que cobre a StatusBar */}
       <LinearGradient
         colors={theme.colors.primary.gradient}
         start={{ x: 0, y: 0 }}
@@ -108,7 +120,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background.secondary,
   },
   header: {
-    paddingTop: theme.spacing.xl + 20,
+    paddingTop: (Constants.statusBarHeight || 0) + theme.spacing.xl,
     paddingBottom: theme.spacing.xxl,
     paddingHorizontal: theme.spacing.xl,
     borderBottomLeftRadius: 32,
