@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, CreditCard, Users, MapPin, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
+import { Clock, CreditCard, Users, MapPin, Calendar, AlertCircle, CheckCircle, ArrowRightLeft } from 'lucide-react';
 import { ComandaWithItems } from '../../../types/bar-attendance';
 import { formatCurrency } from '../../../types/cash-management';
 
@@ -7,12 +7,16 @@ interface PendingComandasProps {
   comandas: ComandaWithItems[];
   onPayComanda: (comanda: ComandaWithItems) => void;
   disabled?: boolean;
+  onRefresh?: () => Promise<void>;
+  refreshing?: boolean;
 }
 
 export const PendingComandas: React.FC<PendingComandasProps> = ({
   comandas,
   onPayComanda,
-  disabled = false
+  disabled = false,
+  onRefresh,
+  refreshing = false
 }) => {
   const getTimeElapsed = (openedAt: string): string => {
     const now = new Date();
@@ -35,9 +39,22 @@ export const PendingComandas: React.FC<PendingComandasProps> = ({
   if (comandas.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <CheckCircle className="h-6 w-6 text-green-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Comandas Pendentes de Pagamento</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <CheckCircle className="h-6 w-6 text-green-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Comandas Pendentes de Pagamento</h3>
+          </div>
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={refreshing}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Atualizar lista de comandas"
+            >
+              <ArrowRightLeft className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <span>{refreshing ? 'Atualizando...' : 'Atualizar'}</span>
+            </button>
+          )}
         </div>
         <div className="text-center py-8">
           <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
@@ -59,12 +76,25 @@ export const PendingComandas: React.FC<PendingComandasProps> = ({
           </span>
         </div>
         
-        {disabled && (
-          <div className="flex items-center space-x-2 text-amber-600">
-            <AlertCircle className="h-5 w-5" />
-            <span className="text-sm font-medium">Abra o caixa para processar pagamentos</span>
-          </div>
-        )}
+        <div className="flex items-center space-x-3">
+          {disabled && (
+            <div className="flex items-center space-x-2 text-amber-600">
+              <AlertCircle className="h-5 w-5" />
+              <span className="text-sm font-medium">Abra o caixa para processar pagamentos</span>
+            </div>
+          )}
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={refreshing}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Atualizar lista de comandas"
+            >
+              <ArrowRightLeft className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <span>{refreshing ? 'Atualizando...' : 'Atualizar'}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

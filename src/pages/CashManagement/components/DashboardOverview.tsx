@@ -82,6 +82,7 @@ export const DashboardOverview: React.FC = () => {
   const [isBlinking, setIsBlinking] = useState(false);
   const [previousPendingCount, setPreviousPendingCount] = useState(0);
   const [refreshingBalcao, setRefreshingBalcao] = useState(false);
+  const [refreshingComandas, setRefreshingComandas] = useState(false);
 
   // Função para processar pagamento de pedido de balcão
   const handleBalcaoPayment = async (order: BalcaoOrderWithDetails) => {
@@ -669,6 +670,19 @@ export const DashboardOverview: React.FC = () => {
           comandas={pendingComandas}
           onPayComanda={handleComandaPayment}
           disabled={!currentSession || processing}
+          onRefresh={async () => {
+            setRefreshingComandas(true);
+            try {
+              console.log('🔄 Atualizando comandas...');
+              await refreshData();
+              console.log('✅ Comandas atualizadas!');
+            } catch (error) {
+              console.error('❌ Erro ao atualizar:', error);
+            } finally {
+              setRefreshingComandas(false);
+            }
+          }}
+          refreshing={refreshingComandas}
         />
       </div>
 
