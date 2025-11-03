@@ -112,10 +112,15 @@ export const DashboardOverview: React.FC = () => {
     
     try {
       setProcessing(true);
+      // Usar service_charge_amount se disponível, senão usar total
+      const valorFinal = selectedComanda.service_charge && selectedComanda.service_charge_amount 
+        ? selectedComanda.service_charge_amount 
+        : selectedComanda.total || 0;
+      
       await processComandaPayment({
         comanda_id: selectedComanda.id,
         payment_method: paymentMethod,
-        amount: selectedComanda.total || 0,
+        amount: valorFinal,
         notes: observations
       });
       
