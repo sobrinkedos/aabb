@@ -9,26 +9,36 @@ export const signIn = createAsyncThunk(
   'auth/signIn',
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
     try {
+      console.log('🔐 Tentando fazer login...', email);
       const { data, error: signInError } = await SupabaseService.signIn(email, password);
       
       if (signInError) {
+        console.error('❌ Erro no login:', signInError.message);
         return rejectWithValue(signInError.message);
       }
 
       if (data.user) {
+        console.log('✅ Login bem-sucedido, buscando perfil...');
         // Buscar dados completos do usuário
         const userData = await SupabaseService.getUserProfile(data.user.id);
         
         // Salvar credenciais para autenticação biométrica
-        await SecureStore.setItemAsync('userEmail', email);
-        await SecureStore.setItemAsync('userPassword', password);
+        try {
+          await SecureStore.setItemAsync('userEmail', email);
+          await SecureStore.setItemAsync('userPassword', password);
+          console.log('✅ Credenciais salvas para biometria');
+        } catch (secureStoreError) {
+          console.warn('⚠️ Erro ao salvar credenciais:', secureStoreError);
+          // Não falhar o login por causa disso
+        }
         
         return userData;
       }
       
       return rejectWithValue('Usuário não encontrado');
-    } catch {
-      return rejectWithValue('Erro ao fazer login');
+    } catch (error) {
+      console.error('❌ Erro inesperado no login:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Erro ao fazer login');
     }
   }
 );

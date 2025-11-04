@@ -1,8 +1,26 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+// Tentar obter das variáveis de ambiente ou do Constants
+const supabaseUrl = 
+  process.env.EXPO_PUBLIC_SUPABASE_URL || 
+  Constants.expoConfig?.extra?.supabaseUrl ||
+  'https://jtfdzjmravketpkwjkvp.supabase.co';
+
+const supabaseAnonKey = 
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 
+  Constants.expoConfig?.extra?.supabaseAnonKey ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0ZmR6am1yYXZrZXRwa3dqa3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNjM1NjIsImV4cCI6MjA3MzkzOTU2Mn0.AOFSlSLFVw-pU1-lpUzxJ2fov3kR95eBlz_92mtSMgs';
+
+// Validar se as variáveis foram carregadas
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ Variáveis de ambiente do Supabase não configuradas!');
+  console.error('URL:', supabaseUrl);
+  console.error('Key:', supabaseAnonKey ? 'Configurada' : 'Não configurada');
+}
+
+console.log('✅ Supabase configurado:', supabaseUrl);
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

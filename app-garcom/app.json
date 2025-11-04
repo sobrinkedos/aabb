@@ -43,7 +43,9 @@
     "extra": {
       "eas": {
         "projectId": "a9c5905a-482a-4fb7-bd8a-22eb0109caa0"
-      }
+      },
+      "supabaseUrl": "https://jtfdzjmravketpkwjkvp.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0ZmR6am1yYXZrZXRwa3dqa3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNjM1NjIsImV4cCI6MjA3MzkzOTU2Mn0.AOFSlSLFVw-pU1-lpUzxJ2fov3kR95eBlz_92mtSMgs"
     },
     "owner": "riltons"
   }
