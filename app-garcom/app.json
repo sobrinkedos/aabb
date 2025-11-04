@@ -26,13 +26,21 @@
         "backgroundColor": "#6366F1",
         "translucent": false,
         "style": "light"
-      }
+      },
+      "package": "com.aabb.appgarcom",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a9c5905a-482a-4fb7-bd8a-22eb0109caa0"
+      }
+    },
+    "owner": "riltons"
   }
 }
