@@ -24,7 +24,8 @@
       "predictiveBackGestureEnabled": false,
       "statusBar": {
         "backgroundColor": "#6366F1",
-        "translucent": true
+        "translucent": false,
+        "style": "light"
       }
     },
     "web": {

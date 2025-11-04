@@ -48,8 +48,8 @@ export default function HomeScreenSimple({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" backgroundColor={theme.colors.primary.main} translucent={false} />
-      {/* Header moderno e limpo com gradiente que cobre a StatusBar */}
+      <StatusBar style="light" />
+      {/* Header moderno e limpo com gradiente */}
       <LinearGradient
         colors={theme.colors.primary.gradient}
         start={{ x: 0, y: 0 }}
