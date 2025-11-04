@@ -93,7 +93,13 @@ export async function calcularFechamentoDia(
   const comandasFechadas = comandas.filter(c => c.status === 'closed');
   
   const totalVendas = comandasFechadas.reduce((sum, c) => sum + (c.total || 0), 0);
-  const totalServico = comandasFechadas.reduce((sum, c) => sum + (c.service_charge_amount || 0), 0);
+  // service_charge_amount é o total COM 10%, então subtraímos o total para obter apenas os 10%
+  const totalServico = comandasFechadas.reduce((sum, c) => {
+    if (c.service_charge && c.service_charge_amount) {
+      return sum + (c.service_charge_amount - c.total);
+    }
+    return sum;
+  }, 0);
   const totalComissao = totalVendas * (taxaComissao / 100);
 
   return {
@@ -115,17 +121,24 @@ export async function calcularFechamentoDia(
 export function gerarResumoAtendimentos(
   comandas: ComandaComDetalhes[]
 ): ResumoAtendimento[] {
-  return comandas.map(comanda => ({
-    comanda_id: comanda.id,
-    mesa: comanda.table_number || 'Balcão',
-    cliente: comanda.customer_name || 'Cliente',
-    horario_abertura: comanda.opened_at,
-    horario_fechamento: comanda.closed_at,
-    total: comanda.total || 0,
-    servico: comanda.service_charge_amount || 0,
-    forma_pagamento: comanda.payment_method,
-    status: comanda.status,
-  }));
+  return comandas.map(comanda => {
+    // Calcular apenas os 10% (service_charge_amount - total)
+    const servico = comanda.service_charge && comanda.service_charge_amount
+      ? comanda.service_charge_amount - comanda.total
+      : 0;
+    
+    return {
+      comanda_id: comanda.id,
+      mesa: comanda.table_number || 'Balcão',
+      cliente: comanda.customer_name || 'Cliente',
+      horario_abertura: comanda.opened_at,
+      horario_fechamento: comanda.closed_at,
+      total: comanda.total || 0,
+      servico,
+      forma_pagamento: comanda.payment_method,
+      status: comanda.status,
+    };
+  });
 }
 
 /**

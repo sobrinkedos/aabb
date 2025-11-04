@@ -7,13 +7,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Platform,
-  StatusBar,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import { RootState } from '../store/store';
 import { theme } from '../theme';
 import { BackButton } from '../components/BackButton';
@@ -35,14 +32,6 @@ export default function FechamentoDiaScreen({ navigation }: any) {
   const [dataSelecionada, setDataSelecionada] = useState(
     new Date().toISOString().split('T')[0]
   );
-
-  useEffect(() => {
-    StatusBar.setBarStyle('light-content');
-    if (Platform.OS === 'android') {
-      StatusBar.setBackgroundColor('transparent');
-      StatusBar.setTranslucent(true);
-    }
-  }, []);
 
   useEffect(() => {
     carregarFechamento();
@@ -137,24 +126,21 @@ ${i + 1}. ${r.mesa} - ${r.cliente}
   return (
     <View style={styles.container}>
       {/* Header */}
-      <LinearGradient
-        colors={theme.colors.primary.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <BackButton onPress={() => navigation.goBack()} />
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Fechamento do Dia</Text>
-          <Text style={styles.headerSubtitle}>
-            {new Date(fechamento.data).toLocaleDateString('pt-BR', {
-              weekday: 'long',
-              day: '2-digit',
-              month: 'long',
-            })}
-          </Text>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <BackButton onPress={() => navigation.goBack()} style={styles.backButton} />
+          <View>
+            <Text style={styles.headerTitle}>Fechamento do Dia</Text>
+            <Text style={styles.headerSubtitle}>
+              {new Date(fechamento.data).toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+              })}
+            </Text>
+          </View>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={styles.content}>
         {/* Cards de Resumo */}
@@ -287,25 +273,30 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
   },
   header: {
-    paddingTop: (Constants.statusBarHeight || 0) + theme.spacing.md,
-    paddingBottom: theme.spacing.xl,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    backgroundColor: theme.colors.background.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
   },
-  headerContent: {
-    marginTop: theme.spacing.md,
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  backButton: {
+    marginRight: 0,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: theme.colors.text.inverse,
-    marginBottom: theme.spacing.xs,
+    fontSize: 20,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: 2,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: theme.colors.text.inverse,
-    opacity: 0.9,
+    fontSize: 13,
+    color: theme.colors.text.secondary,
     textTransform: 'capitalize',
   },
   content: {
