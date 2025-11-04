@@ -10,12 +10,13 @@ import comandasSlice from './slices/comandasSlice';
 import cardapioSlice from './slices/cardapioSlice';
 import sincronizacaoSlice from './slices/sincronizacaoSlice';
 
-// Configuração de persistência
+// Configuração de persistência - APENAS AUTH
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['auth', 'mesas', 'comandas', 'cardapio', 'sincronizacao'], // Estados que serão persistidos
-  blacklist: [], // Estados que NÃO serão persistidos
+  whitelist: ['auth'], // Persistir APENAS auth para evitar problemas
+  blacklist: ['mesas', 'comandas', 'cardapio', 'sincronizacao'],
+  timeout: 10000, // Timeout de 10 segundos
 };
 
 // Combinar reducers
@@ -43,15 +44,31 @@ export const store = configureStore({
           'persist/PAUSE',
           'persist/PURGE',
           'persist/REGISTER',
+          'persist/FLUSH',
         ],
         // Ignorar paths específicos no state
-        ignoredPaths: ['sincronizacao.pendingOperations'],
+        ignoredPaths: ['sincronizacao.pendingOperations', 'register'],
       },
+      immutableCheck: false, // Desabilitar para melhor performance
     }),
 });
 
-// Criar persistor
-export const persistor = persistStore(store);
+// Criar persistor com callback de erro
+export const persistor = persistStore(store, null, () => {
+  console.log('✅ Redux Persist: Rehydration completa');
+});
+
+// Função para limpar storage em caso de erro
+export const clearPersistedState = async () => {
+  try {
+    console.log('🗑️ Limpando storage persistido...');
+    await AsyncStorage.removeItem('persist:root');
+    await persistor.purge();
+    console.log('✅ Storage limpo com sucesso');
+  } catch (error) {
+    console.error('❌ Erro ao limpar storage:', error);
+  }
+};
 
 // Tipos para TypeScript
 export type RootState = ReturnType<typeof store.getState>;

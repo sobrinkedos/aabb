@@ -179,13 +179,39 @@ function AppContent() {
 }
 
 export default function App() {
+  const [persistError, setPersistError] = React.useState(false);
+
+  React.useEffect(() => {
+    // Timeout para detectar se o persist travou
+    const timeout = setTimeout(() => {
+      console.warn('⚠️ PersistGate demorou muito, pode estar travado');
+      setPersistError(true);
+    }, 15000); // 15 segundos
+
+    return () => clearTimeout(timeout);
+  }, []);
+
   return (
     <ErrorBoundary>
       <Provider store={store}>
-        <PersistGate loading={<LoadingScreen />} persistor={persistor}>
+        <PersistGate 
+          loading={<LoadingScreen />} 
+          persistor={persistor}
+          onBeforeLift={() => {
+            console.log('✅ PersistGate: Dados carregados');
+          }}
+        >
           <QueryClientProvider client={queryClient}>
             <ErrorBoundary>
-              <AppContent />
+              {persistError ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>
+                    Erro ao carregar dados. Reinicie o app.
+                  </Text>
+                </View>
+              ) : (
+                <AppContent />
+              )}
             </ErrorBoundary>
           </QueryClientProvider>
         </PersistGate>
@@ -254,5 +280,17 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     fontSize: 16,
     color: theme.colors.text.secondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background.secondary,
+    padding: theme.spacing.xl,
+  },
+  errorText: {
+    fontSize: 16,
+    color: theme.colors.error.main,
+    textAlign: 'center',
   },
 });
