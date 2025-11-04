@@ -118,16 +118,21 @@ export const checkAuthStatus = createAsyncThunk(
   'auth/checkAuthStatus',
   async (_, { rejectWithValue }) => {
     try {
+      console.log('🔍 Verificando status de autenticação...');
       const user = await SupabaseService.getCurrentUser();
       
       if (user) {
+        console.log('✅ Usuário encontrado, buscando perfil...');
         const userData = await SupabaseService.getUserProfile(user.id);
+        console.log('✅ Perfil carregado:', userData?.name);
         return userData;
       }
       
+      console.log('ℹ️ Nenhum usuário autenticado');
       return null;
-    } catch {
-      return rejectWithValue('Erro ao verificar status de autenticação');
+    } catch (error) {
+      console.error('❌ Erro ao verificar status:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Erro ao verificar status de autenticação');
     }
   }
 );

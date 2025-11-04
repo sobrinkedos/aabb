@@ -22,6 +22,7 @@ import ComponentShowcaseScreen from './src/screens/ComponentShowcaseScreen';
 import ProdutoDetalhesScreen from './src/screens/ProdutoDetalhesScreen';
 import FechamentoDiaScreen from './src/screens/FechamentoDiaScreen';
 import AuthGuard from './src/components/AuthGuard';
+import ErrorBoundary from './src/components/ErrorBoundary';
 import { ScreenTransition } from './src/components';
 
 // Criar instância do QueryClient
@@ -179,13 +180,17 @@ function AppContent() {
 
 export default function App() {
   return (
-    <Provider store={store}>
-      <PersistGate loading={<LoadingScreen />} persistor={persistor}>
-        <QueryClientProvider client={queryClient}>
-          <AppContent />
-        </QueryClientProvider>
-      </PersistGate>
-    </Provider>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <PersistGate loading={<LoadingScreen />} persistor={persistor}>
+          <QueryClientProvider client={queryClient}>
+            <ErrorBoundary>
+              <AppContent />
+            </ErrorBoundary>
+          </QueryClientProvider>
+        </PersistGate>
+      </Provider>
+    </ErrorBoundary>
   );
 }
 

@@ -16,10 +16,16 @@ export default function AuthGuard({ children, fallback }: AuthGuardProps) {
 
   useEffect(() => {
     // Verificar status de autenticação ao montar o componente
-    dispatch(checkAuthStatus());
+    try {
+      console.log('🔐 AuthGuard: Verificando status de autenticação...');
+      dispatch(checkAuthStatus());
+    } catch (error) {
+      console.error('❌ AuthGuard: Erro ao verificar autenticação:', error);
+    }
   }, [dispatch]);
 
   if (isLoading) {
+    console.log('⏳ AuthGuard: Carregando...');
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={UI_CONFIG.COLORS.PRIMARY} />
@@ -28,9 +34,11 @@ export default function AuthGuard({ children, fallback }: AuthGuardProps) {
   }
 
   if (!isAuthenticated) {
+    console.log('🚫 AuthGuard: Não autenticado, mostrando tela de login');
     return fallback ? <>{fallback}</> : null;
   }
 
+  console.log('✅ AuthGuard: Autenticado, mostrando conteúdo');
   return <>{children}</>;
 }
 
