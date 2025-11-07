@@ -27,7 +27,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@upstash/mcp-server-context7"
+        "@upstash/context7-mcp@latest"
       ],
       "disabled": false,
       "autoApprove": [
