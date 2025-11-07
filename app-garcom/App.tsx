@@ -1,157 +1,301 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import { store } from './src/store/store';
-import { supabase } from './src/services/SupabaseService';
+import { theme } from './src/theme';
 
-function MinimalApp() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+// Screens
+import LoginScreen from './src/screens/LoginScreen';
+import HomeScreen from './src/screens/HomeScreenSimple';
+import MesasScreen from './src/screens/MesasScreen';
+import ComandasScreen from './src/screens/ComandasScreen';
+import NovaComandaScreen from './src/screens/NovaComandaScreen';
+import ComandaDetalhesScreen from './src/screens/ComandaDetalhesScreen';
+import CardapioScreen from './src/screens/CardapioScreen';
+import AdicionarItemScreen from './src/screens/AdicionarItemScreen';
+import ComponentShowcaseScreen from './src/screens/ComponentShowcaseScreen';
+import ProdutoDetalhesScreen from './src/screens/ProdutoDetalhesScreen';
+import FechamentoDiaScreen from './src/screens/FechamentoDiaScreen';
+import AuthGuard from './src/components/AuthGuard';
+import ErrorBoundary from './src/components/ErrorBoundary';
+import { ScreenTransition } from './src/components';
 
-  const handleLogin = async () => {
+// Criar instância do QueryClient
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 3,
+      staleTime: 5 * 60 * 1000, // 5 minutos
+    },
+  },
+});
+
+function AppContent() {
+  const [currentScreen, setCurrentScreen] = useState('Home');
+  const [screenParams, setScreenParams] = useState<any>({});
+  const [previousScreen, setPreviousScreen] = useState('Home');
+  const [navigationHistory, setNavigationHistory] = useState<string[]>(['Home']);
+  const [isGoingBack, setIsGoingBack] = useState(false);
+
+  const navigation = {
+    navigate: (screen: string, params?: any) => {
+      setPreviousScreen(currentScreen);
+      setCurrentScreen(screen);
+      setScreenParams(params || {});
+      setNavigationHistory(prev => [...prev, screen]);
+      setIsGoingBack(false);
+    },
+    goBack: () => {
+      const history = [...navigationHistory];
+      history.pop(); // Remove tela atual
+      const previousScreen = history[history.length - 1] || 'Home';
+      setPreviousScreen(currentScreen);
+      setCurrentScreen(previousScreen);
+      setScreenParams({});
+      setNavigationHistory(history);
+      setIsGoingBack(true);
+    },
+  };
+
+  const renderScreen = () => {
     try {
-      setLoading(true);
-      console.log('🔐 Tentando login...', email);
+      const props = { navigation, route: { params: screenParams } };
       
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // Determinar direção da animação: de baixo para cima ao avançar, de cima para baixo ao voltar
+      const direction = isGoingBack ? 'down' : 'up';
+      
+      const screenContent = (() => {
+        try {
+          switch (currentScreen) {
+            case 'Mesas':
+              return <MesasScreen {...props} />;
+            case 'Comandas':
+              return <ComandasScreen {...props} />;
+            case 'Cardapio':
+              return <CardapioScreen {...props} />;
+            case 'NovaComanda':
+              return <NovaComandaScreen {...props} />;
+            case 'ComandaDetalhes':
+              return <ComandaDetalhesScreen {...props} />;
+            case 'AdicionarItem':
+              return <AdicionarItemScreen {...props} />;
+            case 'ComponentShowcase':
+              return <ComponentShowcaseScreen {...props} />;
+            case 'ProdutoDetalhes':
+              return <ProdutoDetalhesScreen {...props} />;
+            case 'FechamentoDia':
+              return <FechamentoDiaScreen {...props} />;
+            default:
+              return <HomeScreen navigation={navigation} />;
+          }
+        } catch (error) {
+          console.error('❌ Erro ao renderizar tela:', currentScreen, error);
+          return (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>Erro ao carregar tela</Text>
+              <TouchableOpacity 
+                style={styles.button} 
+                onPress={() => setCurrentScreen('Home')}
+              >
+                <Text style={styles.buttonText}>Voltar ao Início</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        }
+      })();
 
-      if (error) {
-        console.error('❌ Erro no login:', error);
-        Alert.alert('Erro', error.message);
-        return;
-      }
-
-      if (data.user) {
-        console.log('✅ Login bem-sucedido!');
-        setUser(data.user);
-        setIsLoggedIn(true);
-        Alert.alert('Sucesso', 'Login realizado com sucesso!');
-      }
+      return (
+        <ScreenTransition 
+          key={currentScreen + screenParams?.comandaId + screenParams?.itemId} 
+          screenKey={currentScreen}
+          direction={direction}
+        >
+          {screenContent}
+        </ScreenTransition>
+      );
     } catch (error) {
-      console.error('❌ Erro inesperado:', error);
-      Alert.alert('Erro', 'Erro ao fazer login');
-    } finally {
-      setLoading(false);
+      console.error('❌ Erro crítico ao renderizar:', error);
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Erro crítico</Text>
+        </View>
+      );
     }
   };
-
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      setIsLoggedIn(false);
-      setUser(null);
-      Alert.alert('Sucesso', 'Logout realizado');
-    } catch (error) {
-      console.error('❌ Erro no logout:', error);
-    }
-  };
-
-  if (isLoggedIn) {
-    return (
-      <View style={styles.container}>
-        <StatusBar style="dark" />
-        <Text style={styles.title}>✅ Login Bem-Sucedido!</Text>
-        <Text style={styles.text}>Email: {user?.email}</Text>
-        <Text style={styles.text}>ID: {user?.id}</Text>
-        
-        <TouchableOpacity style={styles.button} onPress={handleLogout}>
-          <Text style={styles.buttonText}>Sair</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
-      <Text style={styles.title}>App Garçom - Teste Mínimo</Text>
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      
-      <TouchableOpacity 
-        style={[styles.button, loading && styles.buttonDisabled]} 
-        onPress={handleLogin}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>
-          {loading ? 'Entrando...' : 'Entrar'}
-        </Text>
-      </TouchableOpacity>
-    </View>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="light" backgroundColor={theme.colors.primary.main} />
+      <AuthGuard fallback={<LoginScreen />}>
+        <View style={styles.container}>
+          {/* Conteúdo da tela */}
+          <View style={styles.content}>
+            {renderScreen()}
+          </View>
+
+          {/* Bottom Tab Navigation */}
+          <View style={styles.bottomNav}>
+            <TouchableOpacity
+              style={[styles.tabButton, currentScreen === 'Home' && styles.tabButtonActive]}
+              onPress={() => navigation.navigate('Home')}
+            >
+              <Ionicons 
+                name={currentScreen === 'Home' ? 'home' : 'home-outline'} 
+                size={24} 
+                color={currentScreen === 'Home' ? theme.colors.primary.main : theme.colors.text.secondary}
+              />
+              <Text style={[styles.tabLabel, currentScreen === 'Home' && styles.tabLabelActive]}>
+                Início
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tabButton, currentScreen === 'Mesas' && styles.tabButtonActive]}
+              onPress={() => navigation.navigate('Mesas')}
+            >
+              <Ionicons 
+                name={currentScreen === 'Mesas' ? 'grid' : 'grid-outline'} 
+                size={24} 
+                color={currentScreen === 'Mesas' ? theme.colors.primary.main : theme.colors.text.secondary}
+              />
+              <Text style={[styles.tabLabel, currentScreen === 'Mesas' && styles.tabLabelActive]}>
+                Mesas
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tabButton, currentScreen === 'Comandas' && styles.tabButtonActive]}
+              onPress={() => navigation.navigate('Comandas')}
+            >
+              <Ionicons 
+                name={currentScreen === 'Comandas' ? 'receipt' : 'receipt-outline'} 
+                size={24} 
+                color={currentScreen === 'Comandas' ? theme.colors.primary.main : theme.colors.text.secondary}
+              />
+              <Text style={[styles.tabLabel, currentScreen === 'Comandas' && styles.tabLabelActive]}>
+                Comandas
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tabButton, currentScreen === 'Cardapio' && styles.tabButtonActive]}
+              onPress={() => navigation.navigate('Cardapio')}
+            >
+              <Ionicons 
+                name={currentScreen === 'Cardapio' ? 'restaurant' : 'restaurant-outline'} 
+                size={24} 
+                color={currentScreen === 'Cardapio' ? theme.colors.primary.main : theme.colors.text.secondary}
+              />
+              <Text style={[styles.tabLabel, currentScreen === 'Cardapio' && styles.tabLabelActive]}>
+                Cardápio
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </AuthGuard>
+    </SafeAreaView>
   );
 }
 
 export default function App() {
+  console.log('🚀 App iniciando...');
+  
   return (
-    <Provider store={store}>
-      <MinimalApp />
-    </Provider>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <QueryClientProvider client={queryClient}>
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
+        </QueryClientProvider>
+      </Provider>
+    </ErrorBoundary>
+  );
+}
+
+function LoadingScreen() {
+  return (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={theme.colors.primary.main} />
+      <Text style={styles.loadingText}>Carregando...</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.background.secondary,
+  },
   container: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.background.primary,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border.light,
+    paddingBottom: 8,
+    paddingTop: 12,
+    ...theme.shadows.lg,
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 4,
+    gap: 4,
+  },
+  tabButtonActive: {
+    backgroundColor: theme.colors.primary.main + '10',
+    borderRadius: theme.borderRadius.lg,
+    marginHorizontal: 4,
+  },
+  tabLabel: {
+    fontSize: 11,
+    color: theme.colors.text.secondary,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  tabLabelActive: {
+    color: theme.colors.primary.main,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: theme.spacing.md,
+    fontSize: 16,
+    color: theme.colors.text.secondary,
+  },
+  errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.secondary,
+    padding: theme.spacing.xl,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 30,
+  errorText: {
+    fontSize: 16,
+    color: theme.colors.error.main,
     textAlign: 'center',
-  },
-  text: {
-    fontSize: 16,
-    marginBottom: 10,
-    color: '#333',
-  },
-  input: {
-    width: '100%',
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    marginBottom: 15,
-    backgroundColor: 'white',
-    fontSize: 16,
+    marginBottom: theme.spacing.lg,
   },
   button: {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#6366F1',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  buttonDisabled: {
-    backgroundColor: '#9CA3AF',
+    backgroundColor: theme.colors.primary.main,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xl,
+    borderRadius: theme.borderRadius.lg,
   },
   buttonText: {
     color: 'white',
