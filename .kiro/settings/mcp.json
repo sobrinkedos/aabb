@@ -22,6 +22,17 @@
         "get_logs",
         "get_anon_key"
       ]
+    },
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/mcp-server-context7"
+      ],
+      "disabled": false,
+      "autoApprove": [
+        "search_documentation"
+      ]
     }
   }
 }
