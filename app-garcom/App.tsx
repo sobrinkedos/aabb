@@ -3,10 +3,9 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
-import { PersistGate } from 'redux-persist/integration/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import { store, persistor } from './src/store/store';
+import { store } from './src/store/store';
 import { theme } from './src/theme';
 
 // Screens
@@ -179,42 +178,16 @@ function AppContent() {
 }
 
 export default function App() {
-  const [persistError, setPersistError] = React.useState(false);
-
-  React.useEffect(() => {
-    // Timeout para detectar se o persist travou
-    const timeout = setTimeout(() => {
-      console.warn('⚠️ PersistGate demorou muito, pode estar travado');
-      setPersistError(true);
-    }, 15000); // 15 segundos
-
-    return () => clearTimeout(timeout);
-  }, []);
-
+  console.log('🚀 App iniciando...');
+  
   return (
     <ErrorBoundary>
       <Provider store={store}>
-        <PersistGate 
-          loading={<LoadingScreen />} 
-          persistor={persistor}
-          onBeforeLift={() => {
-            console.log('✅ PersistGate: Dados carregados');
-          }}
-        >
-          <QueryClientProvider client={queryClient}>
-            <ErrorBoundary>
-              {persistError ? (
-                <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>
-                    Erro ao carregar dados. Reinicie o app.
-                  </Text>
-                </View>
-              ) : (
-                <AppContent />
-              )}
-            </ErrorBoundary>
-          </QueryClientProvider>
-        </PersistGate>
+        <QueryClientProvider client={queryClient}>
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
+        </QueryClientProvider>
       </Provider>
     </ErrorBoundary>
   );

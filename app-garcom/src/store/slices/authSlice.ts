@@ -1,8 +1,13 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthState } from '../../types/Usuario';
 import { SupabaseService } from '../../services/SupabaseService';
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
+
+// Chaves para AsyncStorage
+const AUTH_USER_KEY = '@app_garcom:auth_user';
+const AUTH_TOKEN_KEY = '@app_garcom:auth_token';
 
 // Async thunks para operações de autenticação
 export const signIn = createAsyncThunk(
@@ -29,7 +34,14 @@ export const signIn = createAsyncThunk(
           console.log('✅ Credenciais salvas para biometria');
         } catch (secureStoreError) {
           console.warn('⚠️ Erro ao salvar credenciais:', secureStoreError);
-          // Não falhar o login por causa disso
+        }
+        
+        // Salvar usuário no AsyncStorage para persistência
+        try {
+          await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
+          console.log('✅ Usuário salvo no AsyncStorage');
+        } catch (storageError) {
+          console.warn('⚠️ Erro ao salvar no AsyncStorage:', storageError);
         }
         
         return userData;
@@ -104,12 +116,18 @@ export const signOut = createAsyncThunk(
       }
 
       // Limpar credenciais salvas
-      await SecureStore.deleteItemAsync('userEmail');
-      await SecureStore.deleteItemAsync('userPassword');
+      try {
+        await SecureStore.deleteItemAsync('userEmail');
+        await SecureStore.deleteItemAsync('userPassword');
+        await AsyncStorage.removeItem(AUTH_USER_KEY);
+        console.log('✅ Credenciais limpas');
+      } catch (cleanupError) {
+        console.warn('⚠️ Erro ao limpar credenciais:', cleanupError);
+      }
       
       return null;
-    } catch {
-      return rejectWithValue('Erro ao fazer logout');
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Erro ao fazer logout');
     }
   }
 );
@@ -119,12 +137,33 @@ export const checkAuthStatus = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       console.log('🔍 Verificando status de autenticação...');
+      
+      // Primeiro tentar carregar do AsyncStorage
+      try {
+        const savedUser = await AsyncStorage.getItem(AUTH_USER_KEY);
+        if (savedUser) {
+          console.log('✅ Usuário encontrado no AsyncStorage');
+          return JSON.parse(savedUser);
+        }
+      } catch (storageError) {
+        console.warn('⚠️ Erro ao ler AsyncStorage:', storageError);
+      }
+      
+      // Se não encontrou no storage, verificar no Supabase
       const user = await SupabaseService.getCurrentUser();
       
       if (user) {
-        console.log('✅ Usuário encontrado, buscando perfil...');
+        console.log('✅ Usuário encontrado no Supabase, buscando perfil...');
         const userData = await SupabaseService.getUserProfile(user.id);
         console.log('✅ Perfil carregado:', userData?.name);
+        
+        // Salvar no AsyncStorage para próxima vez
+        try {
+          await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
+        } catch (storageError) {
+          console.warn('⚠️ Erro ao salvar no AsyncStorage:', storageError);
+        }
+        
         return userData;
       }
       
