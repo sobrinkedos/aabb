@@ -7,7 +7,6 @@ import { store, AppDispatch } from './src/store/store';
 import { RootState } from './src/store/store';
 import { signOut } from './src/store/slices/authSlice';
 import LoginScreen from './src/screens/LoginScreen';
-import HomeScreenSimple from './src/screens/HomeScreenSimple';
 import { theme } from './src/theme';
 import ErrorBoundary from './src/components/ErrorBoundary';
 
@@ -24,14 +23,43 @@ function AppWithNavigation() {
     try {
       switch (currentScreen) {
         case 'Home':
-          return <HomeScreenSimple navigation={{ navigate: setCurrentScreen }} />;
+          return (
+            <ScrollView style={styles.screenContainer}>
+              <View style={styles.header}>
+                <Text style={styles.headerTitle}>🏠 Início</Text>
+                <Text style={styles.headerSubtitle}>Bem-vindo, {user?.name || 'Garçom'}!</Text>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>📱 Menu</Text>
+                <TouchableOpacity 
+                  style={styles.menuButton}
+                  onPress={() => setCurrentScreen('Profile')}
+                >
+                  <Ionicons name="person-outline" size={24} color={theme.colors.primary.main} />
+                  <Text style={styles.menuButtonText}>Ver Perfil</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>ℹ️ Status</Text>
+                <Text style={styles.cardText}>✅ App funcionando</Text>
+                <Text style={styles.cardText}>✅ Login OK</Text>
+                <Text style={styles.cardText}>✅ Navegação OK</Text>
+              </View>
+            </ScrollView>
+          );
         case 'Profile':
           return (
             <View style={styles.screenContainer}>
-              <Text style={styles.screenTitle}>Perfil</Text>
+              <View style={styles.header}>
+                <Text style={styles.headerTitle}>👤 Perfil</Text>
+              </View>
               <View style={styles.card}>
+                <Text style={styles.cardTitle}>Informações</Text>
                 <Text style={styles.cardText}>Nome: {user?.name}</Text>
                 <Text style={styles.cardText}>Email: {user?.email}</Text>
+                <Text style={styles.cardText}>ID: {user?.id?.substring(0, 8)}...</Text>
               </View>
               <TouchableOpacity style={styles.dangerButton} onPress={handleSignOut}>
                 <Text style={styles.buttonText}>Sair do App</Text>
@@ -39,7 +67,11 @@ function AppWithNavigation() {
             </View>
           );
         default:
-          return <HomeScreenSimple navigation={{ navigate: setCurrentScreen }} />;
+          return (
+            <View style={styles.screenContainer}>
+              <Text style={styles.screenTitle}>Tela não encontrada</Text>
+            </View>
+          );
       }
     } catch (error) {
       console.error('❌ Erro ao renderizar tela:', error);
@@ -151,11 +183,43 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     paddingTop: theme.spacing.xl + 40,
   },
+  header: {
+    marginBottom: theme.spacing.lg,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xs,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: theme.colors.text.secondary,
+  },
   screenTitle: {
     fontSize: 28,
     fontWeight: '700',
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.lg,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
+  },
+  menuButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.md,
+    gap: theme.spacing.sm,
+  },
+  menuButtonText: {
+    fontSize: 16,
+    color: theme.colors.text.primary,
+    fontWeight: '500',
   },
   card: {
     backgroundColor: 'white',
