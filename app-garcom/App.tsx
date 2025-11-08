@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,8 +17,11 @@ function AppWithNavigation() {
   const [currentScreen, setCurrentScreen] = useState('Home');
   const [mesas, setMesas] = useState<any[]>([]);
   const [comandas, setComandas] = useState<any[]>([]);
+  const [cardapio, setCardapio] = useState<any[]>([]);
   const [loadingMesas, setLoadingMesas] = useState(false);
   const [loadingComandas, setLoadingComandas] = useState(false);
+  const [loadingCardapio, setLoadingCardapio] = useState(false);
+  const [showNovaComanda, setShowNovaComanda] = useState(false);
 
   // Carregar mesas quando navegar para a tela
   React.useEffect(() => {
@@ -31,6 +34,13 @@ function AppWithNavigation() {
   React.useEffect(() => {
     if (currentScreen === 'Comandas') {
       carregarComandas();
+    }
+  }, [currentScreen]);
+
+  // Carregar cardápio quando navegar para a tela
+  React.useEffect(() => {
+    if (currentScreen === 'Cardapio') {
+      carregarCardapio();
     }
   }, [currentScreen]);
 
@@ -67,6 +77,53 @@ function AppWithNavigation() {
       console.error('Erro ao carregar comandas:', error);
     } finally {
       setLoadingComandas(false);
+    }
+  };
+
+  const carregarCardapio = async () => {
+    try {
+      setLoadingCardapio(true);
+      const { data, error } = await supabase
+        .from('menu_items')
+        .select('*')
+        .eq('is_available', true)
+        .order('category', { ascending: true })
+        .limit(20);
+
+      if (error) throw error;
+      setCardapio(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar cardápio:', error);
+    } finally {
+      setLoadingCardapio(false);
+    }
+  };
+
+  const criarNovaComanda = async (mesaId: string, nomeCliente: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('comandas')
+        .insert([{
+          table_id: mesaId,
+          customer_name: nomeCliente,
+          employee_id: user?.id,
+          status: 'open',
+          total: 0,
+          people_count: 1,
+          opened_at: new Date().toISOString(),
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      Alert.alert('Sucesso', 'Comanda criada com sucesso!');
+      setShowNovaComanda(false);
+      carregarComandas();
+      return data;
+    } catch (error) {
+      console.error('Erro ao criar comanda:', error);
+      Alert.alert('Erro', 'Não foi possível criar a comanda');
     }
   };
 
@@ -151,9 +208,25 @@ function AppWithNavigation() {
                 <Text style={styles.cardText}>✅ Fechadas: {comandasFechadas}</Text>
               </View>
 
+              <TouchableOpacity 
+                style={[styles.button, { marginHorizontal: 0 }]}
+                onPress={() => {
+                  Alert.alert(
+                    'Nova Comanda',
+                    'Funcionalidade de criar comanda será implementada em breve',
+                    [{ text: 'OK' }]
+                  );
+                }}
+              >
+                <Text style={styles.buttonText}>➕ Nova Comanda</Text>
+              </TouchableOpacity>
+
               {loadingComandas ? (
                 <View style={styles.card}>
-                  <Text style={styles.cardText}>Carregando comandas...</Text>
+                  <ActivityIndicator size="large" color={theme.colors.primary.main} />
+                  <Text style={[styles.cardText, { textAlign: 'center', marginTop: theme.spacing.md }]}>
+                    Carregando comandas...
+                  </Text>
                 </View>
               ) : comandas.length > 0 ? (
                 <View style={styles.card}>
@@ -180,27 +253,59 @@ function AppWithNavigation() {
           );
         
         case 'Cardapio':
+          const categorias = [...new Set(cardapio.map(item => item.category))];
+          
           return (
             <ScrollView style={styles.screenContainer}>
               <View style={styles.header}>
                 <Text style={styles.headerTitle}>🍽️ Cardápio</Text>
-                <Text style={styles.headerSubtitle}>Visualize o cardápio</Text>
-              </View>
-
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>📊 Categorias</Text>
-                <Text style={styles.cardText}>🍔 Lanches</Text>
-                <Text style={styles.cardText}>🍕 Pizzas</Text>
-                <Text style={styles.cardText}>🥤 Bebidas</Text>
-                <Text style={styles.cardText}>🍰 Sobremesas</Text>
-              </View>
-
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>ℹ️ Em breve</Text>
-                <Text style={styles.cardText}>
-                  Funcionalidade de visualização do cardápio será adicionada em breve.
+                <Text style={styles.headerSubtitle}>
+                  {loadingCardapio ? 'Carregando...' : `${cardapio.length} itens disponíveis`}
                 </Text>
               </View>
+
+              {loadingCardapio ? (
+                <View style={styles.card}>
+                  <ActivityIndicator size="large" color={theme.colors.primary.main} />
+                  <Text style={[styles.cardText, { textAlign: 'center', marginTop: theme.spacing.md }]}>
+                    Carregando cardápio...
+                  </Text>
+                </View>
+              ) : cardapio.length > 0 ? (
+                <>
+                  <View style={styles.card}>
+                    <Text style={styles.cardTitle}>📊 Categorias</Text>
+                    {categorias.map((cat, idx) => (
+                      <Text key={idx} style={styles.cardText}>
+                        • {cat} ({cardapio.filter(i => i.category === cat).length} itens)
+                      </Text>
+                    ))}
+                  </View>
+
+                  {categorias.map((categoria) => (
+                    <View key={categoria} style={styles.card}>
+                      <Text style={styles.cardTitle}>{categoria}</Text>
+                      {cardapio
+                        .filter(item => item.category === categoria)
+                        .slice(0, 3)
+                        .map((item) => (
+                          <View key={item.id} style={[styles.menuButton, { marginTop: theme.spacing.xs }]}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.menuButtonText}>{item.name}</Text>
+                              <Text style={[styles.cardText, { fontSize: 12 }]}>
+                                R$ {item.price?.toFixed(2)}
+                              </Text>
+                            </View>
+                          </View>
+                        ))}
+                    </View>
+                  ))}
+                </>
+              ) : (
+                <View style={styles.card}>
+                  <Text style={styles.cardText}>Nenhum item no cardápio</Text>
+                </View>
+              )}
             </ScrollView>
           );
         
