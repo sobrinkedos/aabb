@@ -9,11 +9,66 @@ import { signOut } from './src/store/slices/authSlice';
 import LoginScreen from './src/screens/LoginScreen';
 import { theme } from './src/theme';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import { supabase } from './src/services/SupabaseService';
 
 function AppWithNavigation() {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const [currentScreen, setCurrentScreen] = useState('Home');
+  const [mesas, setMesas] = useState<any[]>([]);
+  const [comandas, setComandas] = useState<any[]>([]);
+  const [loadingMesas, setLoadingMesas] = useState(false);
+  const [loadingComandas, setLoadingComandas] = useState(false);
+
+  // Carregar mesas quando navegar para a tela
+  React.useEffect(() => {
+    if (currentScreen === 'Mesas') {
+      carregarMesas();
+    }
+  }, [currentScreen]);
+
+  // Carregar comandas quando navegar para a tela
+  React.useEffect(() => {
+    if (currentScreen === 'Comandas') {
+      carregarComandas();
+    }
+  }, [currentScreen]);
+
+  const carregarMesas = async () => {
+    try {
+      setLoadingMesas(true);
+      const { data, error } = await supabase
+        .from('bar_tables')
+        .select('*')
+        .order('number', { ascending: true });
+
+      if (error) throw error;
+      setMesas(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar mesas:', error);
+    } finally {
+      setLoadingMesas(false);
+    }
+  };
+
+  const carregarComandas = async () => {
+    try {
+      setLoadingComandas(true);
+      const { data, error } = await supabase
+        .from('comandas')
+        .select('*')
+        .eq('employee_id', user?.id)
+        .order('opened_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setComandas(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar comandas:', error);
+    } finally {
+      setLoadingComandas(false);
+    }
+  };
 
   const handleSignOut = () => {
     dispatch(signOut());
@@ -23,50 +78,104 @@ function AppWithNavigation() {
     try {
       switch (currentScreen) {
         case 'Mesas':
+          const mesasDisponiveis = mesas.filter(m => m.status === 'available').length;
+          const mesasOcupadas = mesas.filter(m => m.status === 'occupied').length;
+          const mesasReservadas = mesas.filter(m => m.status === 'reserved').length;
+
           return (
             <ScrollView style={styles.screenContainer}>
               <View style={styles.header}>
                 <Text style={styles.headerTitle}>🪑 Mesas</Text>
-                <Text style={styles.headerSubtitle}>Gerencie as mesas do restaurante</Text>
+                <Text style={styles.headerSubtitle}>
+                  {loadingMesas ? 'Carregando...' : `${mesas.length} mesas cadastradas`}
+                </Text>
               </View>
 
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>📊 Status das Mesas</Text>
-                <Text style={styles.cardText}>🟢 Disponíveis: 8</Text>
-                <Text style={styles.cardText}>🟡 Ocupadas: 4</Text>
-                <Text style={styles.cardText}>🔴 Reservadas: 2</Text>
+                <Text style={styles.cardText}>🟢 Disponíveis: {mesasDisponiveis}</Text>
+                <Text style={styles.cardText}>🟡 Ocupadas: {mesasOcupadas}</Text>
+                <Text style={styles.cardText}>🔴 Reservadas: {mesasReservadas}</Text>
               </View>
 
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>ℹ️ Em breve</Text>
-                <Text style={styles.cardText}>
-                  Funcionalidade de gerenciamento de mesas será adicionada em breve.
-                </Text>
-              </View>
+              {loadingMesas ? (
+                <View style={styles.card}>
+                  <Text style={styles.cardText}>Carregando mesas...</Text>
+                </View>
+              ) : mesas.length > 0 ? (
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>📋 Lista de Mesas</Text>
+                  {mesas.slice(0, 5).map((mesa) => (
+                    <View key={mesa.id} style={[styles.menuButton, { marginTop: theme.spacing.xs }]}>
+                      <Text style={styles.menuButtonText}>
+                        Mesa {mesa.number} - {
+                          mesa.status === 'available' ? '🟢 Disponível' :
+                          mesa.status === 'occupied' ? '🟡 Ocupada' :
+                          '🔴 Reservada'
+                        }
+                      </Text>
+                    </View>
+                  ))}
+                  {mesas.length > 5 && (
+                    <Text style={[styles.cardText, { marginTop: theme.spacing.sm }]}>
+                      + {mesas.length - 5} mesas
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.card}>
+                  <Text style={styles.cardText}>Nenhuma mesa cadastrada</Text>
+                </View>
+              )}
             </ScrollView>
           );
         
         case 'Comandas':
+          const comandasAbertas = comandas.filter(c => c.status === 'open').length;
+          const comandasPendentes = comandas.filter(c => c.status === 'pending_payment').length;
+          const comandasFechadas = comandas.filter(c => c.status === 'closed').length;
+
           return (
             <ScrollView style={styles.screenContainer}>
               <View style={styles.header}>
                 <Text style={styles.headerTitle}>📋 Comandas</Text>
-                <Text style={styles.headerSubtitle}>Gerencie pedidos e comandas</Text>
+                <Text style={styles.headerSubtitle}>
+                  {loadingComandas ? 'Carregando...' : `${comandas.length} comandas recentes`}
+                </Text>
               </View>
 
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>📊 Status</Text>
-                <Text style={styles.cardText}>📝 Abertas: 6</Text>
-                <Text style={styles.cardText}>⏳ Pendentes: 3</Text>
-                <Text style={styles.cardText}>✅ Fechadas hoje: 12</Text>
+                <Text style={styles.cardText}>📝 Abertas: {comandasAbertas}</Text>
+                <Text style={styles.cardText}>⏳ Pendentes: {comandasPendentes}</Text>
+                <Text style={styles.cardText}>✅ Fechadas: {comandasFechadas}</Text>
               </View>
 
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>ℹ️ Em breve</Text>
-                <Text style={styles.cardText}>
-                  Funcionalidade de gerenciamento de comandas será adicionada em breve.
-                </Text>
-              </View>
+              {loadingComandas ? (
+                <View style={styles.card}>
+                  <Text style={styles.cardText}>Carregando comandas...</Text>
+                </View>
+              ) : comandas.length > 0 ? (
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>📋 Últimas Comandas</Text>
+                  {comandas.slice(0, 5).map((comanda) => (
+                    <View key={comanda.id} style={[styles.menuButton, { marginTop: theme.spacing.xs }]}>
+                      <Text style={styles.menuButtonText}>
+                        {comanda.customer_name || 'Cliente'} - R$ {comanda.total?.toFixed(2) || '0.00'}
+                      </Text>
+                      <Text style={[styles.cardText, { fontSize: 12 }]}>
+                        {comanda.status === 'open' ? '📝 Aberta' :
+                         comanda.status === 'pending_payment' ? '⏳ Pendente' :
+                         '✅ Fechada'}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.card}>
+                  <Text style={styles.cardText}>Nenhuma comanda encontrada</Text>
+                </View>
+              )}
             </ScrollView>
           );
         
