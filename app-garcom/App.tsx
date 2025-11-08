@@ -22,6 +22,79 @@ function AppWithNavigation() {
   const renderScreen = () => {
     try {
       switch (currentScreen) {
+        case 'Mesas':
+          return (
+            <ScrollView style={styles.screenContainer}>
+              <View style={styles.header}>
+                <Text style={styles.headerTitle}>🪑 Mesas</Text>
+                <Text style={styles.headerSubtitle}>Gerencie as mesas do restaurante</Text>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>📊 Status das Mesas</Text>
+                <Text style={styles.cardText}>🟢 Disponíveis: 8</Text>
+                <Text style={styles.cardText}>🟡 Ocupadas: 4</Text>
+                <Text style={styles.cardText}>🔴 Reservadas: 2</Text>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>ℹ️ Em breve</Text>
+                <Text style={styles.cardText}>
+                  Funcionalidade de gerenciamento de mesas será adicionada em breve.
+                </Text>
+              </View>
+            </ScrollView>
+          );
+        
+        case 'Comandas':
+          return (
+            <ScrollView style={styles.screenContainer}>
+              <View style={styles.header}>
+                <Text style={styles.headerTitle}>📋 Comandas</Text>
+                <Text style={styles.headerSubtitle}>Gerencie pedidos e comandas</Text>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>📊 Status</Text>
+                <Text style={styles.cardText}>📝 Abertas: 6</Text>
+                <Text style={styles.cardText}>⏳ Pendentes: 3</Text>
+                <Text style={styles.cardText}>✅ Fechadas hoje: 12</Text>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>ℹ️ Em breve</Text>
+                <Text style={styles.cardText}>
+                  Funcionalidade de gerenciamento de comandas será adicionada em breve.
+                </Text>
+              </View>
+            </ScrollView>
+          );
+        
+        case 'Cardapio':
+          return (
+            <ScrollView style={styles.screenContainer}>
+              <View style={styles.header}>
+                <Text style={styles.headerTitle}>🍽️ Cardápio</Text>
+                <Text style={styles.headerSubtitle}>Visualize o cardápio</Text>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>📊 Categorias</Text>
+                <Text style={styles.cardText}>🍔 Lanches</Text>
+                <Text style={styles.cardText}>🍕 Pizzas</Text>
+                <Text style={styles.cardText}>🥤 Bebidas</Text>
+                <Text style={styles.cardText}>🍰 Sobremesas</Text>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>ℹ️ Em breve</Text>
+                <Text style={styles.cardText}>
+                  Funcionalidade de visualização do cardápio será adicionada em breve.
+                </Text>
+              </View>
+            </ScrollView>
+          );
+        
         case 'Home':
           return (
             <ScrollView style={styles.screenContainer}>
@@ -31,13 +104,38 @@ function AppWithNavigation() {
               </View>
 
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>📱 Menu</Text>
+                <Text style={styles.cardTitle}>📱 Acesso Rápido</Text>
+                
                 <TouchableOpacity 
                   style={styles.menuButton}
+                  onPress={() => setCurrentScreen('Mesas')}
+                >
+                  <Ionicons name="grid-outline" size={24} color={theme.colors.success.main} />
+                  <Text style={styles.menuButtonText}>Mesas</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.menuButton, { marginTop: theme.spacing.sm }]}
+                  onPress={() => setCurrentScreen('Comandas')}
+                >
+                  <Ionicons name="receipt-outline" size={24} color={theme.colors.info.main} />
+                  <Text style={styles.menuButtonText}>Comandas</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.menuButton, { marginTop: theme.spacing.sm }]}
+                  onPress={() => setCurrentScreen('Cardapio')}
+                >
+                  <Ionicons name="restaurant-outline" size={24} color={theme.colors.warning.main} />
+                  <Text style={styles.menuButtonText}>Cardápio</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.menuButton, { marginTop: theme.spacing.sm }]}
                   onPress={() => setCurrentScreen('Profile')}
                 >
-                  <Ionicons name="person-outline" size={24} color={theme.colors.primary.main} />
-                  <Text style={styles.menuButtonText}>Ver Perfil</Text>
+                  <Ionicons name="person-outline" size={24} color={theme.colors.secondary.main} />
+                  <Text style={styles.menuButtonText}>Perfil</Text>
                 </TouchableOpacity>
               </View>
 
@@ -98,7 +196,7 @@ function AppWithNavigation() {
         {renderScreen()}
       </View>
 
-      {/* Bottom Navigation - SIMPLES */}
+      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity
           style={styles.navButton}
@@ -119,18 +217,52 @@ function AppWithNavigation() {
 
         <TouchableOpacity
           style={styles.navButton}
-          onPress={() => setCurrentScreen('Profile')}
+          onPress={() => setCurrentScreen('Mesas')}
         >
           <Ionicons 
-            name={currentScreen === 'Profile' ? 'person' : 'person-outline'} 
+            name={currentScreen === 'Mesas' ? 'grid' : 'grid-outline'} 
             size={24} 
-            color={currentScreen === 'Profile' ? theme.colors.primary.main : theme.colors.text.secondary}
+            color={currentScreen === 'Mesas' ? theme.colors.primary.main : theme.colors.text.secondary}
           />
           <Text style={[
             styles.navLabel,
-            currentScreen === 'Profile' && styles.navLabelActive
+            currentScreen === 'Mesas' && styles.navLabelActive
           ]}>
-            Perfil
+            Mesas
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => setCurrentScreen('Comandas')}
+        >
+          <Ionicons 
+            name={currentScreen === 'Comandas' ? 'receipt' : 'receipt-outline'} 
+            size={24} 
+            color={currentScreen === 'Comandas' ? theme.colors.primary.main : theme.colors.text.secondary}
+          />
+          <Text style={[
+            styles.navLabel,
+            currentScreen === 'Comandas' && styles.navLabelActive
+          ]}>
+            Comandas
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => setCurrentScreen('Cardapio')}
+        >
+          <Ionicons 
+            name={currentScreen === 'Cardapio' ? 'restaurant' : 'restaurant-outline'} 
+            size={24} 
+            color={currentScreen === 'Cardapio' ? theme.colors.primary.main : theme.colors.text.secondary}
+          />
+          <Text style={[
+            styles.navLabel,
+            currentScreen === 'Cardapio' && styles.navLabelActive
+          ]}>
+            Cardápio
           </Text>
         </TouchableOpacity>
       </View>
